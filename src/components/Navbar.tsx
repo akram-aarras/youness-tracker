@@ -21,14 +21,16 @@ import {
   X,
   Download,
   RefreshCw,
+  CreditCard,
 } from 'lucide-react';
 
 interface Props {
   activeTab?: 'dashboard' | 'clients' | 'tickets' | 'team';
   setActiveTab?: (tab: 'dashboard' | 'clients' | 'tickets' | 'team') => void;
+  onOpenPaymentModal?: () => void;
 }
 
-export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props) {
+export default function Navbar({ activeTab = 'dashboard', setActiveTab, onOpenPaymentModal }: Props) {
   const {
     currentUser,
     switchRole,
@@ -48,6 +50,28 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Prevent background scrolling when mobile menu is open
+  React.useEffect(() => {
+    if (mobileMenuOpen && typeof document !== 'undefined') {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [mobileMenuOpen]);
+
+  // Close mobile menu on Escape key
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileMenuOpen(false);
+    };
+    if (mobileMenuOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [mobileMenuOpen]);
+
   const openTicketsCount = tickets.filter((ticket) => ticket.status !== 'resolved').length;
 
   const handleRoleSwitch = (role: 'admin' | 'technician', techId?: string) => {
@@ -62,6 +86,7 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
 
   const handleLogout = async () => {
     setShowRoleMenu(false);
+    setMobileMenuOpen(false);
     await logout();
     router.push('/login');
   };
@@ -432,49 +457,54 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
         </div>
       )}
 
-      {/* Mobile Drawer Navigation Modal (< 768px) */}
+      {/* Full-Screen Mobile Drawer Navigation (< 768px) */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-50 md:hidden flex flex-col justify-end bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
-          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 z-50 h-[100dvh] bg-[#0f111a] text-[#F4F0F8] flex flex-col md:hidden animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
         >
-          <div
-            className="bg-[#191522] border-t border-[#2D253B]/70 rounded-t-3xl p-5 max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl shadow-black/80 animate-in slide-in-from-bottom duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#2D253B]/70">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#241E30] flex items-center justify-center text-lg border border-[#3A2F4C]">
-                  {currentUser?.avatar || '👤'}
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-[#F4F0F8]">
-                    {currentUser?.name || 'User'}
-                  </div>
-                  <div className="text-[10px] text-amber-400 font-mono uppercase font-semibold">
-                    {currentUser?.role === 'admin' ? t('admin') : t('field_tech')}
-                  </div>
-                </div>
+          {/* Header */}
+          <div className="flex-none flex items-center justify-between px-4 py-3.5 border-b border-[#2D253B]/70 bg-[#130F1A]">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-[#241E30] flex items-center justify-center text-xl border border-[#3A2F4C] shrink-0">
+                {currentUser?.avatar || '👤'}
               </div>
-              <div className="flex items-center gap-2">
-                <ThemeToggle />
-                <button
-                  type="button"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-xl text-[#958B9F] hover:text-[#F4F0F8] bg-[#130F1A] border border-[#2D253B]/70 transition cursor-pointer"
-                  aria-label="Fermer le menu"
-                >
-                  <X className="w-5 h-5 text-amber-400" />
-                </button>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-[#F4F0F8] truncate leading-tight">
+                  {currentUser?.name || 'Youness (Owner / NOC Admin)'}
+                </div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 truncate">
+                    {currentUser?.role === 'admin'
+                      ? 'Youness (Owner / NOC Admin) • المسؤول'
+                      : 'Technicien Terrain • تقني الميدان'}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Navigation Tabs in Drawer */}
-            <div className="space-y-1">
-              <div className="text-[10px] uppercase font-bold text-[#958B9F] px-2 py-1">
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-2.5 rounded-xl text-slate-300 hover:text-white bg-[#1e1929] hover:bg-[#2c243a] border border-[#2D253B] transition cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label="Fermer le menu"
+              >
+                <X className="w-5 h-5 text-amber-400" />
+              </button>
+            </div>
+          </div>
+
+          {/* Body (Scrollable seamless view) */}
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
+            {/* Primary Navigation Links */}
+            <div className="space-y-1.5">
+              <div className="text-[10px] uppercase font-bold text-[#958B9F] px-2 py-0.5 tracking-wider">
                 Navigation Principale
               </div>
+
+              {/* 1. Dashboard */}
               <button
                 type="button"
                 onClick={() => {
@@ -482,15 +512,19 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
                   if (pathname !== '/') router.push('/');
                   if (setActiveTab) setActiveTab('dashboard');
                 }}
-                className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold cursor-pointer transition ${
+                className={`w-full min-h-[48px] p-3 rounded-xl flex items-center gap-3 text-xs font-semibold cursor-pointer transition ${
                   pathname === '/' && activeTab === 'dashboard'
-                    ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
-                    : 'text-[#E0D8EB] hover:bg-[#241E30]'
+                    ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368] shadow-sm'
+                    : 'text-[#E0D8EB] hover:bg-[#1f192b] bg-[#161220]/60 border border-[#261E33]'
                 }`}
               >
                 <LayoutDashboard className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>{t('nav_dashboard')}</span>
+                <span className="flex-1 text-left rtl:text-right font-bold text-sm">
+                  {t('nav_dashboard')}
+                </span>
               </button>
+
+              {/* 2. Clients */}
               <button
                 type="button"
                 onClick={() => {
@@ -498,15 +532,44 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
                   if (pathname !== '/') router.push('/');
                   if (setActiveTab) setActiveTab('clients');
                 }}
-                className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold cursor-pointer transition ${
+                className={`w-full min-h-[48px] p-3 rounded-xl flex items-center gap-3 text-xs font-semibold cursor-pointer transition ${
                   pathname === '/' && activeTab === 'clients'
-                    ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
-                    : 'text-[#E0D8EB] hover:bg-[#241E30]'
+                    ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368] shadow-sm'
+                    : 'text-[#E0D8EB] hover:bg-[#1f192b] bg-[#161220]/60 border border-[#261E33]'
                 }`}
               >
                 <Users className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>{t('nav_clients')}</span>
+                <span className="flex-1 text-left rtl:text-right font-bold text-sm">
+                  {t('nav_clients')}
+                </span>
               </button>
+
+              {/* 3. Payments */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (pathname !== '/') {
+                    router.push('/');
+                  }
+                  if (onOpenPaymentModal) {
+                    onOpenPaymentModal();
+                  } else if (setActiveTab) {
+                    setActiveTab('dashboard');
+                  }
+                }}
+                className="w-full min-h-[48px] p-3 rounded-xl flex items-center gap-3 text-xs font-semibold cursor-pointer transition text-[#E0D8EB] hover:bg-[#1f192b] bg-[#161220]/60 border border-[#261E33]"
+              >
+                <CreditCard className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="flex-1 text-left rtl:text-right font-bold text-sm">
+                  Paiements & Factures / الأداءات
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-mono border border-amber-500/30">
+                  MAD
+                </span>
+              </button>
+
+              {/* 4. Tickets */}
               <button
                 type="button"
                 onClick={() => {
@@ -514,45 +577,32 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
                   if (pathname !== '/') router.push('/');
                   if (setActiveTab) setActiveTab('tickets');
                 }}
-                className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center justify-between text-xs font-semibold cursor-pointer transition ${
+                className={`w-full min-h-[48px] p-3 rounded-xl flex items-center justify-between text-xs font-semibold cursor-pointer transition ${
                   pathname === '/' && activeTab === 'tickets'
-                    ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
-                    : 'text-[#E0D8EB] hover:bg-[#241E30]'
+                    ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368] shadow-sm'
+                    : 'text-[#E0D8EB] hover:bg-[#1f192b] bg-[#161220]/60 border border-[#261E33]'
                 }`}
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-3 min-w-0">
                   <TicketIcon className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>{t('nav_tickets')}</span>
+                  <span className="font-bold text-sm truncate">{t('nav_tickets')}</span>
                 </div>
-                {openTicketsCount > 0 && (
+                {openTicketsCount > 0 ? (
                   <span className="w-5 h-5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold text-[10px] flex items-center justify-center shrink-0">
                     {openTicketsCount}
                   </span>
+                ) : (
+                  <span className="text-[10px] text-emerald-400 font-mono">0</span>
                 )}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  if (pathname !== '/') router.push('/');
-                  if (setActiveTab) setActiveTab('team');
-                }}
-                className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold cursor-pointer transition ${
-                  pathname === '/' && activeTab === 'team'
-                    ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
-                    : 'text-[#E0D8EB] hover:bg-[#241E30]'
-                }`}
-              >
-                <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>{t('nav_team')}</span>
               </button>
             </div>
 
-            {/* Portals & Modes */}
+            {/* NOC Operations */}
             <div className="border-t border-[#2D253B]/70 pt-3 space-y-2">
-              <div className="text-[10px] uppercase font-bold text-[#958B9F] px-2">
-                Portails & Accès
+              <div className="text-[10px] uppercase font-bold text-[#958B9F] px-2 tracking-wider">
+                Opérations Réseau & NOC
               </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <Link
                   href="/"
@@ -579,13 +629,29 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
                   <span>Mode Terrain</span>
                 </Link>
               </div>
-            </div>
 
-            {/* NOC Operations & Database Sync */}
-            <div className="border-t border-[#2D253B]/70 pt-3 space-y-2">
-              <div className="text-[10px] uppercase font-bold text-[#958B9F] px-2">
-                Opérations NOC & Données
-              </div>
+              {currentUser?.role === 'admin' && setActiveTab && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (pathname !== '/') router.push('/');
+                    setActiveTab('team');
+                  }}
+                  className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center justify-between text-xs font-semibold cursor-pointer transition ${
+                    pathname === '/' && activeTab === 'team'
+                      ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
+                      : 'text-[#E0D8EB] hover:bg-[#241E30] bg-[#161220]/60 border border-[#261E33]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span className="font-bold">Gestion de l&apos;Équipe & RBAC</span>
+                  </div>
+                  <span className="text-[10px] text-[#958B9F]">Staff</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => {
@@ -595,9 +661,9 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
                 disabled={isSyncing}
                 className="w-full min-h-[44px] p-2.5 rounded-xl bg-[#241E30] hover:bg-[#2C243B] border border-[#3A2F4C] text-[#E0D8EB] flex items-center justify-between text-xs font-medium cursor-pointer transition"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-amber-400' : 'text-amber-400'} shrink-0`} />
-                  <span>Synchroniser avec Supabase</span>
+                  <span className="font-bold">Synchroniser avec Supabase</span>
                 </div>
                 <span className="text-[10px] text-amber-400 font-mono">
                   {isSyncing ? 'Sync...' : 'En ligne'}
@@ -620,7 +686,7 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
                   }}
                   className="w-full min-h-[44px] p-2.5 rounded-xl bg-[#241E30] hover:bg-[#2C243B] border border-[#3A2F4C] text-[#E0D8EB] flex items-center justify-between text-xs font-medium cursor-pointer transition"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <Download className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span>Sauvegarder la base de données</span>
                   </div>
@@ -629,92 +695,109 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
               )}
             </div>
 
-            {/* Quick Demo Role Switcher */}
-            <div className="border-t border-[#2D253B]/70 pt-3 space-y-1">
-              <div className="text-[10px] uppercase font-bold text-[#958B9F] px-2">
-                Bascule Rapide (Démo)
+            {/* Theme Toggle & Preferences */}
+            <div className="border-t border-[#2D253B]/70 pt-3 space-y-2">
+              <div className="text-[10px] uppercase font-bold text-[#958B9F] px-2 tracking-wider">
+                Thème & Préférences
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  handleRoleSwitch('admin');
-                  setMobileMenuOpen(false);
-                }}
-                className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center justify-between text-xs cursor-pointer ${
-                  currentUser?.role === 'admin'
-                    ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
-                    : 'text-[#E0D8EB] hover:bg-[#241E30]'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span>👨‍💼</span>
-                  <span className="font-semibold">Youness (Admin)</span>
+              <div className="space-y-2">
+                <ThemeToggle showLabel className="w-full justify-between py-3 px-3.5 min-h-[48px] text-sm" />
+                <div className="p-2.5 rounded-xl bg-[#161220]/60 border border-[#261E33] flex items-center justify-between">
+                  <span className="text-xs text-[#958B9F] px-1 font-medium">Langue d&apos;affichage</span>
+                  <LanguageSwitcher variant="amber" />
                 </div>
-                {currentUser?.role === 'admin' && <Check className="w-4 h-4" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  handleRoleSwitch('technician', 'tech-1');
-                  setMobileMenuOpen(false);
-                }}
-                className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center justify-between text-xs cursor-pointer ${
-                  currentUser?.role === 'technician' && currentUser.technicianId === 'tech-1'
-                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                    : 'text-[#E0D8EB] hover:bg-[#241E30]'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span>🔧</span>
-                  <span className="font-semibold">Yassine (Tech 1)</span>
-                </div>
-                {currentUser?.technicianId === 'tech-1' && <Check className="w-4 h-4" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  handleRoleSwitch('technician', 'tech-2');
-                  setMobileMenuOpen(false);
-                }}
-                className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center justify-between text-xs cursor-pointer ${
-                  currentUser?.role === 'technician' && currentUser.technicianId === 'tech-2'
-                    ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                    : 'text-[#E0D8EB] hover:bg-[#241E30]'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span>🛠️</span>
-                  <span className="font-semibold">Omar (Tech 2)</span>
-                </div>
-                {currentUser?.technicianId === 'tech-2' && <Check className="w-4 h-4" />}
-              </button>
+              </div>
             </div>
 
-            {/* Reset Demo Data & Touch-Optimized Sign Out */}
-            <div className="border-t border-[#2D253B]/70 pt-3 space-y-2">
+            {/* Quick Demo Role Switcher */}
+            <div className="border-t border-[#2D253B]/70 pt-3 space-y-1.5">
+              <div className="text-[10px] uppercase font-bold text-[#958B9F] px-2 tracking-wider">
+                Bascule Rapide (Démo)
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleRoleSwitch('admin');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full min-h-[42px] p-2.5 rounded-xl flex items-center justify-between text-xs cursor-pointer ${
+                    currentUser?.role === 'admin'
+                      ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
+                      : 'text-[#E0D8EB] hover:bg-[#241E30] bg-[#161220]/40 border border-[#261E33]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span>👨‍💼</span>
+                    <span className="font-semibold truncate">Youness (Admin)</span>
+                  </div>
+                  {currentUser?.role === 'admin' && <Check className="w-4 h-4 shrink-0 text-amber-400" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleRoleSwitch('technician', 'tech-1');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full min-h-[42px] p-2.5 rounded-xl flex items-center justify-between text-xs cursor-pointer ${
+                    currentUser?.role === 'technician' && currentUser.technicianId === 'tech-1'
+                      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                      : 'text-[#E0D8EB] hover:bg-[#241E30] bg-[#161220]/40 border border-[#261E33]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span>🔧</span>
+                    <span className="font-semibold truncate">Yassine (Tech 1)</span>
+                  </div>
+                  {currentUser?.technicianId === 'tech-1' && <Check className="w-4 h-4 shrink-0 text-emerald-400" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleRoleSwitch('technician', 'tech-2');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full min-h-[42px] p-2.5 rounded-xl flex items-center justify-between text-xs cursor-pointer ${
+                    currentUser?.role === 'technician' && currentUser.technicianId === 'tech-2'
+                      ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                      : 'text-[#E0D8EB] hover:bg-[#241E30] bg-[#161220]/40 border border-[#261E33]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span>🛠️</span>
+                    <span className="font-semibold truncate">Omar (Tech 2)</span>
+                  </div>
+                  {currentUser?.technicianId === 'tech-2' && <Check className="w-4 h-4 shrink-0 text-amber-400" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Reset Demo Data Button */}
+            <div className="pt-1">
               <button
                 type="button"
                 onClick={() => {
                   setMobileMenuOpen(false);
                   setShowResetConfirm(true);
                 }}
-                className="w-full min-h-[44px] p-2.5 rounded-xl bg-[#241E30] text-[#958B9F] hover:text-amber-400 flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer border border-[#3A2F4C]"
+                className="w-full min-h-[42px] p-2 rounded-xl bg-[#241E30] text-[#958B9F] hover:text-amber-400 flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer border border-[#3A2F4C]"
               >
-                <RotateCcw className="w-4 h-4 text-amber-400" />
+                <RotateCcw className="w-4 h-4 text-amber-400 shrink-0" />
                 <span>{t('nav_reset_demo')}</span>
               </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  handleLogout();
-                }}
-                className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 border border-rose-500/30 flex items-center justify-center gap-2 text-sm font-bold cursor-pointer transition shadow-md active:scale-[0.98]"
-              >
-                <LogOut className="w-5 h-5 text-rose-400 shrink-0" />
-                <span>{t('nav_sign_out')}</span>
-              </button>
             </div>
+          </div>
+
+          {/* Footer (Pinned at the bottom) */}
+          <div className="flex-none p-4 border-t border-[#2D253B]/70 bg-[#130F1A] pb-safe">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-sm transition shadow-lg shadow-rose-950/50 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] min-h-[48px]"
+            >
+              <LogOut className="w-5 h-5 text-white shrink-0" />
+              <span>Déconnexion / تسجيل الخروج</span>
+            </button>
           </div>
         </div>
       )}

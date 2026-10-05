@@ -54,7 +54,11 @@ export default function HomePage() {
   // Owner / Admin NOC View
   return (
     <div className="min-h-screen bg-[#0F0C14] text-[#F4F0F8] flex flex-col relative overflow-x-hidden">
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Navbar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenPaymentModal={() => setPaymentModalClientId('')}
+      />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'dashboard' && (
