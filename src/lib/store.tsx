@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import {
   Client,
   PaymentLog,
@@ -22,6 +22,21 @@ import {
 
 import { Language, Translations, getTranslation } from './i18n';
 import { encodeSession, SESSION_COOKIE_NAME } from './auth';
+import {
+  supabase,
+  isSupabaseConfigured,
+  fetchClientsFromSupabase,
+  fetchPaymentsFromSupabase,
+  fetchTicketsFromSupabase,
+  insertClientToSupabase,
+  updateClientInSupabase,
+  deleteClientFromSupabase,
+  archiveClientInSupabase,
+  insertPaymentToSupabase,
+  updateClientDueDateInSupabase,
+  insertTicketToSupabase,
+  updateTicketInSupabase,
+} from './supabase';
 
 function setClientSessionCookie(user: User) {
   if (typeof document !== 'undefined') {
@@ -117,6 +132,12 @@ interface StoreContextType {
     status: TicketStatus,
     resolutionNote?: string
   ) => void;
+  updateTicket?: (
+    ticketId: string,
+    updates: Partial<Ticket>
+  ) => void;
+  refreshFromSupabase: () => Promise<void>;
+  isSyncing: boolean;
   resetDemoData: () => void;
   getWhatsAppReminderUrl: (
     client: Client,
@@ -419,6 +440,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [payments, setPayments] = useState<PaymentLog[]>(INITIAL_PAYMENTS);
   const [technicians, setTechnicians] = useState<Technician[]>(INITIAL_TECHNICIANS);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [language, setLanguageState] = useState<Language>('fr');
 
   const dir: 'ltr' | 'rtl' = language === 'ar' ? 'rtl' : 'ltr';
@@ -448,7 +470,46 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [dir, language]);
 
-  // Load from localStorage on client mount (Safe, non-destructive parsing)
+  // Synchronize state with Supabase (Hydration & Multi-Device Sync)
+  const refreshFromSupabase = useCallback(async () => {
+    if (!isSupabaseConfigured || !supabase) return;
+    try {
+      setIsSyncing(true);
+      const [clientsRes, paymentsRes, ticketsRes] = await Promise.allSettled([
+        fetchClientsFromSupabase(),
+        fetchPaymentsFromSupabase(),
+        fetchTicketsFromSupabase(),
+      ]);
+
+      if (clientsRes.status === 'fulfilled' && clientsRes.value && clientsRes.value.length > 0) {
+        setClients(clientsRes.value);
+        try {
+          localStorage.setItem('youness_wisp_clients', JSON.stringify(clientsRes.value));
+        } catch {}
+      }
+
+      if (paymentsRes.status === 'fulfilled' && paymentsRes.value && paymentsRes.value.length > 0) {
+        setPayments(paymentsRes.value);
+        try {
+          localStorage.setItem('youness_wisp_payments', JSON.stringify(paymentsRes.value));
+        } catch {}
+      }
+
+      if (ticketsRes.status === 'fulfilled' && ticketsRes.value && ticketsRes.value.length > 0) {
+        setTickets(ticketsRes.value);
+        try {
+          localStorage.setItem('youness_wisp_tickets', JSON.stringify(ticketsRes.value));
+        } catch {}
+      }
+    } catch (err) {
+      console.warn('[Sync] Could not refresh from Supabase:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, []);
+
+  // 1. Load from localStorage on client mount (Safe, non-destructive parsing)
+  // 2. Fetch fresh records from Supabase on startup
   useEffect(() => {
     try {
       // Check saved language
@@ -496,7 +557,53 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsHydrated(true);
     }
-  }, []);
+
+    // Hydrate directly from Supabase on application load
+    refreshFromSupabase();
+  }, [refreshFromSupabase]);
+
+  // Multi-Device Synchronization: Re-sync when user opens or returns to tab on phone or PC
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleSyncOnVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refreshFromSupabase();
+      }
+    };
+
+    window.addEventListener('focus', handleSyncOnVisible);
+    document.addEventListener('visibilitychange', handleSyncOnVisible);
+
+    return () => {
+      window.removeEventListener('focus', handleSyncOnVisible);
+      document.removeEventListener('visibilitychange', handleSyncOnVisible);
+    };
+  }, [refreshFromSupabase]);
+
+  // Multi-Device Synchronization: Realtime Postgres changes across devices
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+
+    const channel = supabase
+      .channel('youness-wisp-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
+        refreshFromSupabase();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_logs' }, () => {
+        refreshFromSupabase();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => {
+        refreshFromSupabase();
+      })
+      .subscribe();
+
+    return () => {
+      if (supabase) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [refreshFromSupabase]);
 
   // Sync to localStorage
   useEffect(() => {
@@ -775,12 +882,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const deleteClient = (clientId: string) => {
     setClients((prev) => prev.filter((c) => c.id !== clientId));
     setTickets((prev) => prev.filter((t) => t.clientId !== clientId));
+    deleteClientFromSupabase(clientId).catch((err) => {
+      console.warn('[Supabase] Failed to delete client:', err);
+    });
   };
 
   const archiveClient = (clientId: string) => {
     setClients((prev) =>
       prev.map((c) => (c.id === clientId ? { ...c, status: 'archived' } : c))
     );
+    archiveClientInSupabase(clientId).catch((err) => {
+      console.warn('[Supabase] Failed to archive client:', err);
+    });
   };
 
   const exportDataAsJSON = (): string => {
@@ -894,6 +1007,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     setClients((prev) => [newClient, ...prev]);
 
+    // Supabase mutation: insert client into clients table
+    insertClientToSupabase(newClient).catch((err) => {
+      console.warn('[Supabase] Failed to insert client to DB:', err);
+    });
+
     if (clientData.initialPayment) {
       const initialFee = newClient.monthlyFee || 50;
       const newPayment: PaymentLog = {
@@ -913,12 +1031,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         notes: 'Paiement initial frais installation & 1er mois',
       };
       setPayments((prev) => [newPayment, ...prev]);
+
+      // Supabase mutation: insert initial payment into payments table
+      insertPaymentToSupabase(newPayment).catch((err) => {
+        console.warn('[Supabase] Failed to insert initial payment to DB:', err);
+      });
     }
 
     return newClient;
   };
 
   const updateClient = (id: string, updates: Partial<Client>) => {
+    let resolvedUpdates: Partial<Client> = { ...updates };
     setClients((prev) =>
       prev.map((c) => {
         if (c.id === id) {
@@ -926,11 +1050,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           if (updates.nextDueDate || updates.status) {
             updated.status = calculateClientStatus(updated.nextDueDate, updated.status);
           }
+          resolvedUpdates = updated;
           return updated;
         }
         return c;
       })
     );
+
+    // Supabase mutation: update client in database
+    updateClientInSupabase(id, resolvedUpdates).catch((err) => {
+      console.warn('[Supabase] Failed to update client in DB:', err);
+    });
   };
 
   const recordPayment = ({
@@ -973,7 +1103,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const newDueDate = addMonthsToDateStr(prevDueDate, monthsToAdd);
 
     const receiptNumber = generateReceiptNumber(payments.length + 1);
-    const resolvedBillingMonth = billingMonth || (paymentDate || getTodayDateStr()).substring(0, 7);
+    const resolvedPaymentDate = paymentDate || getTodayDateStr();
+    const resolvedBillingMonth = billingMonth || resolvedPaymentDate.substring(0, 7);
     const newPayment: PaymentLog = {
       id: `pay-${Date.now()}`,
       receiptNumber,
@@ -984,7 +1115,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       extraAmount: effectiveExtraAmount,
       extraReason: effectiveExtraAmount > 0 ? (extraReason?.trim() || undefined) : undefined,
       method,
-      paymentDate: paymentDate || getTodayDateStr(),
+      paymentDate: resolvedPaymentDate,
       billingMonth: resolvedBillingMonth,
       previousDueDate: prevDueDate,
       newDueDate,
@@ -995,10 +1126,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setPayments((prev) => [newPayment, ...prev]);
 
     // Update client due date, status, and optionally updated recurring monthly fee
+    const updatedStatus = calculateClientStatus(newDueDate);
     const clientUpdates: Partial<Client> = {
-      lastPaymentDate: paymentDate || getTodayDateStr(),
+      lastPaymentDate: resolvedPaymentDate,
       nextDueDate: newDueDate,
-      status: calculateClientStatus(newDueDate),
+      status: updatedStatus,
     };
 
     if (updateClientBaseFee && effectiveBaseFee > 0) {
@@ -1006,6 +1138,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
 
     updateClient(clientId, clientUpdates);
+
+    // Supabase mutations:
+    // 1. Insert payment transaction into Supabase payments table
+    insertPaymentToSupabase(newPayment).catch((err) => {
+      console.warn('[Supabase] Failed to insert payment to DB:', err);
+    });
+
+    // 2. Update nextDueDate & status on client table in Supabase
+    updateClientDueDateInSupabase(
+      clientId,
+      newDueDate,
+      resolvedPaymentDate,
+      updatedStatus,
+      updateClientBaseFee ? effectiveBaseFee : undefined
+    ).catch((err) => {
+      console.warn('[Supabase] Failed to update client due date in DB:', err);
+    });
 
     return newPayment;
   };
@@ -1046,7 +1195,36 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
 
     setTickets((prev) => [newTicket, ...prev]);
+
+    // Supabase mutation: insert ticket into Supabase tickets table
+    insertTicketToSupabase(newTicket).catch((err) => {
+      console.warn('[Supabase] Failed to insert ticket to DB:', err);
+    });
+
     return newTicket;
+  };
+
+  const updateTicket = (ticketId: string, updates: Partial<Ticket>) => {
+    let resolvedUpdates = { ...updates };
+    setTickets((prev) =>
+      prev.map((t) => {
+        if (t.id === ticketId) {
+          const updated = {
+            ...t,
+            ...updates,
+            updatedAt: new Date().toISOString(),
+          };
+          resolvedUpdates = updated;
+          return updated;
+        }
+        return t;
+      })
+    );
+
+    // Supabase mutation: update ticket in Supabase tickets table
+    updateTicketInSupabase(ticketId, resolvedUpdates).catch((err) => {
+      console.warn('[Supabase] Failed to update ticket in DB:', err);
+    });
   };
 
   const updateTicketStatus = (
@@ -1054,24 +1232,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     status: TicketStatus,
     resolutionNote?: string
   ) => {
-    setTickets((prev) =>
-      prev.map((t) => {
-        if (t.id === ticketId) {
-          return {
-            ...t,
-            status,
-            updatedAt: new Date().toISOString(),
-            ...(status === 'resolved'
-              ? {
-                  resolvedAt: new Date().toISOString(),
-                  resolutionNote: resolutionNote || t.resolutionNote,
-                }
-              : {}),
-          };
-        }
-        return t;
-      })
-    );
+    const updates: Partial<Ticket> = {
+      status,
+      updatedAt: new Date().toISOString(),
+      ...(status === 'resolved'
+        ? {
+            resolvedAt: new Date().toISOString(),
+            resolutionNote: resolutionNote,
+          }
+        : {}),
+    };
+    updateTicket(ticketId, updates);
   };
 
   const resetDemoData = () => {
@@ -1094,6 +1265,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         payments,
         technicians,
         isHydrated,
+        isSyncing,
         language,
         dir,
         hasAdminAccount: users.some((u) => u.role === 'admin'),
@@ -1117,7 +1289,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         importDataFromJSON,
         recordPayment,
         createTicket,
+        updateTicket,
         updateTicketStatus,
+        refreshFromSupabase,
         resetDemoData,
         getWhatsAppReminderUrl: buildWhatsAppReminder,
         getWhatsAppReceiptUrl: buildWhatsAppReceipt,

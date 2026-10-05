@@ -19,6 +19,7 @@ import {
   Menu,
   X,
   Download,
+  RefreshCw,
 } from 'lucide-react';
 
 interface Props {
@@ -27,7 +28,18 @@ interface Props {
 }
 
 export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props) {
-  const { currentUser, switchRole, logout, resetDemoData, tickets, t, dir, exportDataAsJSON } = useStore();
+  const {
+    currentUser,
+    switchRole,
+    logout,
+    resetDemoData,
+    tickets,
+    t,
+    dir,
+    exportDataAsJSON,
+    refreshFromSupabase,
+    isSyncing,
+  } = useStore();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -153,6 +165,24 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
 
           {/* Right Actions, Language Switcher & Role Menu */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Cloud Sync Button */}
+            <button
+              type="button"
+              onClick={() => refreshFromSupabase()}
+              disabled={isSyncing}
+              title="Synchroniser avec Supabase"
+              className={`p-2 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition cursor-pointer ${
+                isSyncing
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                  : 'bg-[#191522] border-[#2D253B]/70 text-[#958B9F] hover:text-[#F4F0F8] hover:border-[#3A2F4C]'
+              }`}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-amber-400' : ''}`} />
+              <span className="hidden lg:inline text-[11px]">
+                {isSyncing ? 'Sync...' : 'Supabase'}
+              </span>
+            </button>
+
             {/* Language Switcher */}
             <LanguageSwitcher variant="amber" />
 

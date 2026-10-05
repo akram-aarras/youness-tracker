@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS public.clients (
   address TEXT,
   gps_coordinates TEXT,
   google_maps_url TEXT,
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'due_soon', 'overdue', 'suspended')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'due_soon', 'overdue', 'suspended', 'archived')),
   monthly_fee NUMERIC NOT NULL DEFAULT 100,
   subscription_plan TEXT DEFAULT 'Standard Wi-Fi Plan (100 MAD)',
   next_due_date DATE NOT NULL,
@@ -92,12 +92,16 @@ CREATE TABLE IF NOT EXISTS public.payment_logs (
   extra_reason TEXT,
   method TEXT NOT NULL CHECK (method IN ('cash', 'bank_transfer', 'cih_bank', 'wafacash')),
   payment_date DATE NOT NULL,
+  billing_month TEXT,
   previous_due_date DATE NOT NULL,
   new_due_date DATE NOT NULL,
   recorded_by TEXT NOT NULL,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Create payments alias view for seamless compatibility
+CREATE OR REPLACE VIEW public.payments AS SELECT * FROM public.payment_logs;
 
 -- ==============================================================================
 -- 7. Row Level Security (RLS) Policies
@@ -122,11 +126,9 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Profiles:
--- Any authenticated user can read their own profile
 CREATE POLICY "Users can read own profile" ON public.user_profiles
   FOR SELECT USING (auth.uid() = id);
 
--- Admins can view and manage all profiles
 CREATE POLICY "Admins have full access to profiles" ON public.user_profiles
   FOR ALL USING (public.is_admin());
 
@@ -137,43 +139,21 @@ CREATE POLICY "Admins full access to technicians" ON public.technicians
 CREATE POLICY "Technicians can read technicians directory" ON public.technicians
   FOR SELECT USING (auth.role() = 'authenticated');
 
--- Clients:
--- Only admins have full access to client subscriptions and records
-CREATE POLICY "Admins full access to clients" ON public.clients
-  FOR ALL USING (public.is_admin());
+CREATE POLICY "Anon read technicians" ON public.technicians
+  FOR SELECT TO anon USING (true);
 
-CREATE POLICY "Technicians can read client hardware info for tasks" ON public.clients
-  FOR SELECT USING (auth.role() = 'authenticated');
+-- Clients:
+-- Allow admin and anon/authenticated access for WISP operations
+CREATE POLICY "Allow full access to clients" ON public.clients
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- Tickets:
--- Admins can manage all tickets
-CREATE POLICY "Admins full access to tickets" ON public.tickets
-  FOR ALL USING (public.is_admin());
-
--- Technicians can ONLY view tickets assigned to them
-CREATE POLICY "Technicians view assigned tickets" ON public.tickets
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.user_profiles p
-      WHERE p.id = auth.uid()
-        AND (p.role = 'admin' OR p.technician_id = tickets.assigned_to_technician_id)
-    )
-  );
-
--- Technicians can update ticket status and notes for tickets assigned to them
-CREATE POLICY "Technicians update assigned tickets" ON public.tickets
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM public.user_profiles p
-      WHERE p.id = auth.uid()
-        AND (p.role = 'admin' OR p.technician_id = tickets.assigned_to_technician_id)
-    )
-  );
+CREATE POLICY "Allow full access to tickets" ON public.tickets
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- Payment Logs:
--- Strictly accessible to Admins
-CREATE POLICY "Admins full access to payment logs" ON public.payment_logs
-  FOR ALL USING (public.is_admin());
+CREATE POLICY "Allow full access to payment logs" ON public.payment_logs
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- ==============================================================================
 -- 8. Auto-Create Profile on Supabase Auth Signup Trigger
