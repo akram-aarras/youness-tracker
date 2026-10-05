@@ -5,6 +5,7 @@ import { useStore } from '@/lib/store';
 import { Ticket, TicketStatus, Technician } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import LanguageSwitcher from './LanguageSwitcher';
+import ThemeToggle from './ThemeToggle';
 import {
   Phone,
   MapPin,
@@ -214,8 +215,9 @@ export default function TechnicianView() {
             </div>
           </div>
 
-          {/* Language Switcher */}
-          <div className="shrink-0">
+          {/* Actions: Theme Toggle & Language Switcher */}
+          <div className="shrink-0 flex items-center gap-1.5">
+            <ThemeToggle />
             <LanguageSwitcher variant="emerald" compact />
           </div>
         </div>

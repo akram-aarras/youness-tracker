@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import LanguageSwitcher from './LanguageSwitcher';
+import ThemeToggle from './ThemeToggle';
 import {
   Smartphone,
   LayoutDashboard,
@@ -165,6 +166,9 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
 
           {/* Right Actions, Language Switcher & Role Menu */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Theme Toggle (Desktop & Tablet) */}
+            <ThemeToggle />
+
             {/* Cloud Sync Button */}
             <button
               type="button"
@@ -430,123 +434,199 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
 
       {/* Mobile Drawer Navigation Modal (< 768px) */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex flex-col justify-end bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-[#191522] border-t border-[#2D253B]/70 rounded-t-2xl p-5 max-h-[85vh] overflow-y-auto space-y-4 shadow-2xl shadow-black/80">
+        <div
+          className="fixed inset-0 z-50 md:hidden flex flex-col justify-end bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div
+            className="bg-[#191522] border-t border-[#2D253B]/70 rounded-t-3xl p-5 max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl shadow-black/80 animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Drawer Header */}
             <div className="flex items-center justify-between pb-3 border-b border-[#2D253B]/70">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#241E30] flex items-center justify-center text-base border border-[#3A2F4C]">
+                <div className="w-9 h-9 rounded-xl bg-[#241E30] flex items-center justify-center text-lg border border-[#3A2F4C]">
                   {currentUser?.avatar || '👤'}
                 </div>
                 <div>
                   <div className="text-sm font-bold text-[#F4F0F8]">
                     {currentUser?.name || 'User'}
                   </div>
-                  <div className="text-[10px] text-amber-400 font-mono uppercase">
+                  <div className="text-[10px] text-amber-400 font-mono uppercase font-semibold">
                     {currentUser?.role === 'admin' ? t('admin') : t('field_tech')}
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2 rounded-xl text-[#958B9F] hover:text-[#F4F0F8] bg-[#130F1A] border border-[#2D253B]/70 transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 rounded-xl text-[#958B9F] hover:text-[#F4F0F8] bg-[#130F1A] border border-[#2D253B]/70 transition cursor-pointer"
+                  aria-label="Fermer le menu"
+                >
+                  <X className="w-5 h-5 text-amber-400" />
+                </button>
+              </div>
             </div>
 
             {/* Navigation Tabs in Drawer */}
-            {currentUser?.role === 'admin' && setActiveTab && pathname === '/' && (
-              <div className="space-y-1">
-                <div className="text-[10px] uppercase font-bold text-[#958B9F] px-2 py-1">
-                  {t('nav_dashboard')}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('dashboard');
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold cursor-pointer ${
-                    activeTab === 'dashboard'
-                      ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
-                      : 'text-[#E0D8EB] hover:bg-[#241E30]'
-                  }`}
-                >
-                  <LayoutDashboard className="w-4 h-4 text-amber-400" />
-                  <span>{t('nav_dashboard')}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('clients');
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold cursor-pointer ${
-                    activeTab === 'clients'
-                      ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
-                      : 'text-[#E0D8EB] hover:bg-[#241E30]'
-                  }`}
-                >
-                  <Users className="w-4 h-4 text-emerald-400" />
-                  <span>{t('nav_clients')}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('tickets');
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-semibold cursor-pointer ${
-                    activeTab === 'tickets'
-                      ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
-                      : 'text-[#E0D8EB] hover:bg-[#241E30]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <TicketIcon className="w-4 h-4 text-amber-400" />
-                    <span>{t('nav_tickets')}</span>
-                  </div>
-                  {openTicketsCount > 0 && (
-                    <span className="w-5 h-5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold text-[10px] flex items-center justify-center">
-                      {openTicketsCount}
-                    </span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('team');
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold cursor-pointer ${
-                    activeTab === 'team'
-                      ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
-                      : 'text-[#E0D8EB] hover:bg-[#241E30]'
-                  }`}
-                >
-                  <ShieldCheck className="w-4 h-4 text-amber-400" />
-                  <span>{t('nav_team')}</span>
-                </button>
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase font-bold text-[#958B9F] px-2 py-1">
+                Navigation Principale
               </div>
-            )}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (pathname !== '/') router.push('/');
+                  if (setActiveTab) setActiveTab('dashboard');
+                }}
+                className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold cursor-pointer transition ${
+                  pathname === '/' && activeTab === 'dashboard'
+                    ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
+                    : 'text-[#E0D8EB] hover:bg-[#241E30]'
+                }`}
+              >
+                <LayoutDashboard className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>{t('nav_dashboard')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (pathname !== '/') router.push('/');
+                  if (setActiveTab) setActiveTab('clients');
+                }}
+                className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold cursor-pointer transition ${
+                  pathname === '/' && activeTab === 'clients'
+                    ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
+                    : 'text-[#E0D8EB] hover:bg-[#241E30]'
+                }`}
+              >
+                <Users className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{t('nav_clients')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (pathname !== '/') router.push('/');
+                  if (setActiveTab) setActiveTab('tickets');
+                }}
+                className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center justify-between text-xs font-semibold cursor-pointer transition ${
+                  pathname === '/' && activeTab === 'tickets'
+                    ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
+                    : 'text-[#E0D8EB] hover:bg-[#241E30]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <TicketIcon className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>{t('nav_tickets')}</span>
+                </div>
+                {openTicketsCount > 0 && (
+                  <span className="w-5 h-5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold text-[10px] flex items-center justify-center shrink-0">
+                    {openTicketsCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (pathname !== '/') router.push('/');
+                  if (setActiveTab) setActiveTab('team');
+                }}
+                className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold cursor-pointer transition ${
+                  pathname === '/' && activeTab === 'team'
+                    ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
+                    : 'text-[#E0D8EB] hover:bg-[#241E30]'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>{t('nav_team')}</span>
+              </button>
+            </div>
 
-            {/* Direct Switch to Field Tech Mode */}
-            <div>
-              <Link
-                href="/technician"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full min-h-[48px] p-3 rounded-xl bg-[#241E30] hover:bg-[#2C243B] border border-[#3A2F4C] text-[#E0D8EB] flex items-center justify-between text-xs font-bold transition"
+            {/* Portals & Modes */}
+            <div className="border-t border-[#2D253B]/70 pt-3 space-y-2">
+              <div className="text-[10px] uppercase font-bold text-[#958B9F] px-2">
+                Portails & Accès
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Link
+                  href="/"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`min-h-[44px] p-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition ${
+                    pathname === '/'
+                      ? 'bg-[#382647] text-[#F3E8FF] border-[#523368]'
+                      : 'bg-[#241E30] text-[#E0D8EB] border-[#3A2F4C] hover:bg-[#2C243B]'
+                  }`}
+                >
+                  <LayoutDashboard className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Portail NOC</span>
+                </Link>
+                <Link
+                  href="/technician"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`min-h-[44px] p-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition ${
+                    pathname === '/technician'
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                      : 'bg-[#241E30] text-[#E0D8EB] border-[#3A2F4C] hover:bg-[#2C243B]'
+                  }`}
+                >
+                  <Smartphone className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Mode Terrain</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* NOC Operations & Database Sync */}
+            <div className="border-t border-[#2D253B]/70 pt-3 space-y-2">
+              <div className="text-[10px] uppercase font-bold text-[#958B9F] px-2">
+                Opérations NOC & Données
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  refreshFromSupabase();
+                  setMobileMenuOpen(false);
+                }}
+                disabled={isSyncing}
+                className="w-full min-h-[44px] p-2.5 rounded-xl bg-[#241E30] hover:bg-[#2C243B] border border-[#3A2F4C] text-[#E0D8EB] flex items-center justify-between text-xs font-medium cursor-pointer transition"
               >
                 <div className="flex items-center gap-2">
-                  <Smartphone className="w-4 h-4 text-emerald-400" />
-                  <span>{t('nav_fieldtech')}</span>
+                  <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-amber-400' : 'text-amber-400'} shrink-0`} />
+                  <span>Synchroniser avec Supabase</span>
                 </div>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-[#130F1A] text-emerald-300 font-mono border border-emerald-500/20">
-                  {t('mobile')}
+                <span className="text-[10px] text-amber-400 font-mono">
+                  {isSyncing ? 'Sync...' : 'En ligne'}
                 </span>
-              </Link>
+              </button>
+
+              {currentUser?.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const json = exportDataAsJSON();
+                    const blob = new Blob([json], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `youness-wifi-backup-${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full min-h-[44px] p-2.5 rounded-xl bg-[#241E30] hover:bg-[#2C243B] border border-[#3A2F4C] text-[#E0D8EB] flex items-center justify-between text-xs font-medium cursor-pointer transition"
+                >
+                  <div className="flex items-center gap-2">
+                    <Download className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Sauvegarder la base de données</span>
+                  </div>
+                  <span className="text-[10px] text-[#958B9F] font-mono">JSON</span>
+                </button>
+              )}
             </div>
 
             {/* Quick Demo Role Switcher */}
@@ -560,7 +640,7 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
                   handleRoleSwitch('admin');
                   setMobileMenuOpen(false);
                 }}
-                className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs cursor-pointer ${
+                className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center justify-between text-xs cursor-pointer ${
                   currentUser?.role === 'admin'
                     ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
                     : 'text-[#E0D8EB] hover:bg-[#241E30]'
@@ -578,7 +658,7 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
                   handleRoleSwitch('technician', 'tech-1');
                   setMobileMenuOpen(false);
                 }}
-                className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs cursor-pointer ${
+                className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center justify-between text-xs cursor-pointer ${
                   currentUser?.role === 'technician' && currentUser.technicianId === 'tech-1'
                     ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                     : 'text-[#E0D8EB] hover:bg-[#241E30]'
@@ -596,7 +676,7 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
                   handleRoleSwitch('technician', 'tech-2');
                   setMobileMenuOpen(false);
                 }}
-                className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs cursor-pointer ${
+                className={`w-full min-h-[44px] p-2.5 rounded-xl flex items-center justify-between text-xs cursor-pointer ${
                   currentUser?.role === 'technician' && currentUser.technicianId === 'tech-2'
                     ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
                     : 'text-[#E0D8EB] hover:bg-[#241E30]'
@@ -627,12 +707,11 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab }: Props)
               <button
                 type="button"
                 onClick={() => {
-                  setMobileMenuOpen(false);
                   handleLogout();
                 }}
-                className="w-full min-h-[48px] p-3 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 flex items-center justify-center gap-2 text-xs font-bold cursor-pointer transition"
+                className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 border border-rose-500/30 flex items-center justify-center gap-2 text-sm font-bold cursor-pointer transition shadow-md active:scale-[0.98]"
               >
-                <LogOut className="w-4 h-4 text-rose-400" />
+                <LogOut className="w-5 h-5 text-rose-400 shrink-0" />
                 <span>{t('nav_sign_out')}</span>
               </button>
             </div>

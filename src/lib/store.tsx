@@ -36,6 +36,9 @@ import {
   updateClientDueDateInSupabase,
   insertTicketToSupabase,
   updateTicketInSupabase,
+  mapRowToClient,
+  mapRowToPayment,
+  mapRowToTicket,
 } from './supabase';
 
 function setClientSessionCookie(user: User) {
@@ -481,21 +484,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         fetchTicketsFromSupabase(),
       ]);
 
-      if (clientsRes.status === 'fulfilled' && clientsRes.value && clientsRes.value.length > 0) {
+      if (clientsRes.status === 'fulfilled' && Array.isArray(clientsRes.value)) {
         setClients(clientsRes.value);
         try {
           localStorage.setItem('youness_wisp_clients', JSON.stringify(clientsRes.value));
         } catch {}
       }
 
-      if (paymentsRes.status === 'fulfilled' && paymentsRes.value && paymentsRes.value.length > 0) {
+      if (paymentsRes.status === 'fulfilled' && Array.isArray(paymentsRes.value)) {
         setPayments(paymentsRes.value);
         try {
           localStorage.setItem('youness_wisp_payments', JSON.stringify(paymentsRes.value));
         } catch {}
       }
 
-      if (ticketsRes.status === 'fulfilled' && ticketsRes.value && ticketsRes.value.length > 0) {
+      if (ticketsRes.status === 'fulfilled' && Array.isArray(ticketsRes.value)) {
         setTickets(ticketsRes.value);
         try {
           localStorage.setItem('youness_wisp_tickets', JSON.stringify(ticketsRes.value));
@@ -581,21 +584,149 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refreshFromSupabase]);
 
-  // Multi-Device Synchronization: Realtime Postgres changes across devices
+  // Multi-Device Synchronization: Realtime Postgres changes across devices with INSERT, UPDATE, DELETE support
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
 
     const channel = supabase
-      .channel('youness-wisp-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
-        refreshFromSupabase();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_logs' }, () => {
-        refreshFromSupabase();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => {
-        refreshFromSupabase();
-      })
+      .channel('public:all')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public' },
+        (payload: any) => {
+          const { eventType, new: newRow, old: oldRow, table } = payload;
+
+          // 1. CLIENTS TABLE
+          if (table === 'clients') {
+            if (eventType === 'INSERT') {
+              if (newRow && newRow.id) {
+                const clientObj = mapRowToClient(newRow);
+                setClients((prev) => {
+                  const filtered = prev.filter((c) => c.id !== clientObj.id);
+                  const updated = [clientObj, ...filtered];
+                  try {
+                    localStorage.setItem('youness_wisp_clients', JSON.stringify(updated));
+                  } catch {}
+                  return updated;
+                });
+              }
+            } else if (eventType === 'UPDATE') {
+              if (newRow && newRow.id) {
+                const clientObj = mapRowToClient(newRow);
+                setClients((prev) => {
+                  const updated = prev.map((c) => (c.id === clientObj.id ? clientObj : c));
+                  try {
+                    localStorage.setItem('youness_wisp_clients', JSON.stringify(updated));
+                  } catch {}
+                  return updated;
+                });
+              }
+            } else if (eventType === 'DELETE') {
+              const deletedId = oldRow?.id;
+              if (deletedId) {
+                setClients((prev) => {
+                  const updated = prev.filter((c) => c.id !== deletedId);
+                  try {
+                    localStorage.setItem('youness_wisp_clients', JSON.stringify(updated));
+                  } catch {}
+                  return updated;
+                });
+                setTickets((prev) => {
+                  const updated = prev.filter((t) => t.clientId !== deletedId);
+                  try {
+                    localStorage.setItem('youness_wisp_tickets', JSON.stringify(updated));
+                  } catch {}
+                  return updated;
+                });
+              } else {
+                refreshFromSupabase();
+              }
+            }
+          }
+
+          // 2. PAYMENT_LOGS / PAYMENTS TABLE
+          if (table === 'payment_logs' || table === 'payments') {
+            if (eventType === 'INSERT') {
+              if (newRow && newRow.id) {
+                const paymentObj = mapRowToPayment(newRow);
+                setPayments((prev) => {
+                  const filtered = prev.filter((p) => p.id !== paymentObj.id);
+                  const updated = [paymentObj, ...filtered];
+                  try {
+                    localStorage.setItem('youness_wisp_payments', JSON.stringify(updated));
+                  } catch {}
+                  return updated;
+                });
+              }
+            } else if (eventType === 'UPDATE') {
+              if (newRow && newRow.id) {
+                const paymentObj = mapRowToPayment(newRow);
+                setPayments((prev) => {
+                  const updated = prev.map((p) => (p.id === paymentObj.id ? paymentObj : p));
+                  try {
+                    localStorage.setItem('youness_wisp_payments', JSON.stringify(updated));
+                  } catch {}
+                  return updated;
+                });
+              }
+            } else if (eventType === 'DELETE') {
+              const deletedId = oldRow?.id;
+              if (deletedId) {
+                setPayments((prev) => {
+                  const updated = prev.filter((p) => p.id !== deletedId);
+                  try {
+                    localStorage.setItem('youness_wisp_payments', JSON.stringify(updated));
+                  } catch {}
+                  return updated;
+                });
+              } else {
+                refreshFromSupabase();
+              }
+            }
+          }
+
+          // 3. TICKETS TABLE
+          if (table === 'tickets') {
+            if (eventType === 'INSERT') {
+              if (newRow && newRow.id) {
+                const ticketObj = mapRowToTicket(newRow);
+                setTickets((prev) => {
+                  const filtered = prev.filter((t) => t.id !== ticketObj.id);
+                  const updated = [ticketObj, ...filtered];
+                  try {
+                    localStorage.setItem('youness_wisp_tickets', JSON.stringify(updated));
+                  } catch {}
+                  return updated;
+                });
+              }
+            } else if (eventType === 'UPDATE') {
+              if (newRow && newRow.id) {
+                const ticketObj = mapRowToTicket(newRow);
+                setTickets((prev) => {
+                  const updated = prev.map((t) => (t.id === ticketObj.id ? ticketObj : t));
+                  try {
+                    localStorage.setItem('youness_wisp_tickets', JSON.stringify(updated));
+                  } catch {}
+                  return updated;
+                });
+              }
+            } else if (eventType === 'DELETE') {
+              const deletedId = oldRow?.id;
+              if (deletedId) {
+                setTickets((prev) => {
+                  const updated = prev.filter((t) => t.id !== deletedId);
+                  try {
+                    localStorage.setItem('youness_wisp_tickets', JSON.stringify(updated));
+                  } catch {}
+                  return updated;
+                });
+              } else {
+                refreshFromSupabase();
+              }
+            }
+          }
+        }
+      )
       .subscribe();
 
     return () => {

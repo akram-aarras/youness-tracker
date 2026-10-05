@@ -1,19 +1,147 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
+  --background: #F8F7FB;
+  --foreground: #181124;
+  color-scheme: light dark;
+}
+
+.dark {
   --background: #0F0C14;
   --foreground: #F4F0F8;
+  color-scheme: dark;
 }
 
 body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Dark Mode Background Ambient Glow */
+.dark body {
   background-color: #0F0C14;
   background-image:
     radial-gradient(circle at 15% 20%, rgba(94, 45, 90, 0.12) 0%, transparent 60%),
     radial-gradient(circle at 85% 75%, rgba(68, 30, 80, 0.08) 0%, transparent 50%);
   background-attachment: fixed;
   color: #F4F0F8;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  -webkit-font-smoothing: antialiased;
+}
+
+/* Light Mode Background Ambient Canvas */
+html:not(.dark) body {
+  background-color: #F8F7FB;
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(142, 68, 173, 0.05) 0%, transparent 60%),
+    radial-gradient(circle at 85% 75%, rgba(212, 143, 56, 0.04) 0%, transparent 50%);
+  background-attachment: fixed;
+  color: #181124;
+}
+
+/* ==============================================================================
+   LIGHT THEME SMART OVERRIDES (Plum / Dark Mauve to Crisp Luxury Light System)
+   ============================================================================== */
+
+/* Surface backgrounds */
+html:not(.dark) .bg-\[\#0F0C14\] {
+  background-color: #F8F7FB !important;
+}
+
+html:not(.dark) .bg-\[\#130F1A\] {
+  background-color: #FFFFFF !important;
+}
+
+html:not(.dark) .bg-\[\#130F1A\]\/80 {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+}
+
+html:not(.dark) .bg-\[\#110D18\]\/95 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+html:not(.dark) .bg-\[\#191522\] {
+  background-color: #FFFFFF !important;
+}
+
+html:not(.dark) .bg-\[\#191522\]\/80,
+html:not(.dark) .bg-\[\#191522\]\/90 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+}
+
+html:not(.dark) .bg-\[\#241E30\] {
+  background-color: #F2ECF7 !important;
+}
+
+html:not(.dark) .bg-\[\#2C243B\] {
+  background-color: #E8E0F2 !important;
+}
+
+html:not(.dark) .bg-\[\#382647\] {
+  background-color: #F3E8FF !important;
+}
+
+html:not(.dark) .bg-\[\#261E33\] {
+  background-color: #EDE4F7 !important;
+}
+
+/* Surface borders */
+html:not(.dark) .border-\[\#2D253B\]\/70,
+html:not(.dark) .border-\[\#2D253B\]\/60,
+html:not(.dark) .border-\[\#2D253B\] {
+  border-color: #E5DEEE !important;
+}
+
+html:not(.dark) .border-\[\#3A2F4C\],
+html:not(.dark) .border-\[\#3A2F4C\]\/50 {
+  border-color: #D9CEE8 !important;
+}
+
+html:not(.dark) .border-\[\#523368\] {
+  border-color: #D1BCE8 !important;
+}
+
+html:not(.dark) .border-\[\#261E33\] {
+  border-color: #E3D9EE !important;
+}
+
+/* Typography contrast */
+html:not(.dark) .text-\[\#F4F0F8\] {
+  color: #181124 !important;
+}
+
+html:not(.dark) .text-\[\#E0D8EB\] {
+  color: #2E2340 !important;
+}
+
+html:not(.dark) .text-\[\#958B9F\] {
+  color: #655877 !important;
+}
+
+html:not(.dark) .text-\[\#F3E8FF\] {
+  color: #5B21B6 !important;
+}
+
+/* Shadows in light mode */
+html:not(.dark) .shadow-black\/40,
+html:not(.dark) .shadow-black\/60,
+html:not(.dark) .shadow-black\/80 {
+  box-shadow: 0 4px 20px -2px rgba(110, 80, 140, 0.08), 0 2px 6px -1px rgba(110, 80, 140, 0.04) !important;
+}
+
+/* Form inputs in light mode */
+html:not(.dark) input,
+html:not(.dark) select,
+html:not(.dark) textarea {
+  color: #181124;
+}
+
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder {
+  color: #8A7D9D;
 }
 
 /* RTL Typography & Alignment Adaptation */
@@ -22,18 +150,29 @@ html[dir="rtl"] body {
   letter-spacing: 0;
 }
 
-/* Custom scrollbars for high-density NOC tables */
+/* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-::-webkit-scrollbar-track {
+.dark ::-webkit-scrollbar-track {
   background: #0F0C14;
 }
-::-webkit-scrollbar-thumb {
+.dark ::-webkit-scrollbar-thumb {
   background: #2D253B;
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover {
+.dark ::-webkit-scrollbar-thumb:hover {
   background: #473B5E;
+}
+
+html:not(.dark) ::-webkit-scrollbar-track {
+  background: #F8F7FB;
+}
+html:not(.dark) ::-webkit-scrollbar-thumb {
+  background: #D9CEE8;
+  border-radius: 3px;
+}
+html:not(.dark) ::-webkit-scrollbar-thumb:hover {
+  background: #BBA9D4;
 }
