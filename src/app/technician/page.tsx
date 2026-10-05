@@ -10,8 +10,8 @@ export default function TechnicianPage() {
 
   if (!isHydrated) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-xs text-slate-400 font-mono">
-        <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping mr-2" />
+      <div className="min-h-screen bg-[#0F0C14] flex items-center justify-center text-xs text-[#958B9F] font-mono">
+        <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping mr-2" />
         Initializing Field Gateway...
       </div>
     );

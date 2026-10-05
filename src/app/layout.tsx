@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'AtlasNet Operations | WISP Management Portal',
-  description: 'Internal Operations, Subscriber Management & Field Technician Dispatch System',
+  title: 'Youness WiFi - WISP Manager',
+  description: 'Internal Operations, Subscriber Management & Field Technician Dispatch System - Youness WiFi',
 };
 
 export default function RootLayout({
@@ -28,7 +28,7 @@ export default function RootLayout({
       lang="fr"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full bg-slate-950 text-slate-100 flex flex-col font-sans">
+      <body className="min-h-full bg-[#0F0C14] text-[#F4F0F8] flex flex-col font-sans overflow-x-hidden">
         <StoreProvider>{children}</StoreProvider>
       </body>
     </html>

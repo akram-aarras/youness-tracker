@@ -9,6 +9,7 @@ import AdminDashboard from '@/components/AdminDashboard';
 import ClientDirectory from '@/components/ClientDirectory';
 import TicketBoard from '@/components/TicketBoard';
 import TechnicianView from '@/components/TechnicianView';
+import UserManagement from '@/components/UserManagement';
 
 // Modals
 import RegisterClientModal from '@/components/Modals/RegisterClientModal';
@@ -20,11 +21,12 @@ import WhatsAppPreviewModal from '@/components/Modals/WhatsAppPreviewModal';
 export default function HomePage() {
   const { currentUser, isHydrated, clients } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'tickets'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'tickets' | 'team'>('dashboard');
 
   // Modal States
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [paymentModalClientId, setPaymentModalClientId] = useState<string | null>(null);
+  const [paymentModalBillingMonth, setPaymentModalBillingMonth] = useState<string | undefined>(undefined);
   const [ticketModalClientId, setTicketModalClientId] = useState<string | null>(null);
   const [selectedClientForDetail, setSelectedClientForDetail] = useState<Client | null>(null);
   const [selectedClientForWhatsApp, setSelectedClientForWhatsApp] = useState<Client | null>(null);
@@ -32,8 +34,8 @@ export default function HomePage() {
   // Prevent flash during hydration
   if (!isHydrated) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-xs text-slate-400 font-mono">
-        <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping mr-2" />
+      <div className="min-h-screen bg-[#0F0C14] flex items-center justify-center text-xs text-[#958B9F] font-mono">
+        <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping mr-2" />
         Authenticating Secure NOC Gateway...
       </div>
     );
@@ -44,23 +46,24 @@ export default function HomePage() {
     return <LoginScreen />;
   }
 
-  // If user logged in as technician, show technician task runner view
-  if (currentUser.role === 'technician') {
+  // If user logged in as technician or field lead, show technician task runner view
+  if (currentUser.role === 'technician' || currentUser.role === 'field_lead') {
     return <TechnicianView />;
   }
 
   // Owner / Admin NOC View
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#0F0C14] text-[#F4F0F8] flex flex-col relative overflow-x-hidden">
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'dashboard' && (
           <AdminDashboard
             onOpenRegisterModal={() => setShowRegisterModal(true)}
-            onOpenPaymentModal={(clientId) =>
-              setPaymentModalClientId(clientId ?? '')
-            }
+            onOpenPaymentModal={(clientId, billingMonth) => {
+              setPaymentModalClientId(clientId ?? '');
+              setPaymentModalBillingMonth(billingMonth);
+            }}
             onOpenTicketModal={(clientId) =>
               setTicketModalClientId(clientId ?? '')
             }
@@ -90,6 +93,8 @@ export default function HomePage() {
             onOpenCreateTicketModal={() => setTicketModalClientId('')}
           />
         )}
+
+        {activeTab === 'team' && <UserManagement />}
       </main>
 
       {/* MODALS */}
@@ -102,7 +107,11 @@ export default function HomePage() {
       {paymentModalClientId !== null && (
         <RecordPaymentModal
           initialClientId={paymentModalClientId || undefined}
-          onClose={() => setPaymentModalClientId(null)}
+          initialBillingMonth={paymentModalBillingMonth}
+          onClose={() => {
+            setPaymentModalClientId(null);
+            setPaymentModalBillingMonth(undefined);
+          }}
         />
       )}
 

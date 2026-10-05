@@ -17,12 +17,15 @@ import {
   AlertTriangle,
   ArrowLeft,
   Check,
+  LogOut,
+  Shield,
 } from 'lucide-react';
 
 export default function TechnicianView() {
   const {
     currentUser,
     switchRole,
+    logout,
     tickets,
     clients,
     technicians,
@@ -32,12 +35,14 @@ export default function TechnicianView() {
   } = useStore();
 
   const router = useRouter();
+  const isTechUser = currentUser?.role === 'technician' || currentUser?.role === 'field_lead';
 
-  // If logged in as admin or general, default to Yassine (tech-1) or current user's technicianId
-  const activeTechId =
-    currentUser?.technicianId || (currentUser?.role === 'technician' ? 'tech-1' : 'tech-1');
+  // If logged in as technician, lock strictly to their own ID
+  const effectiveTechId = isTechUser
+    ? (currentUser?.technicianId || currentUser?.id || 'tech-1')
+    : 'tech-1';
 
-  const [selectedTechId, setSelectedTechId] = useState<string>(activeTechId);
+  const [selectedTechId, setSelectedTechId] = useState<string>(effectiveTechId);
   const [filterTab, setFilterTab] = useState<'pending' | 'resolved'>('pending');
 
   // Resolution modal state
@@ -45,13 +50,27 @@ export default function TechnicianView() {
   const [targetStatus, setTargetStatus] = useState<TicketStatus>('resolved');
   const [resolutionNote, setResolutionNote] = useState<string>('');
 
-  const currentTech =
-    technicians.find((tech) => tech.id === selectedTechId) || technicians[0];
+  const currentTech = isTechUser
+    ? {
+        id: effectiveTechId,
+        name: currentUser?.name || 'Technicien',
+        phone: currentUser?.phone || '',
+        specialty: currentUser?.specialty || t('role_antenna'),
+        status: 'active' as const,
+      }
+    : (technicians.find((tech) => tech.id === selectedTechId) || technicians[0]);
 
-  // Filter tasks assigned to this technician
-  const techTickets = tickets.filter(
-    (ticket) => ticket.assignedToTechnicianId === selectedTechId
-  );
+  // Filter tasks strictly assigned to this technician
+  const techTickets = tickets.filter((ticket) => {
+    if (isTechUser) {
+      return (
+        ticket.assignedToTechnicianId === effectiveTechId ||
+        ticket.assignedToTechnicianId === currentUser?.id ||
+        ticket.assignedToTechnicianId === currentUser?.technicianId
+      );
+    }
+    return ticket.assignedToTechnicianId === selectedTechId;
+  });
 
   const pendingTickets = techTickets.filter(
     (ticket) => ticket.status === 'open' || ticket.status === 'in_progress'
@@ -61,10 +80,16 @@ export default function TechnicianView() {
   const displayedTickets =
     filterTab === 'pending' ? pendingTickets : resolvedTickets;
 
-  // Handle Return to Admin Dashboard (NOC)
+  // Handle Return to Admin Dashboard (NOC) for Admins
   const handleBack = () => {
     switchRole('admin');
     router.push('/');
+  };
+
+  // Handle Clean Logout for Field Technicians
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
   };
 
   // Open status modal
@@ -135,41 +160,55 @@ export default function TechnicianView() {
     }
   };
 
-  const getSpecialtyLabel = (tech: Technician) => {
+  const getSpecialtyLabel = (tech: Technician | { specialty?: string; id?: string }) => {
+    if (tech.specialty) return tech.specialty;
     if (tech.id === 'tech-1') return t('role_antenna');
     return t('role_rooftop');
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col max-w-lg mx-auto border-x border-slate-800 shadow-2xl relative">
+    <div className="min-h-screen bg-[#0F0C14] text-[#F4F0F8] flex flex-col max-w-lg mx-auto border-x border-[#2D253B]/70 shadow-2xl relative">
       {/* Sticky Mobile Header */}
-      <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3.5">
+      <header className="sticky top-0 z-30 bg-[#130F1A]/95 backdrop-blur-md border-b border-[#2D253B]/70 px-4 py-3.5">
         <div className="flex items-center justify-between gap-2">
-          {/* Back button and App Title */}
+          {/* Back button (for Admin) or Logout button (for Technician) */}
           <div className="flex items-center gap-2.5 min-w-0">
-            <button
-              type="button"
-              onClick={handleBack}
-              aria-label={t('back_to_noc')}
-              title={t('back_to_noc')}
-              className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 active:scale-95 transition cursor-pointer flex items-center justify-center shrink-0 border border-slate-700/60"
-            >
-              <ArrowLeft
-                className={`w-4 h-4 transition-transform duration-200 ${
-                  dir === 'rtl' ? 'rotate-180' : ''
-                }`}
-              />
-            </button>
+            {isTechUser ? (
+              <button
+                type="button"
+                onClick={handleLogout}
+                aria-label={t('nav_sign_out')}
+                title={t('nav_sign_out')}
+                className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-white active:scale-95 transition cursor-pointer flex items-center gap-1.5 shrink-0 border border-rose-500/30"
+              >
+                <LogOut className="w-4 h-4 text-rose-400" />
+                <span className="text-[11px] font-bold hidden xs:inline">{t('nav_sign_out')}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleBack}
+                aria-label={t('back_to_noc')}
+                title={t('back_to_noc')}
+                className="p-2 rounded-xl bg-[#241E30] text-[#E0D8EB] hover:text-white hover:bg-[#2C243B] active:scale-95 transition cursor-pointer flex items-center justify-center shrink-0 border border-[#3A2F4C]"
+              >
+                <ArrowLeft
+                  className={`w-4 h-4 transition-transform duration-200 ${
+                    dir === 'rtl' ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+            )}
             <div className="truncate">
               <div className="flex items-center gap-1.5">
-                <span className="text-sm font-black text-white tracking-tight truncate">
+                <span className="text-sm font-black text-[#F4F0F8] tracking-tight truncate">
                   {t('fieldtech_title')}
                 </span>
                 <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 shrink-0">
                   {t('mobile')}
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400 truncate">
+              <p className="text-[10px] text-[#958B9F] truncate">
                 {t('fieldtech_subtitle')}
               </p>
             </div>
@@ -182,56 +221,63 @@ export default function TechnicianView() {
         </div>
 
         {/* Worker Info Card */}
-        <div className="mt-3 p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between gap-3">
+        <div className="mt-3 p-3 rounded-2xl bg-[#191522] border border-[#2D253B]/70 flex items-center justify-between gap-3 shadow-md">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-bold text-sm shadow-md shrink-0">
               {currentTech.name.charAt(0)}
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
+              <div className="text-xs font-bold text-[#F4F0F8] flex items-center gap-1.5 truncate">
                 <span className="truncate">{currentTech.name}</span>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
               </div>
-              <div className="text-[10px] text-slate-400 truncate">
+              <div className="text-[10px] text-[#958B9F] truncate">
                 {getSpecialtyLabel(currentTech)}
               </div>
             </div>
           </div>
 
-          {/* Quick Technician Switcher Pill */}
-          <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
-            {technicians.map((tech) => (
-              <button
-                key={tech.id}
-                type="button"
-                onClick={() => {
-                  setSelectedTechId(tech.id);
-                  switchRole('technician', tech.id);
-                }}
-                className={`px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                  selectedTechId === tech.id
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <span>{tech.name.split(' ')[0]}</span>
-              </button>
-            ))}
-          </div>
+          {/* If Admin inspecting: Show quick tech switcher. If Technician logged in: show active locked status */}
+          {!isTechUser ? (
+            <div className="flex items-center gap-1 bg-[#130F1A] p-1 rounded-xl border border-[#261E33] shrink-0">
+              {technicians.map((tech) => (
+                <button
+                  key={tech.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedTechId(tech.id);
+                    switchRole('technician', tech.id);
+                  }}
+                  className={`px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                    selectedTechId === tech.id
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-[#958B9F] hover:text-white'
+                  }`}
+                >
+                  <span>{tech.name.split(' ')[0]}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 bg-emerald-950/80 px-2.5 py-1.5 rounded-xl border border-emerald-800/80 text-[10px] font-bold text-emerald-300 shrink-0">
+              <Shield className="w-3 h-3 text-emerald-400" />
+              <span>Interventions Assignées</span>
+            </div>
+          )}
         </div>
 
         {/* Status Counters Strip */}
-        <div className="mt-2.5 px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800/60 flex items-center justify-between text-xs">
+        <div className="mt-2.5 px-3 py-2 rounded-xl bg-[#130F1A] border border-[#261E33] flex items-center justify-between text-xs">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-amber-400" />
-            <span className="text-slate-400 text-[11px]">{t('pending')}:</span>
+            <span className="text-[#958B9F] text-[11px]">{t('pending')}:</span>
             <span className="font-bold font-mono text-amber-400">
               {pendingTickets.length}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span className="text-slate-400 text-[11px]">{t('done_today')}:</span>
+            <span className="text-[#958B9F] text-[11px]">{t('done_today')}:</span>
             <span className="font-bold font-mono text-emerald-400">
               {resolvedTickets.length}
             </span>
@@ -239,14 +285,14 @@ export default function TechnicianView() {
         </div>
 
         {/* Filter Tabs: Pending vs Resolved */}
-        <div className="mt-3 flex rounded-xl bg-slate-950 p-1 border border-slate-800 text-xs font-bold">
+        <div className="mt-3 flex rounded-xl bg-[#130F1A] p-1 border border-[#2D253B]/70 text-xs font-bold">
           <button
             type="button"
             onClick={() => setFilterTab('pending')}
             className={`flex-1 py-2 rounded-lg transition flex items-center justify-center gap-2 cursor-pointer ${
               filterTab === 'pending'
-                ? 'bg-slate-800 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368] shadow-sm'
+                : 'text-[#958B9F] hover:text-[#F4F0F8]'
             }`}
           >
             <span>{t('tab_active_tasks')}</span>
@@ -254,7 +300,7 @@ export default function TechnicianView() {
               className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
                 pendingTickets.length > 0
                   ? 'bg-amber-500 text-slate-950 font-bold'
-                  : 'bg-slate-700 text-slate-300'
+                  : 'bg-[#241E30] text-[#958B9F]'
               }`}
             >
               {pendingTickets.length}
@@ -266,12 +312,12 @@ export default function TechnicianView() {
             onClick={() => setFilterTab('resolved')}
             className={`flex-1 py-2 rounded-lg transition flex items-center justify-center gap-2 cursor-pointer ${
               filterTab === 'resolved'
-                ? 'bg-slate-800 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368] shadow-sm'
+                : 'text-[#958B9F] hover:text-[#F4F0F8]'
             }`}
           >
             <span>{t('tab_resolved')}</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-700 text-slate-300">
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[#241E30] text-[#958B9F]">
               {resolvedTickets.length}
             </span>
           </button>
@@ -281,10 +327,10 @@ export default function TechnicianView() {
       {/* Main Task List */}
       <main className="flex-1 p-4 space-y-4 pb-20">
         {displayedTickets.length === 0 ? (
-          <div className="p-10 text-center bg-slate-900/50 rounded-3xl border border-slate-800/80 space-y-3 mt-4">
+          <div className="p-10 text-center bg-[#191522] rounded-2xl border border-[#2D253B]/70 shadow-xl shadow-black/40 space-y-3 mt-4">
             <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
-            <h3 className="text-base font-bold text-white">{t('empty_tasks_title')}</h3>
-            <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+            <h3 className="text-base font-bold text-[#F4F0F8]">{t('empty_tasks_title')}</h3>
+            <p className="text-xs text-[#958B9F] leading-relaxed max-w-xs mx-auto">
               {filterTab === 'pending'
                 ? t('empty_tasks_msg', { name: currentTech.name.split(' ')[0] })
                 : t('empty_resolved_msg')}
@@ -297,7 +343,7 @@ export default function TechnicianView() {
             return (
               <div
                 key={ticket.id}
-                className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-3.5 relative overflow-hidden"
+                className="bg-[#191522] border border-[#2D253B]/70 rounded-2xl p-5 shadow-xl shadow-black/40 space-y-3.5 relative overflow-hidden"
               >
                 {/* Priority accent stripe */}
                 {ticket.priority === 'urgent' && (
@@ -335,33 +381,33 @@ export default function TechnicianView() {
                   <h3 className="text-sm font-bold text-white">
                     {getCategoryLabel(ticket.category)}
                   </h3>
-                  <p className="text-xs text-slate-300 mt-1 bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 leading-relaxed">
+                  <p className="text-xs text-[#E0D8EB] mt-1 bg-[#0F0C14] p-2.5 rounded-xl border border-[#261E33] leading-relaxed">
                     {ticket.description}
                   </p>
                 </div>
 
                 {/* Client Info & Address */}
-                <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-1.5">
+                <div className="p-3 rounded-2xl bg-[#130F1A] border border-[#261E33] space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white">
+                    <span className="text-xs font-bold text-[#F4F0F8]">
                       {ticket.clientName}
                     </span>
-                    <span className="text-[10px] font-medium text-slate-400">
+                    <span className="text-[10px] font-medium text-[#958B9F]">
                       {ticket.clientNeighborhood || 'Tétouan'}
                     </span>
                   </div>
 
-                  <div className="text-xs text-slate-400 flex items-start gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
+                  <div className="text-xs text-[#958B9F] flex items-start gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
                     <span>{ticket.clientAddress || 'Tétouan'}</span>
                   </div>
                 </div>
 
                 {/* HARDWARE SPECS FOR FIELD DIAGNOSIS */}
                 {hw && (
-                  <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800/60 text-[11px] space-y-1.5">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                      <Radio className="w-3 h-3 text-cyan-400" />
+                  <div className="p-3 rounded-2xl bg-[#0F0C14] border border-[#261E33] text-[11px] space-y-1.5">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#958B9F] flex items-center gap-1">
+                      <Radio className="w-3 h-3 text-amber-400" />
                       {t('telemetry_title')}
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-slate-300">
@@ -437,7 +483,7 @@ export default function TechnicianView() {
                 </div>
 
                 {/* STATUS UPDATE ACTION BUTTON */}
-                <div className="pt-2 border-t border-slate-800/80">
+                <div className="pt-2 border-t border-[#261E33]">
                   {ticket.status === 'open' && (
                     <button
                       type="button"
@@ -486,7 +532,7 @@ export default function TechnicianView() {
       {/* STATUS UPDATE & RESOLUTION NOTE MODAL */}
       {modalTicketId && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl animate-in slide-in-from-bottom-6">
+          <div className="bg-[#191522] border border-[#2D253B]/70 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl animate-in slide-in-from-bottom-6">
             <div className="flex items-center gap-3">
               <div
                 className={`p-2.5 rounded-2xl ${
@@ -523,13 +569,13 @@ export default function TechnicianView() {
                 value={resolutionNote}
                 onChange={(e) => setResolutionNote(e.target.value)}
                 placeholder="Ex: Replaced RJ45 connector, reset PoE adapter, signal -61 dBm..."
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition"
+                className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
               />
             </div>
 
             {/* Quick Note Suggestions for Mobile Field Workers */}
             <div className="space-y-1">
-              <span className="text-[10px] text-slate-500 uppercase font-bold">
+              <span className="text-[10px] text-[#958B9F] uppercase font-bold">
                 Quick 1-Tap Notes:
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -544,7 +590,7 @@ export default function TechnicianView() {
                     key={note}
                     type="button"
                     onClick={() => setResolutionNote(note)}
-                    className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[10px] text-slate-300 hover:text-white hover:border-slate-700 transition cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-[#130F1A] border border-[#261E33] text-[10px] text-[#958B9F] hover:text-[#F4F0F8] hover:border-[#3A2F4C] transition cursor-pointer"
                   >
                     {note}
                   </button>
@@ -552,18 +598,18 @@ export default function TechnicianView() {
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end gap-2 border-t border-slate-800">
+            <div className="pt-2 flex justify-end gap-2 border-t border-[#261E33]">
               <button
                 type="button"
                 onClick={() => setModalTicketId(null)}
-                className="px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded-xl cursor-pointer"
+                className="px-4 py-2 text-xs text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] rounded-xl cursor-pointer"
               >
                 {t('cancel')}
               </button>
               <button
                 type="button"
                 onClick={handleConfirmStatusUpdate}
-                className="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-950 transition flex items-center gap-1.5 cursor-pointer"
+                className="px-5 py-2 text-xs font-bold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-xl shadow-lg shadow-amber-500/15 transition flex items-center gap-1.5 cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 {t('save')}

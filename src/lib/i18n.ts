@@ -65,6 +65,7 @@ export interface Translations {
   nav_dashboard: string;
   nav_clients: string;
   nav_tickets: string;
+  nav_team: string;
   nav_fieldtech: string;
   nav_reset_demo: string;
   nav_sign_out: string;
@@ -80,6 +81,7 @@ export interface Translations {
   dash_new_ticket: string;
   metric_active_subs: string;
   metric_monthly_revenue: string;
+  metric_today_revenue: string;
   metric_overdue_uncollected: string;
   metric_open_tickets: string;
   connected_label: string;
@@ -109,6 +111,7 @@ export interface Translations {
   status_due_soon: string;
   status_overdue: string;
   status_suspended: string;
+  status_archived: string;
   no_clients_found: string;
   no_clients_match_filters: string;
 
@@ -146,7 +149,7 @@ export const translations: Record<Language, Translations> = {
     live: 'Live Real-Time',
 
     // FieldTech
-    fieldtech_title: 'AtlasNet FieldTech',
+    fieldtech_title: 'Youness WiFi FieldTech',
     fieldtech_subtitle: 'Fast Field Dispatch & Diagnostics',
     role_rooftop: 'Rooftop Mounts & Router Configuration',
     role_antenna: 'Antenna Alignment & RF Diagnostics',
@@ -185,10 +188,11 @@ export const translations: Record<Language, Translations> = {
     prio_normal: 'Normal',
 
     // Admin NOC & Navbar
-    nav_brand: 'AtlasNet WISP',
+    nav_brand: 'Youness WiFi',
     nav_dashboard: 'Operations NOC',
     nav_clients: 'Subscribers & CPE',
     nav_tickets: 'Support & Dispatch',
+    nav_team: 'Team & RBAC',
     nav_fieldtech: 'FieldTech View',
     nav_reset_demo: 'Reset Mock Seed Data',
     nav_sign_out: 'Sign Out',
@@ -204,6 +208,7 @@ export const translations: Record<Language, Translations> = {
     dash_new_ticket: 'New Ticket',
     metric_active_subs: 'Active Subscribers',
     metric_monthly_revenue: 'Monthly Revenue',
+    metric_today_revenue: "Today's Revenue",
     metric_overdue_uncollected: 'Uncollected Overdue',
     metric_open_tickets: 'Open Support Tickets',
     connected_label: 'connected',
@@ -233,6 +238,7 @@ export const translations: Record<Language, Translations> = {
     status_due_soon: 'Due Soon',
     status_overdue: 'Overdue',
     status_suspended: 'Suspended',
+    status_archived: 'Archived',
     no_clients_found: 'No Subscribers Registered',
     no_clients_match_filters: 'No subscribers match the current filters.',
 
@@ -269,7 +275,7 @@ export const translations: Record<Language, Translations> = {
     live: 'Temps Réel Direct',
 
     // FieldTech
-    fieldtech_title: 'AtlasNet FieldTech',
+    fieldtech_title: 'Youness WiFi FieldTech',
     fieldtech_subtitle: 'Interventions Rapides & Diagnostics',
     role_rooftop: 'Installations Toiture & Configuration Routeur',
     role_antenna: 'Alignement Antenne & Diagnostics RF',
@@ -308,10 +314,11 @@ export const translations: Record<Language, Translations> = {
     prio_normal: 'Normal',
 
     // Admin NOC & Navbar
-    nav_brand: 'AtlasNet WISP',
+    nav_brand: 'Youness WiFi',
     nav_dashboard: 'NOC Opérations',
     nav_clients: 'Abonnés & CPE',
     nav_tickets: 'Support & Dispatch',
+    nav_team: 'Équipe & Accès',
     nav_fieldtech: 'Vue FieldTech',
     nav_reset_demo: 'Réinitialiser les données démo',
     nav_sign_out: 'Déconnexion',
@@ -327,6 +334,7 @@ export const translations: Record<Language, Translations> = {
     dash_new_ticket: 'Nouveau Ticket',
     metric_active_subs: 'Abonnés Actifs',
     metric_monthly_revenue: 'Revenus Mensuels',
+    metric_today_revenue: 'Recettes du Jour',
     metric_overdue_uncollected: 'Impayés / En Retard',
     metric_open_tickets: 'Tickets de Support Ouverts',
     connected_label: 'connectés',
@@ -356,6 +364,7 @@ export const translations: Record<Language, Translations> = {
     status_due_soon: 'Échéance Proche',
     status_overdue: 'En Retard',
     status_suspended: 'Suspendu',
+    status_archived: 'Archivé',
     no_clients_found: 'Aucun Abonné Enregistré',
     no_clients_match_filters: 'Aucun abonné ne correspond aux filtres sélectionnés.',
 
@@ -392,7 +401,7 @@ export const translations: Record<Language, Translations> = {
     live: 'مباشر وحي',
 
     // FieldTech (Exact translations matching instructions)
-    fieldtech_title: 'أطلس نت الميداني',
+    fieldtech_title: 'يونس واي فاي الميداني',
     fieldtech_subtitle: 'التدخلات الميدانية والتشخيص السريع',
     role_rooftop: 'تثبيت الأسطح وإعداد الراوتر',
     role_antenna: 'توجيه الهوائيات وتشخيص الترددات',
@@ -431,10 +440,11 @@ export const translations: Record<Language, Translations> = {
     prio_normal: 'عادي',
 
     // Admin NOC & Navbar
-    nav_brand: 'أطلس نت وايرلس',
+    nav_brand: 'يونس واي فاي',
     nav_dashboard: 'مركز العمليات NOC',
     nav_clients: 'المشتركون والعتاد',
     nav_tickets: 'الدعم والتوجيه',
+    nav_team: 'الفريق والصلاحيات',
     nav_fieldtech: 'واجهة التقني الميداني',
     nav_reset_demo: 'إعادة ضبط البيانات التجريبية',
     nav_sign_out: 'تسجيل الخروج',
@@ -450,6 +460,7 @@ export const translations: Record<Language, Translations> = {
     dash_new_ticket: 'تذكرة عطل جديدة',
     metric_active_subs: 'المشتركون النشطون',
     metric_monthly_revenue: 'المداخيل الشهرية',
+    metric_today_revenue: 'مداخيل اليوم',
     metric_overdue_uncollected: 'المتأخرات غير المحصلة',
     metric_open_tickets: 'تذاكر الدعم المفتوحة',
     connected_label: 'متصلون',
@@ -479,6 +490,7 @@ export const translations: Record<Language, Translations> = {
     status_due_soon: 'يقترب الأجل',
     status_overdue: 'متأخر عن الأداء',
     status_suspended: 'معلق الخدمة',
+    status_archived: 'مؤرشف',
     no_clients_found: 'لا يوجد مشتركون مسجلون',
     no_clients_match_filters: 'لا يوجد مشتركون يطابقون خيارات البحث المحددة.',
 

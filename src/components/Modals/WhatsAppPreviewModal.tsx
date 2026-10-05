@@ -69,43 +69,44 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-xl bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-xl bg-[#191522] sm:border sm:border-[#2D253B]/70 rounded-none sm:rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/90">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#2D253B]/70 bg-[#130F1A]/95 shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <MessageSquare className="w-5 h-5" />
+            <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+              <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <h3 className="text-base sm:text-lg font-bold text-[#F4F0F8] flex items-center gap-2">
                 <span>WhatsApp Billing Reminder</span>
-                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">
-                  Bilingual FR / Darija
+                <span className="text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-800/60">
+                  Bilingual
                 </span>
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] sm:text-xs text-[#958B9F]">
                 Itemized invoice calculation & direct WhatsApp dispatch
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            className="p-2 rounded-lg text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Client Status Pill */}
-        <div className="px-6 py-3 bg-slate-950/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">Recipient:</span>
-            <span className="font-semibold text-white">{client.name}</span>
-            <span className="text-slate-500 font-mono">({baseFee} MAD/mo)</span>
+        <div className="px-4 sm:px-6 py-2.5 bg-[#130F1A] border-b border-[#2D253B]/70 flex items-center justify-between gap-2 text-xs overflow-x-auto no-scrollbar shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[#958B9F]">Recipient:</span>
+            <span className="font-semibold text-[#F4F0F8]">{client.name}</span>
+            <span className="text-[#958B9F] font-mono">({baseFee} MAD/mo)</span>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-slate-400 flex items-center gap-1 font-mono">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[#958B9F] flex items-center gap-1 font-mono">
               <Phone className="w-3.5 h-3.5 text-emerald-400" />
               +{cleanPhone}
             </span>
@@ -115,7 +116,7 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
                 {Math.abs(daysDiff)}d Overdue • {totalDue} MAD
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold bg-[#382647] text-[#F3E8FF] border border-[#523368]">
                 <Clock className="w-3 h-3" />
                 Due in {daysDiff}d • {totalDue} MAD
               </span>
@@ -124,15 +125,15 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
         </div>
 
         {/* Content Box */}
-        <div className="p-6 overflow-y-auto space-y-4">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 overflow-x-hidden">
           {/* Optional Extra Charges Accordion */}
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+          <div className="p-3.5 rounded-xl bg-[#130F1A] border border-[#261E33] space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#E0D8EB]">
                   Include Extra Charges / Frais Supplémentaires
                 </span>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className="text-[11px] text-[#958B9F] mt-0.5">
                   Append late fees or equipment adjustments with itemized breakdown
                 </p>
               </div>
@@ -161,7 +162,7 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
             </div>
 
             {includeExtra && (
-              <div className="pt-2 border-t border-slate-800 space-y-3 animate-in fade-in duration-150">
+              <div className="pt-2 border-t border-[#261E33] space-y-3 animate-in fade-in duration-150">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
                     <label className="block text-slate-400 font-semibold mb-1">
@@ -173,18 +174,18 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
                       step="5"
                       value={extraAmount}
                       onChange={(e) => setExtraAmount(Number(e.target.value))}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono font-bold focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-[#0F0C14] border border-[#2D253B]/70 rounded-lg px-2.5 py-1.5 text-xs text-[#F4F0F8] font-mono font-bold focus:outline-none focus:border-amber-500/50"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-slate-400 font-semibold mb-1">
+                    <label className="block text-[#958B9F] font-semibold mb-1">
                       Reason / Motif
                     </label>
                     <select
                       value={extraReason}
                       onChange={(e) => setExtraReason(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-[#0F0C14] border border-[#2D253B]/70 rounded-lg px-2.5 py-1.5 text-xs text-[#F4F0F8] focus:outline-none focus:border-amber-500/50"
                     >
                       {EXTRA_FEE_PRESETS.map((p) => (
                         <option key={p} value={p}>
@@ -202,13 +203,13 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
                       placeholder="Specify custom reason..."
                       value={customReason}
                       onChange={(e) => setCustomReason(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-[#0F0C14] border border-[#2D253B]/70 rounded-lg px-2.5 py-1.5 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50"
                     />
                   </div>
                 )}
 
-                <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between text-xs font-mono">
-                  <span className="text-slate-400">Total Reminder Amount:</span>
+                <div className="p-2 rounded-lg bg-[#0F0C14] border border-[#261E33] flex items-center justify-between text-xs font-mono">
+                  <span className="text-[#958B9F]">Total Reminder Amount:</span>
                   <span className="text-emerald-400 font-bold">
                     {baseFee} (Base) + {effectiveExtra} (Extra) = {totalDue} MAD
                   </span>
@@ -242,12 +243,12 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
                 )}
               </button>
             </div>
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs sm:text-sm text-slate-200 whitespace-pre-line leading-relaxed font-sans shadow-inner selection:bg-emerald-500/30 selection:text-emerald-200">
+            <div className="p-4 rounded-xl bg-[#0F0C14] border border-[#261E33] text-xs sm:text-sm text-[#F4F0F8] whitespace-pre-line leading-relaxed font-sans shadow-inner selection:bg-emerald-500/30 selection:text-emerald-200">
               {text}
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-cyan-950/30 border border-cyan-800/40 text-xs text-cyan-300 flex items-start gap-2.5">
+          <div className="p-3 rounded-xl bg-[#382647]/40 border border-[#523368] text-xs text-[#F3E8FF] flex items-start gap-2.5">
             <span className="text-base leading-none">💡</span>
             <p>
               Clicking <strong className="text-white">"Launch WhatsApp"</strong> will open
@@ -257,23 +258,23 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="px-6 py-4 bg-slate-950/80 border-t border-slate-800 flex items-center justify-end gap-3">
+        {/* Sticky Footer Actions */}
+        <div className="sticky bottom-0 bg-[#130F1A]/95 backdrop-blur-md px-4 sm:px-6 py-3.5 sm:py-4 border-t border-[#261E33] flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 z-10 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer"
+            className="min-h-[44px] px-4 py-2.5 text-xs sm:text-sm font-medium text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] rounded-xl transition cursor-pointer order-3 sm:order-1"
           >
-            Cancel
+            Fermer
           </button>
 
           <button
             type="button"
             onClick={handleCopy}
-            className="px-4 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition flex items-center gap-2 border border-slate-700 cursor-pointer"
+            className="min-h-[44px] px-4 py-2.5 text-xs sm:text-sm font-medium bg-[#241E30] hover:bg-[#2C243B] text-[#E0D8EB] rounded-xl transition flex items-center justify-center gap-2 border border-[#3A2F4C] cursor-pointer order-2 sm:order-2"
           >
             {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-            {copied ? 'Copied' : 'Copy'}
+            <span>{copied ? 'Copié' : 'Copier'}</span>
           </button>
 
           <a
@@ -281,10 +282,10 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
             target="_blank"
             rel="noopener noreferrer"
             onClick={onClose}
-            className="px-5 py-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-950 transition flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="flex-1 sm:flex-initial min-h-[48px] px-5 py-3 text-xs sm:text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-950 transition flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] cursor-pointer order-1 sm:order-3"
           >
             <ExternalLink className="w-4 h-4" />
-            Launch WhatsApp (wa.me)
+            <span>Envoyer WhatsApp</span>
           </a>
         </div>
       </div>

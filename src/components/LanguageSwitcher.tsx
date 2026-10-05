@@ -6,20 +6,22 @@ import { Language } from '@/lib/i18n';
 import { Globe } from 'lucide-react';
 
 interface Props {
-  variant?: 'cyan' | 'emerald';
+  variant?: 'cyan' | 'emerald' | 'amber';
   compact?: boolean;
   showIcon?: boolean;
 }
 
 export default function LanguageSwitcher({
-  variant = 'cyan',
+  variant = 'amber',
   compact = false,
   showIcon = false,
 }: Props) {
   const { language, setLanguage } = useStore();
 
   const activeBg =
-    variant === 'emerald'
+    variant === 'amber'
+      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold shadow-sm shadow-amber-500/20'
+      : variant === 'emerald'
       ? 'bg-emerald-600 text-white shadow-sm'
       : 'bg-cyan-600 text-white shadow-sm';
 
@@ -31,14 +33,14 @@ export default function LanguageSwitcher({
 
   return (
     <div
-      className={`inline-flex items-center rounded-xl bg-slate-950 p-0.5 border border-slate-800 ${
+      className={`inline-flex items-center rounded-xl bg-[#130F1A] p-0.5 border border-[#2D253B]/70 ${
         compact ? 'text-[10px]' : 'text-xs'
       } font-bold select-none`}
       role="group"
       aria-label="Language selector"
     >
       {showIcon && (
-        <div className="pl-2 pr-1 text-slate-500 flex items-center">
+        <div className="pl-2 pr-1 text-[#958B9F] flex items-center">
           <Globe className="w-3.5 h-3.5" />
         </div>
       )}
@@ -55,7 +57,7 @@ export default function LanguageSwitcher({
             } ${
               isActive
                 ? activeBg
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                : 'text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30]/60'
             }`}
           >
             {l.label}

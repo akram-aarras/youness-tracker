@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore, getTodayDateStr, addMonthsToDateStr } from '@/lib/store';
 import {
   X,
   UserPlus,
@@ -94,22 +94,26 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
   const [signalStrengthDbm, setSignalStrengthDbm] = useState<number>(-65);
 
   // Subscription Setup
-  const [monthlyFee, setMonthlyFee] = useState<number>(100);
-  const [subscriptionPlan, setSubscriptionPlan] = useState('Standard Wi-Fi Plan (100 MAD)');
-  const [installationDate, setInstallationDate] = useState('2026-10-04');
-  const [nextDueDate, setNextDueDate] = useState('2026-11-04');
+  const [monthlyFee, setMonthlyFee] = useState<number>(50);
+  const [subscriptionPlan, setSubscriptionPlan] = useState('باقة اقتصادية - 50 د.م./شهر (Pack Éco 50 MAD)');
+  const [installationDate, setInstallationDate] = useState(getTodayDateStr());
+  const [nextDueDate, setNextDueDate] = useState(addMonthsToDateStr(getTodayDateStr(), 1));
   const [initialPayment, setInitialPayment] = useState(true);
   const [notes, setNotes] = useState('');
 
-  // Auto-fill SSID and PPPoE suggestions when name changes
+  // Auto-fill SSID and PPPoE suggestions when name changes (with Arabic name fallback support)
   const handleNameChange = (val: string) => {
     setName(val);
-    const clean = val.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    if (!pppoeUsername || pppoeUsername.startsWith('cli_') || pppoeUsername.startsWith('user_')) {
-      setPppoeUsername(clean ? `user_${clean}` : '');
+    const clean = val.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/^_+|_+$/g, '').replace(/_+/g, '_');
+    const fallbackSuffix = Math.floor(100 + Math.random() * 900);
+    const autoPppoe = clean ? `user_${clean}` : `client_${fallbackSuffix}`;
+    const autoSsid = clean ? `${val.trim().split(' ')[0]}_WiFi` : `WiFi_${fallbackSuffix}`;
+
+    if (!pppoeUsername || pppoeUsername.startsWith('cli_') || pppoeUsername.startsWith('user_') || pppoeUsername.startsWith('client_')) {
+      setPppoeUsername(autoPppoe);
     }
     if (!wifiSsid || wifiSsid.endsWith('_WiFi')) {
-      setWifiSsid(val.trim() ? `${val.trim().split(' ')[0]}_WiFi` : '');
+      setWifiSsid(autoSsid);
     }
   };
 
@@ -121,8 +125,10 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
     }
 
     const trimmedName = name.trim();
-    const cleanUserSlug = trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const autoPppoeUser = cleanUserSlug ? `user_${cleanUserSlug}` : 'user_pending';
+    const cleanUserSlug = trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/^_+|_+$/g, '').replace(/_+/g, '_');
+    const fallbackId = Math.floor(100 + Math.random() * 900);
+    const autoPppoeUser = cleanUserSlug ? `user_${cleanUserSlug}` : `client_${fallbackId}`;
+    const autoWifiSsid = cleanUserSlug ? `${trimmedName.split(' ')[0]}_WiFi` : `WiFi_${fallbackId}`;
 
     addClient({
       name: trimmedName,
@@ -131,10 +137,10 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
       address: address.trim() || 'Tétouan',
       googleMapsUrl:
         googleMapsUrl.trim() || 'https://maps.google.com/?q=35.5784,-5.3684',
-      monthlyFee: Number(monthlyFee) > 0 ? Number(monthlyFee) : 100,
-      subscriptionPlan: subscriptionPlan || 'Standard Wi-Fi Plan (100 MAD)',
-      installationDate: installationDate || '2026-10-04',
-      nextDueDate: nextDueDate || '2026-11-04',
+      monthlyFee: Number(monthlyFee) > 0 ? Number(monthlyFee) : 50,
+      subscriptionPlan: subscriptionPlan || 'باقة اقتصادية - 50 د.م./شهر (Pack Éco 50 MAD)',
+      installationDate: installationDate || getTodayDateStr(),
+      nextDueDate: nextDueDate || addMonthsToDateStr(getTodayDateStr(), 1),
       initialPayment,
       notes: notes.trim() || undefined,
       hardware: {
@@ -142,7 +148,7 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
         antennaMac: antennaMac.trim().toUpperCase() || 'N/A',
         antennaIp: antennaIp.trim() || '192.168.10.150',
         routerModel: routerModel.trim() || 'Standard Router',
-        wifiSsid: wifiSsid.trim() || `${trimmedName}_WiFi`,
+        wifiSsid: wifiSsid.trim() || autoWifiSsid,
         wifiPassword: wifiPassword.trim() || undefined,
         pppoeUsername: pppoeUsername.trim() || autoPppoeUser,
         pppoePassword: pppoePassword.trim() || '123456',
@@ -156,71 +162,73 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-2xl bg-[#191522] sm:border sm:border-[#2D253B]/70 rounded-none sm:rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/90">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#2D253B]/70 bg-[#130F1A]/95 shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-              <UserPlus className="w-5 h-5" />
+            <div className="p-2 sm:p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+              <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">Register New Installation</h3>
-              <p className="text-xs text-slate-400">
+              <h3 className="text-base sm:text-lg font-bold text-[#F4F0F8]">Register New Installation</h3>
+              <p className="text-[11px] sm:text-xs text-[#958B9F]">
                 Onboard subscriber in Tétouan, configure wireless CPE, & set billing
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-2 rounded-lg text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-800 bg-slate-950/60 px-6">
+        <div className="flex border-b border-[#2D253B]/70 bg-[#130F1A] px-2 sm:px-6 overflow-x-auto no-scrollbar shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('info')}
-            className={`py-3 px-4 text-xs font-semibold flex items-center gap-2 border-b-2 transition ${
+            className={`py-2.5 sm:py-3 px-3 sm:px-4 text-xs font-semibold flex items-center gap-1.5 sm:gap-2 border-b-2 transition cursor-pointer shrink-0 ${
               activeTab === 'info'
-                ? 'border-cyan-400 text-cyan-400 bg-cyan-950/20'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-amber-400 text-amber-400 bg-amber-500/10'
+                : 'border-transparent text-[#958B9F] hover:text-[#F4F0F8]'
             }`}
           >
             <MapPin className="w-3.5 h-3.5" />
-            1. Client & Location
+            <span>1. Client & Location</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('hardware')}
-            className={`py-3 px-4 text-xs font-semibold flex items-center gap-2 border-b-2 transition ${
+            className={`py-2.5 sm:py-3 px-3 sm:px-4 text-xs font-semibold flex items-center gap-1.5 sm:gap-2 border-b-2 transition cursor-pointer shrink-0 ${
               activeTab === 'hardware'
-                ? 'border-cyan-400 text-cyan-400 bg-cyan-950/20'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-amber-400 text-amber-400 bg-amber-500/10'
+                : 'border-transparent text-[#958B9F] hover:text-[#F4F0F8]'
             }`}
           >
             <Radio className="w-3.5 h-3.5" />
-            2. Hardware & Radio
+            <span>2. Hardware & Radio</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('billing')}
-            className={`py-3 px-4 text-xs font-semibold flex items-center gap-2 border-b-2 transition ${
+            className={`py-2.5 sm:py-3 px-3 sm:px-4 text-xs font-semibold flex items-center gap-1.5 sm:gap-2 border-b-2 transition cursor-pointer shrink-0 ${
               activeTab === 'billing'
-                ? 'border-cyan-400 text-cyan-400 bg-cyan-950/20'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-amber-400 text-amber-400 bg-amber-500/10'
+                : 'border-transparent text-[#958B9F] hover:text-[#F4F0F8]'
             }`}
           >
             <CreditCard className="w-3.5 h-3.5" />
-            3. Subscription & Billing
+            <span>3. Subscription & Billing</span>
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4">
+        {/* Form Body with Sticky Footer */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto flex flex-col justify-between">
+          <div className="p-4 sm:p-6 space-y-4">
           {/* TAB 1: CLIENT INFO */}
           {activeTab === 'info' && (
             <div className="space-y-4 animate-in fade-in duration-100">
@@ -235,7 +243,7 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     placeholder="Ex: Taha Bennani"
                     value={name}
                     onChange={(e) => handleNameChange(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
                   />
                 </div>
                 <div>
@@ -248,7 +256,7 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     placeholder="06XXXXXXXX ou +2126XXXXXXXX"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] font-mono focus:outline-none focus:border-amber-500/50 transition"
                   />
                 </div>
               </div>
@@ -264,7 +272,7 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     placeholder="Ex: Wilaya, Boujarah, Martil..."
                     value={neighborhood}
                     onChange={(e) => setNeighborhood(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
                   />
                   <datalist id="tetouan-neighborhoods">
                     {TETOUAN_NEIGHBORHOODS.map((area) => (
@@ -284,7 +292,7 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     placeholder="Ex: Rue 14, Derb..., Immeuble 3, 2ème étage"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">
                     Free text entry with no dropdown restrictions.
@@ -301,21 +309,11 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                   placeholder="Ex: https://maps.google.com/?q=35.5784,-5.3684 ou 35.5784, -5.3684"
                   value={googleMapsUrl}
                   onChange={(e) => setGoogleMapsUrl(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                  className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
                 />
                 <p className="text-[11px] text-slate-400 mt-1">
                   Used by field technicians for 1-tap navigation from mobile. Defaults to Tétouan center if left blank.
                 </p>
-              </div>
-
-              <div className="pt-2 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('hardware')}
-                  className="px-4 py-2 text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl transition"
-                >
-                  Next: Hardware Details →
-                </button>
               </div>
             </div>
           )}
@@ -334,7 +332,7 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     value={antennaModel}
                     onChange={(e) => setAntennaModel(e.target.value)}
                     placeholder="Ubiquiti LiteBeam 5AC"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
                   />
                   <datalist id="antenna-models">
                     {ANTENNA_MODELS.map((m) => (
@@ -351,7 +349,7 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     placeholder="Ex: DC:9F:DB:XX:XX:XX (Defaults to N/A)"
                     value={antennaMac}
                     onChange={(e) => setAntennaMac(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono uppercase focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] font-mono uppercase focus:outline-none focus:border-amber-500/50 transition"
                   />
                 </div>
               </div>
@@ -367,7 +365,7 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     value={sectorTower}
                     onChange={(e) => setSectorTower(e.target.value)}
                     placeholder="Tour Boujarah (Relais Centre)"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
                   />
                   <datalist id="sector-towers">
                     {SECTOR_TOWERS.map((st) => (
@@ -386,7 +384,7 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     placeholder="-65"
                     value={signalStrengthDbm}
                     onChange={(e) => setSignalStrengthDbm(Number(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] font-mono focus:outline-none focus:border-amber-500/50 transition"
                   />
                   <div className="text-[11px] text-slate-400 mt-1">
                     Optimal: between -55 dBm and -65 dBm (Default: -65 dBm)
@@ -405,7 +403,7 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     value={routerModel}
                     onChange={(e) => setRouterModel(e.target.value)}
                     placeholder="Standard Router"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
                   />
                   <datalist id="router-models">
                     {ROUTER_MODELS.map((r) => (
@@ -422,7 +420,7 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     placeholder="Ex: Client_WiFi (Auto-generated if empty)"
                     value={wifiSsid}
                     onChange={(e) => setWifiSsid(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
                   />
                 </div>
               </div>
@@ -437,7 +435,7 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     placeholder="Ex: user_client (Auto-generated if empty)"
                     value={pppoeUsername}
                     onChange={(e) => setPppoeUsername(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] font-mono focus:outline-none focus:border-amber-500/50 transition"
                   />
                 </div>
                 <div>
@@ -449,26 +447,9 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     placeholder="123456"
                     value={pppoePassword}
                     onChange={(e) => setPppoePassword(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] font-mono focus:outline-none focus:border-amber-500/50 transition"
                   />
                 </div>
-              </div>
-
-              <div className="pt-2 flex justify-between">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('info')}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition"
-                >
-                  ← Back to Info
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('billing')}
-                  className="px-4 py-2 text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl transition"
-                >
-                  Next: Billing Setup →
-                </button>
               </div>
             </div>
           )}
@@ -486,16 +467,18 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     onChange={(e) => {
                       const newPlan = e.target.value;
                       setSubscriptionPlan(newPlan);
-                      if (newPlan.includes('100 MAD')) setMonthlyFee(100);
+                      if (newPlan.includes('50 MAD') || newPlan.includes('50 د.م.')) setMonthlyFee(50);
+                      else if (newPlan.includes('100 MAD')) setMonthlyFee(100);
                       else if (newPlan.includes('120 MAD')) setMonthlyFee(120);
                       else if (newPlan.includes('150 MAD')) setMonthlyFee(150);
                       else if (newPlan.includes('200 MAD')) setMonthlyFee(200);
                       else if (newPlan.includes('300 MAD')) setMonthlyFee(300);
                       else if (newPlan.includes('500 MAD')) setMonthlyFee(500);
                     }}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition cursor-pointer"
                   >
-                    <option value="Standard Wi-Fi Plan (100 MAD)">Standard Wi-Fi Plan (Default: 100 MAD)</option>
+                    <option value="باقة اقتصادية - 50 د.م./شهر (Pack Éco 50 MAD)">باقة اقتصادية - 50 د.م./شهر (Pack Éco 50 MAD)</option>
+                    <option value="Standard Wi-Fi Plan (100 MAD)">Standard Wi-Fi Plan (100 MAD)</option>
                     <option value="20 Mbps Fiber-Air Eco (120 MAD)">20 Mbps Fiber-Air Eco (120 MAD)</option>
                     <option value="30 Mbps Fiber-Air Ultra (150 MAD)">30 Mbps Fiber-Air Ultra (150 MAD)</option>
                     <option value="40 Mbps Gaming Plus (200 MAD)">40 Mbps Gaming Plus (200 MAD)</option>
@@ -510,17 +493,18 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                       Monthly Fee (MAD / DH)
                     </label>
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">
-                      Default: 100 MAD
+                      Standard: 100 MAD
                     </span>
                   </div>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
+                    step="1"
                     value={monthlyFee}
                     onChange={(e) => setMonthlyFee(Number(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono font-bold focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] font-mono font-bold focus:outline-none focus:border-amber-500/50 transition"
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">
+                  <p className="text-[11px] text-[#958B9F] mt-1">
                     Editable base rate for this subscriber. Override anytime.
                   </p>
                 </div>
@@ -528,36 +512,36 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-[#E0D8EB] uppercase tracking-wider mb-1.5">
                     Installation Date
                   </label>
                   <input
                     type="date"
                     value={installationDate}
                     onChange={(e) => setInstallationDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] font-mono focus:outline-none focus:border-amber-500/50 transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-[#E0D8EB] uppercase tracking-wider mb-1.5">
                     Next Due Date (1st Renewal)
                   </label>
                   <input
                     type="date"
                     value={nextDueDate}
                     onChange={(e) => setNextDueDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-cyan-500 transition"
+                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] font-mono focus:outline-none focus:border-amber-500/50 transition"
                   />
                 </div>
               </div>
 
               {/* Immediate payment toggle */}
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+              <div className="p-4 rounded-xl bg-[#130F1A] border border-[#261E33] flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-semibold text-white">
+                  <div className="text-sm font-semibold text-[#F4F0F8]">
                     Record 1st Month Payment Now
                   </div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-[#958B9F]">
                     Automatically generates a receipt and sets client status to Paid
                   </div>
                 </div>
@@ -565,12 +549,12 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                   type="checkbox"
                   checked={initialPayment}
                   onChange={(e) => setInitialPayment(e.target.checked)}
-                  className="w-5 h-5 accent-cyan-500 rounded cursor-pointer"
+                  className="w-5 h-5 accent-amber-500 rounded cursor-pointer"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-[#E0D8EB] uppercase tracking-wider mb-1.5">
                   Technician Installation Notes
                 </label>
                 <textarea
@@ -578,29 +562,73 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                   placeholder="Ex: Câble Cat6 blindé passé par la façade, mât fixé sur cheminée, prise PoE salon..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+                  className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2 text-sm text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
                 />
-              </div>
-
-              <div className="pt-2 flex justify-between">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('hardware')}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition"
-                >
-                  ← Back to Hardware
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 text-sm font-semibold bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl shadow-lg shadow-cyan-900/40 transition flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Complete Installation & Onboard
-                </button>
               </div>
             </div>
           )}
-        </form>
+        </div>
+
+        {/* Sticky Modal Footer CTA Button Bar */}
+        <div className="sticky bottom-0 bg-[#130F1A]/95 backdrop-blur-md p-4 sm:px-6 sm:py-4 border-t border-[#261E33] flex items-center justify-between gap-3 z-10 shrink-0">
+          {activeTab === 'info' && (
+            <div className="flex items-center justify-between w-full gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 text-xs sm:text-sm font-medium text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] rounded-xl transition cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('hardware')}
+                className="min-h-[48px] py-3 px-5 text-xs sm:text-sm font-bold bg-[#241E30] hover:bg-[#2C243B] border border-[#3A2F4C] text-[#E0D8EB] rounded-xl transition flex items-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <span>Étape Suivante: Matériel →</span>
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'hardware' && (
+            <div className="flex items-center justify-between w-full gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('info')}
+                className="px-4 py-2.5 text-xs sm:text-sm font-medium text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] rounded-xl transition cursor-pointer"
+              >
+                ← Retour
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('billing')}
+                className="min-h-[48px] py-3 px-5 text-xs sm:text-sm font-bold bg-[#241E30] hover:bg-[#2C243B] border border-[#3A2F4C] text-[#E0D8EB] rounded-xl transition flex items-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <span>Étape Suivante: Facturation →</span>
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'billing' && (
+            <div className="flex items-center justify-between w-full gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('hardware')}
+                className="px-4 py-2.5 text-xs sm:text-sm font-medium text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] rounded-xl transition cursor-pointer"
+              >
+                ← Retour
+              </button>
+              <button
+                type="submit"
+                className="min-h-[48px] py-3 px-6 text-xs sm:text-sm font-bold bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-xl shadow-lg shadow-amber-500/15 transition flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              >
+                <CheckCircle className="w-4 h-4 text-slate-950 shrink-0" />
+                <span>حفظ وتأكيد التثبيت</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </form>
       </div>
     </div>
   );

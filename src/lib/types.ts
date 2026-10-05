@@ -1,16 +1,22 @@
-export type Role = 'admin' | 'technician';
+export type Role = 'admin' | 'technician' | 'field_lead';
 
 export interface User {
   id: string;
+  email: string;
   username: string;
   name: string;
   role: Role;
   technicianId?: string;
   phone: string;
   avatar: string;
+  status: 'active' | 'inactive';
+  password?: string;
+  specialty?: string;
+  createdAt?: string;
+  lastLoginAt?: string;
 }
 
-export type SubscriptionStatus = 'active' | 'due_soon' | 'overdue' | 'suspended';
+export type SubscriptionStatus = 'active' | 'due_soon' | 'overdue' | 'suspended' | 'archived';
 
 export interface HardwareDetails {
   antennaModel?: string;
@@ -87,6 +93,7 @@ export interface PaymentLog {
   extraReason?: string; // Reason / description for extra charge
   method: PaymentMethod;
   paymentDate: string;
+  billingMonth?: string; // YYYY-MM (e.g. '2026-05' for monthly reconciliation)
   previousDueDate: string;
   newDueDate: string;
   recordedBy: string;
