@@ -997,7 +997,10 @@ export default function AdminDashboard({
           ) : (
             <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0">
               <div className="divide-y divide-[#261E33] rounded-2xl border border-[#261E33] overflow-hidden min-w-[480px]">
-                {payments.slice(0, 5).map((pay) => {
+                {[...payments]
+                  .sort((a, b) => (b.paymentDate || '').localeCompare(a.paymentDate || '') || b.id.localeCompare(a.id))
+                  .slice(0, 5)
+                  .map((pay) => {
                   const hasExtra = (pay.extraAmount ?? 0) > 0;
                   const itemBase = pay.baseFee ?? (pay.amount - (pay.extraAmount ?? 0));
                   return (

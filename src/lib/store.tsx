@@ -64,6 +64,7 @@ interface StoreContextType {
   payments: PaymentLog[];
   technicians: Technician[];
   isHydrated: boolean;
+  isOnline: boolean;
   language: Language;
   dir: 'ltr' | 'rtl';
   setLanguage: (lang: Language) => void;
@@ -243,13 +244,21 @@ export function calculateClientStatus(nextDueDateStr: string, currentStatus?: Cl
 }
 
 export function cleanMoroccanPhoneNumber(phone: string): string {
+  if (!phone || typeof phone !== 'string') return '';
   let cleaned = phone.replace(/[\s\-\(\)\+]/g, '');
+  if (!cleaned) return '';
   if (cleaned.startsWith('0')) {
     cleaned = '212' + cleaned.slice(1);
   } else if (!cleaned.startsWith('212')) {
     cleaned = '212' + cleaned;
   }
   return cleaned;
+}
+
+export function isValidMoroccanPhone(phone: string): boolean {
+  if (!phone || typeof phone !== 'string') return false;
+  const cleaned = phone.replace(/[\s\-\(\)\+]/g, '');
+  return /^(?:(?:0[567]\d{8})|(?:212[567]\d{8}))$/.test(cleaned);
 }
 
 export function buildWhatsAppReminder(
@@ -444,6 +453,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [technicians, setTechnicians] = useState<Technician[]>(INITIAL_TECHNICIANS);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(() => {
+    return typeof navigator !== 'undefined' ? navigator.onLine : true;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
   const [language, setLanguageState] = useState<Language>('fr');
 
   const dir: 'ltr' | 'rtl' = language === 'ar' ? 'rtl' : 'ltr';
@@ -635,6 +661,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
                   const updated = prev.filter((t) => t.clientId !== deletedId);
                   try {
                     localStorage.setItem('youness_wisp_tickets', JSON.stringify(updated));
+                  } catch {}
+                  return updated;
+                });
+                setPayments((prev) => {
+                  const updated = prev.filter((p) => p.clientId !== deletedId);
+                  try {
+                    localStorage.setItem('youness_wisp_payments', JSON.stringify(updated));
                   } catch {}
                   return updated;
                 });
@@ -1013,6 +1046,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const deleteClient = (clientId: string) => {
     setClients((prev) => prev.filter((c) => c.id !== clientId));
     setTickets((prev) => prev.filter((t) => t.clientId !== clientId));
+    setPayments((prev) => prev.filter((p) => p.clientId !== clientId));
     deleteClientFromSupabase(clientId).catch((err) => {
       console.warn('[Supabase] Failed to delete client:', err);
     });
@@ -1222,10 +1256,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const client = clients.find((c) => c.id === clientId);
     if (!client) throw new Error('Client not found');
 
-    const effectiveBaseFee = typeof baseFee === 'number' && baseFee > 0 ? baseFee : (client.monthlyFee || 50);
-    const effectiveExtraAmount = typeof extraAmount === 'number' && extraAmount > 0 ? extraAmount : 0;
-    const finalAmount = typeof amount === 'number' && amount > 0
-      ? amount
+    const rawBase = typeof baseFee === 'number' && !isNaN(baseFee) ? baseFee : (client.monthlyFee || 50);
+    const effectiveBaseFee = Math.max(0, rawBase);
+    const rawExtra = typeof extraAmount === 'number' && !isNaN(extraAmount) ? extraAmount : 0;
+    const effectiveExtraAmount = Math.max(0, rawExtra);
+    const finalAmount = typeof amount === 'number' && !isNaN(amount) && amount > 0
+      ? Math.max(0, amount)
       : (effectiveBaseFee + effectiveExtraAmount);
 
     // Calculate new due date: advance from previous due date by proper calendar month(s) to cover unpaid period!
@@ -1397,6 +1433,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         technicians,
         isHydrated,
         isSyncing,
+        isOnline,
         language,
         dir,
         hasAdminAccount: users.some((u) => u.role === 'admin'),

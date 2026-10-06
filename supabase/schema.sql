@@ -143,7 +143,7 @@ CREATE POLICY "Anon read technicians" ON public.technicians
   FOR SELECT TO anon USING (true);
 
 -- Clients:
--- Allow admin and anon/authenticated access for WISP operations
+-- Operational Access (Permits fast client sync across WISP operations)
 CREATE POLICY "Allow full access to clients" ON public.clients
   FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
@@ -154,6 +154,37 @@ CREATE POLICY "Allow full access to tickets" ON public.tickets
 -- Payment Logs:
 CREATE POLICY "Allow full access to payment logs" ON public.payment_logs
   FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- ------------------------------------------------------------------------------
+-- PRODUCTION SECURITY HARDENING (Optional: execute when enforcing strict Auth JWTs)
+-- To lock down tables so only authenticated team members can mutate records:
+--
+-- DROP POLICY IF EXISTS "Allow full access to clients" ON public.clients;
+-- DROP POLICY IF EXISTS "Allow full access to tickets" ON public.tickets;
+-- DROP POLICY IF EXISTS "Allow full access to payment logs" ON public.payment_logs;
+--
+-- -- Technicians: Read clients & tickets, update assigned tickets only
+-- CREATE POLICY "Authenticated read clients" ON public.clients
+--   FOR SELECT TO authenticated USING (true);
+-- CREATE POLICY "Admin write clients" ON public.clients
+--   FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+--
+-- CREATE POLICY "Authenticated read tickets" ON public.tickets
+--   FOR SELECT TO authenticated USING (true);
+-- CREATE POLICY "Technician update assigned tickets" ON public.tickets
+--   FOR UPDATE TO authenticated USING (
+--     public.is_admin() OR assigned_to_technician_id IN (
+--       SELECT technician_id FROM public.user_profiles WHERE id = auth.uid()
+--     )
+--   );
+-- CREATE POLICY "Admin write tickets" ON public.tickets
+--   FOR INSERT TO authenticated WITH CHECK (public.is_admin());
+--
+-- CREATE POLICY "Admin write payments" ON public.payment_logs
+--   FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+-- CREATE POLICY "Authenticated read payments" ON public.payment_logs
+--   FOR SELECT TO authenticated USING (true);
+-- ------------------------------------------------------------------------------
 
 -- ==============================================================================
 -- 8. Auto-Create Profile on Supabase Auth Signup Trigger

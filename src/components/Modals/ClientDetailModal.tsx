@@ -81,7 +81,11 @@ export default function ClientDetailModal({
     }
   };
 
-  const clientPayments = payments.filter((p) => p.clientId === client.id);
+  const clientPayments = React.useMemo(() => {
+    return payments
+      .filter((p) => p.clientId === client.id)
+      .sort((a, b) => (b.paymentDate || '').localeCompare(a.paymentDate || '') || b.id.localeCompare(a.id));
+  }, [payments, client.id]);
   const daysDiff = getDaysDiffFromToday(client.nextDueDate);
 
   const copyToClipboard = (text: string, fieldName: string) => {
@@ -243,7 +247,7 @@ export default function ClientDetailModal({
 
                   {/* Quick override presets */}
                   <div className="flex items-center gap-1 text-[10px]">
-                    {[100, 120, 150, 200].map((preset) => (
+                    {[50, 100, 120, 150, 200].map((preset) => (
                       <button
                         key={preset}
                         type="button"

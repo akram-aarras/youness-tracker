@@ -20,6 +20,7 @@ import {
   Check,
   LogOut,
   Shield,
+  WifiOff,
 } from 'lucide-react';
 
 export default function TechnicianView() {
@@ -33,6 +34,7 @@ export default function TechnicianView() {
     updateTicketStatus,
     t,
     dir,
+    isOnline,
   } = useStore();
 
   const router = useRouter();
@@ -325,6 +327,19 @@ export default function TechnicianView() {
           </button>
         </div>
       </header>
+
+      {/* Offline Indicator Banner */}
+      {!isOnline && (
+        <div className="bg-rose-500/15 border-b border-rose-500/30 px-4 py-2 flex items-center justify-between text-xs text-rose-300">
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-3.5 h-3.5 text-rose-400 shrink-0 animate-pulse" />
+            <span className="font-semibold text-[11px]">Mode hors ligne (Réseau 4G indisponible)</span>
+          </div>
+          <span className="text-[10px] bg-rose-950/80 px-2 py-0.5 rounded border border-rose-800 text-rose-300">
+            Enregistré en local
+          </span>
+        </div>
+      )}
 
       {/* Main Task List */}
       <main className="flex-1 p-4 space-y-4 pb-20">

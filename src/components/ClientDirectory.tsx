@@ -38,37 +38,55 @@ export default function ClientDirectory({
   const { clients, t } = useStore();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedNeighborhood, setSelectedNeighborhood] = useState('ALL');
   const [selectedStatusTab, setSelectedStatusTab] = useState<'ALL' | SubscriptionStatus>('ALL');
 
+  // Debounce search input by 200ms to scale smoothly across 500+ records
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   // Extract unique neighborhoods from existing clients or fallback to Tétouan areas
-  const clientNeighborhoods = Array.from(
-    new Set(clients.map((c) => c.neighborhood).filter(Boolean) as string[])
-  );
-  const neighborhoods = [
-    'ALL',
-    ...(clientNeighborhoods.length > 0 ? clientNeighborhoods : TETOUAN_NEIGHBORHOODS),
-  ];
+  const clientNeighborhoods = React.useMemo(() => {
+    return Array.from(
+      new Set(clients.map((c) => c.neighborhood).filter(Boolean) as string[])
+    );
+  }, [clients]);
 
-  // Filtering
-  const filteredClients = clients.filter((client) => {
-    // Search query
-    const matchSearch =
-      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.phone.includes(searchTerm) ||
-      Boolean(client.hardware?.antennaMac?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      Boolean(client.hardware?.pppoeUsername?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const neighborhoods = React.useMemo(() => {
+    return [
+      'ALL',
+      ...(clientNeighborhoods.length > 0 ? clientNeighborhoods : TETOUAN_NEIGHBORHOODS),
+    ];
+  }, [clientNeighborhoods]);
 
-    // Neighborhood filter
-    const matchNeighborhood =
-      selectedNeighborhood === 'ALL' || client.neighborhood === selectedNeighborhood;
+  // Filtering (Memoized for high performance)
+  const filteredClients = React.useMemo(() => {
+    const term = debouncedSearch.toLowerCase().trim();
+    return clients.filter((client) => {
+      // Search query
+      const matchSearch =
+        !term ||
+        client.name.toLowerCase().includes(term) ||
+        client.phone.includes(term) ||
+        Boolean(client.hardware?.antennaMac?.toLowerCase().includes(term)) ||
+        Boolean(client.hardware?.pppoeUsername?.toLowerCase().includes(term));
 
-    // Status filter
-    const matchStatus =
-      selectedStatusTab === 'ALL' || client.status === selectedStatusTab;
+      // Neighborhood filter
+      const matchNeighborhood =
+        selectedNeighborhood === 'ALL' || client.neighborhood === selectedNeighborhood;
 
-    return matchSearch && matchNeighborhood && matchStatus;
-  });
+      // Status filter
+      const matchStatus =
+        selectedStatusTab === 'ALL' || client.status === selectedStatusTab;
+
+      return matchSearch && matchNeighborhood && matchStatus;
+    });
+  }, [clients, debouncedSearch, selectedNeighborhood, selectedStatusTab]);
 
   // Signal level badge helper
   const getSignalColor = (dbm: number) => {

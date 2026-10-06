@@ -22,6 +22,7 @@ import {
   Download,
   RefreshCw,
   CreditCard,
+  WifiOff,
 } from 'lucide-react';
 
 interface Props {
@@ -42,6 +43,7 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab, onOpenPa
     exportDataAsJSON,
     refreshFromSupabase,
     isSyncing,
+    isOnline,
   } = useStore();
   const pathname = usePathname();
   const router = useRouter();
@@ -191,6 +193,17 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab, onOpenPa
 
           {/* Right Actions, Language Switcher & Role Menu */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Offline Alert Indicator */}
+            {!isOnline && (
+              <div
+                title="Connexion réseau interrompue"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-rose-500/15 border border-rose-500/30 text-rose-400"
+              >
+                <WifiOff className="w-3.5 h-3.5 animate-pulse" />
+                <span className="hidden sm:inline text-[11px]">Hors ligne</span>
+              </div>
+            )}
+
             {/* Theme Toggle (Desktop & Tablet) */}
             <ThemeToggle />
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useStore, getTodayDateStr, addMonthsToDateStr } from '@/lib/store';
+import { useStore, getTodayDateStr, addMonthsToDateStr, isValidMoroccanPhone } from '@/lib/store';
 import {
   X,
   UserPlus,
@@ -258,6 +258,11 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] font-mono focus:outline-none focus:border-amber-500/50 transition"
                   />
+                  {phone.trim().length > 0 && !isValidMoroccanPhone(phone) && (
+                    <p className="text-[11px] text-amber-400/90 mt-1">
+                      Format suggéré: 06XXXXXXXX, 07XXXXXXXX ou +2126XXXXXXXX
+                    </p>
+                  )}
                 </div>
               </div>
 
