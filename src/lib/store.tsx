@@ -414,11 +414,28 @@ export function formatBillingMonthLabel(monthStr: string, lang: 'ar' | 'fr' | 'e
   return date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'long', year: 'numeric' });
 }
 
-export function getHistoricalMonthList(count = 12): { value: string; labelAr: string; labelFr: string }[] {
-  const result: { value: string; labelAr: string; labelFr: string }[] = [];
+export interface MonthOption {
+  value: string;
+  labelAr: string;
+  labelFr: string;
+  isFuture: boolean;
+  isCurrent: boolean;
+  isPast: boolean;
+}
+
+export function getHistoricalMonthList(
+  pastCount = 18,
+  futureCount = 12
+): MonthOption[] {
+  const result: MonthOption[] = [];
   const now = new Date();
-  for (let i = 0; i < count; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+  const currentY = now.getFullYear();
+  const currentM = now.getMonth();
+  const currentVal = `${currentY}-${String(currentM + 1).padStart(2, '0')}`;
+
+  // 1. Upcoming future months: +futureCount down to +1 (descending order)
+  for (let i = futureCount; i >= 1; i--) {
+    const d = new Date(currentY, currentM + i, 1);
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const value = `${year}-${month}`;
@@ -426,18 +443,51 @@ export function getHistoricalMonthList(count = 12): { value: string; labelAr: st
       value,
       labelAr: formatBillingMonthLabel(value, 'ar'),
       labelFr: formatBillingMonthLabel(value, 'fr'),
+      isFuture: true,
+      isCurrent: false,
+      isPast: false,
     });
   }
+
+  // 2. Current active calendar month
+  result.push({
+    value: currentVal,
+    labelAr: formatBillingMonthLabel(currentVal, 'ar'),
+    labelFr: formatBillingMonthLabel(currentVal, 'fr'),
+    isFuture: false,
+    isCurrent: true,
+    isPast: false,
+  });
+
+  // 3. Historical past months: -1 down to -pastCount
+  for (let i = 1; i <= pastCount; i++) {
+    const d = new Date(currentY, currentM - i, 1);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const value = `${year}-${month}`;
+    result.push({
+      value,
+      labelAr: formatBillingMonthLabel(value, 'ar'),
+      labelFr: formatBillingMonthLabel(value, 'fr'),
+      isFuture: false,
+      isCurrent: false,
+      isPast: true,
+    });
+  }
+
   return result;
 }
 
 export function buildHistoricalUnpaidReminderUrl(
   client: Client,
-  monthLabel: string
+  monthLabel: string,
+  isFuture: boolean = false
 ) {
   const cleanPhone = cleanMoroccanPhoneNumber(client.phone);
   const fee = client.monthlyFee || 50;
-  const message = `السلام عليكم أخي ${client.name}، نذكركم بأن اشتراك الإنترنت لشهر ${monthLabel} لم يتم تسديده بعد (المبلغ: ${fee} درهم). المرجو تسوية الواجب وشكراً - Youness WiFi`;
+  const message = isFuture
+    ? `السلام عليكم أخي ${client.name}، نود تذكيركم بموعد تجديد اشتراك الإنترنت لشهر ${monthLabel} المقبل (الواجب: ${fee} درهم). يمكنكم الأداء المسبق لتفادي أي انقطاع وشكراً - Youness WiFi`
+    : `السلام عليكم أخي ${client.name}، نذكركم بأن اشتراك الإنترنت لشهر ${monthLabel} لم يتم تسديده بعد (المبلغ: ${fee} درهم). المرجو تسوية الواجب وشكراً - Youness WiFi`;
   const url = cleanPhone
     ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
     : `https://wa.me/?text=${encodeURIComponent(message)}`;

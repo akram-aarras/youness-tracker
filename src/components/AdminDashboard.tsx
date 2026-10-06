@@ -28,6 +28,7 @@ import {
   Calendar,
   CalendarDays,
   Search,
+  Sparkles,
 } from 'lucide-react';
 import InvoiceReceiptModal from './Modals/InvoiceReceiptModal';
 import { PaymentLog } from '@/lib/types';
@@ -106,14 +107,42 @@ export default function AdminDashboard({
     });
 
   // ─────────────────────────────────────────────────────────────
-  // 4. HISTORICAL MONTHLY RECONCILIATION & UNPAID LEDGER LOGIC
+  // 4. HISTORICAL & FUTURE MONTHLY RECONCILIATION & ADVANCE LEDGER
+  // (التدقيق المالي، الدفعات المسبقة، ورصد الاشتراكات)
   // ─────────────────────────────────────────────────────────────
-  const historicalMonthOptions = React.useMemo(() => getHistoricalMonthList(18), []);
+  const financialMonthOptions = React.useMemo(() => {
+    // Generate 18 past months and 12 future months
+    const baseList = getHistoricalMonthList(18, 12);
+    const existingSet = new Set(baseList.map((m) => m.value));
+
+    // Ensure any custom billingMonth recorded in payments is included
+    const additional: typeof baseList = [];
+    payments.forEach((p) => {
+      if (p.billingMonth && !existingSet.has(p.billingMonth)) {
+        existingSet.add(p.billingMonth);
+        additional.push({
+          value: p.billingMonth,
+          labelAr: formatBillingMonthLabel(p.billingMonth, 'ar'),
+          labelFr: formatBillingMonthLabel(p.billingMonth, 'fr'),
+          isFuture: p.billingMonth > currentYearMonth,
+          isCurrent: p.billingMonth === currentYearMonth,
+          isPast: p.billingMonth < currentYearMonth,
+        });
+      }
+    });
+
+    return [...additional, ...baseList].sort((a, b) => b.value.localeCompare(a.value));
+  }, [payments, currentYearMonth]);
+
   const [selectedMonthStr, setSelectedMonthStr] = React.useState<string>(
-    () => todayStr.substring(0, 7) // Defaults to current calendar month (e.g. '2026-10')
+    () => todayStr.substring(0, 7) // Defaults strictly to current calendar month (e.g. '2026-10')
   );
   const [historicalFilterTab, setHistoricalFilterTab] = React.useState<'all' | 'paid' | 'unpaid'>('all');
   const [historicalSearchQuery, setHistoricalSearchQuery] = React.useState<string>('');
+
+  const isFutureMonth = selectedMonthStr > currentYearMonth;
+  const isCurrentMonth = selectedMonthStr === currentYearMonth;
+  const isPastMonth = selectedMonthStr < currentYearMonth;
 
   const selectedMonthLabelAr = React.useMemo(
     () => formatBillingMonthLabel(selectedMonthStr, 'ar'),
@@ -130,26 +159,58 @@ export default function AdminDashboard({
     allEligibleList,
     totalCollected,
     totalUnpaid,
+    totalProjectedRevenue,
     collectionRate,
   } = React.useMemo(() => {
-    // Determine end of selected month date string: YYYY-MM-DD
+    // Determine start & end date of selected month safely
     const [yStr, mStr] = selectedMonthStr.split('-');
     const y = parseInt(yStr, 10);
     const m = parseInt(mStr, 10);
-    const lastDayDate = new Date(y, m, 0);
-    const endOfSelectedMonthStr = lastDayDate.toISOString().split('T')[0];
+    const lastDay = new Date(y, m, 0).getDate();
+    const startOfSelectedMonthStr = `${yStr}-${mStr}-01`;
+    const endOfSelectedMonthStr = `${yStr}-${mStr}-${String(lastDay).padStart(2, '0')}`;
 
-    // 1. Filter all clients who were already registered/active during that month
+    // 1. Filter all eligible clients
+    // Non-archived clients (or archived clients who have a payment transaction in this month)
     const eligible = clients.filter((c) => {
-      if (!c.installationDate) return true;
-      return c.installationDate <= endOfSelectedMonthStr;
+      const hasPaymentInMonth = payments.some(
+        (p) =>
+          p.clientId === c.id &&
+          (p.billingMonth === selectedMonthStr ||
+            (p.paymentDate && p.paymentDate.startsWith(selectedMonthStr)))
+      );
+
+      if (c.status === 'archived' && !hasPaymentInMonth) {
+        return false;
+      }
+
+      // For past months, only clients installed on or before end of that month
+      if (isPastMonth && c.installationDate && c.installationDate > endOfSelectedMonthStr) {
+        return false;
+      }
+
+      return true;
     });
 
-    const paid: { client: Client; payment?: PaymentLog; isPaid: true }[] = [];
-    const unpaid: { client: Client; payment?: undefined; isPaid: false }[] = [];
+    const paid: {
+      client: Client;
+      payment?: PaymentLog;
+      isPaid: true;
+      isAdvance: boolean;
+      coverageDetail?: string;
+    }[] = [];
 
-    // 2. Cross-reference payments for this billing month
+    const unpaid: {
+      client: Client;
+      payment?: undefined;
+      isPaid: false;
+      isDueInMonth: boolean;
+      isOverdueFromPast: boolean;
+    }[] = [];
+
+    // 2. Cross-reference payments and subscription coverage for this billing month
     eligible.forEach((client) => {
+      // Direct payment logged specifically for this month or paid in this month
       const matchPayment = payments.find((p) => {
         if (p.clientId !== client.id) return false;
         if (p.billingMonth && p.billingMonth === selectedMonthStr) return true;
@@ -157,33 +218,71 @@ export default function AdminDashboard({
         return false;
       });
 
-      if (matchPayment) {
-        paid.push({ client, payment: matchPayment, isPaid: true });
+      // Subscription already covered in advance via nextDueDate
+      const isCoveredByDueDate = Boolean(
+        client.nextDueDate && client.nextDueDate > endOfSelectedMonthStr
+      );
+
+      if (matchPayment || isCoveredByDueDate) {
+        // Associated payment log for slip viewing:
+        const relatedPayment =
+          matchPayment ||
+          payments.find((p) => p.clientId === client.id);
+
+        paid.push({
+          client,
+          payment: relatedPayment,
+          isPaid: true,
+          isAdvance:
+            isFutureMonth ||
+            Boolean(matchPayment?.paymentDate && matchPayment.paymentDate < startOfSelectedMonthStr),
+          coverageDetail: isCoveredByDueDate
+            ? `مغطى حتى ${client.nextDueDate}`
+            : matchPayment?.receiptNumber
+            ? `وصل ${matchPayment.receiptNumber}`
+            : undefined,
+        });
       } else {
-        unpaid.push({ client, isPaid: false });
+        const isDueInMonth = Boolean(
+          client.nextDueDate && client.nextDueDate.startsWith(selectedMonthStr)
+        );
+        const isOverdueFromPast = Boolean(
+          client.nextDueDate && client.nextDueDate < startOfSelectedMonthStr
+        );
+
+        unpaid.push({
+          client,
+          isPaid: false,
+          isDueInMonth,
+          isOverdueFromPast,
+        });
       }
     });
 
+    // Collected / Advance payments revenue
     const collected = paid.reduce((sum, item) => {
       return sum + (item.payment?.amount ?? (item.client.monthlyFee || 50));
     }, 0);
 
+    // Uncollected / Projected revenue to collect
     const uncollected = unpaid.reduce((sum, item) => {
       return sum + (item.client.monthlyFee || 50);
     }, 0);
 
+    const projectedRevenue = collected + uncollected;
     const totalCount = paid.length + unpaid.length;
     const rate = totalCount > 0 ? Math.round((paid.length / totalCount) * 100) : 100;
 
     return {
       paidList: paid,
       unpaidList: unpaid,
-      allEligibleList: [...unpaid, ...paid],
+      allEligibleList: [...paid, ...unpaid],
       totalCollected: collected,
       totalUnpaid: uncollected,
+      totalProjectedRevenue: projectedRevenue,
       collectionRate: rate,
     };
-  }, [clients, payments, selectedMonthStr]);
+  }, [clients, payments, selectedMonthStr, isFutureMonth, isPastMonth]);
 
   const filteredReconciliationRows = React.useMemo(() => {
     let list =
@@ -211,7 +310,7 @@ export default function AdminDashboard({
   }, [paidList, unpaidList, allEligibleList, historicalFilterTab, historicalSearchQuery]);
 
   const handleSendUnpaidWhatsApp = (client: Client) => {
-    const { url } = buildHistoricalUnpaidReminderUrl(client, selectedMonthLabelAr);
+    const { url } = buildHistoricalUnpaidReminderUrl(client, selectedMonthLabelAr, isFutureMonth);
     window.open(url, '_blank');
   };
 
@@ -598,9 +697,28 @@ export default function AdminDashboard({
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#382647] text-[#F3E8FF] border border-[#523368]">
                   {selectedMonthLabelAr}
                 </span>
+                {isFutureMonth && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    <Sparkles className="w-3 h-3 text-amber-400" />
+                    <span>شهر مستقبلي • تتبع الدفعات المسبقة</span>
+                  </span>
+                )}
+                {isCurrentMonth && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>الشهر الحالي النشط</span>
+                  </span>
+                )}
+                {isPastMonth && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#261E33] text-[#958B9F] border border-[#3A2F4C]">
+                    <span>أرشيف سابق</span>
+                  </span>
+                )}
               </div>
               <p className="text-xs text-[#958B9F] mt-0.5">
-                كشف الحساب الشهري، رصد غير المؤدين، والتحقق التلقائي من تسوية اشتراكات كل شهر
+                {isFutureMonth
+                  ? 'رصد الدفعات المسبقة، تقدير المداخيل المرتقبة، ومتابعة الاشتراكات المستحقة للتجديد مسبقاً'
+                  : 'كشف الحساب الشهري، رصد غير المؤدين، والتحقق التلقائي من تسوية اشتراكات كل شهر'}
               </p>
             </div>
           </div>
@@ -611,17 +729,39 @@ export default function AdminDashboard({
               <Calendar className="w-3.5 h-3.5 text-amber-400" />
               <span>الشهر المالي:</span>
             </label>
-            <div className="relative flex-1 lg:w-60">
+            <div className="relative flex-1 lg:w-64">
               <select
                 value={selectedMonthStr}
                 onChange={(e) => setSelectedMonthStr(e.target.value)}
                 className="w-full appearance-none bg-[#130F1A] border border-[#2D253B] hover:border-amber-500/50 rounded-xl px-3.5 py-2.5 text-xs text-[#F4F0F8] font-bold focus:outline-none focus:border-amber-500 transition cursor-pointer pr-8"
               >
-                {historicalMonthOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value} className="bg-[#191522] text-[#F4F0F8]">
-                    {opt.labelAr} ({opt.value})
-                  </option>
-                ))}
+                <optgroup label="✨ الأشهر القادمة / Mois à venir (Avances)" className="bg-[#191522] text-amber-400 font-bold">
+                  {financialMonthOptions
+                    .filter((opt) => opt.isFuture)
+                    .map((opt) => (
+                      <option key={opt.value} value={opt.value} className="bg-[#191522] text-[#F4F0F8]">
+                        {opt.labelAr} ({opt.value}) • دفعة مسبقة
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="📍 الشهر الحالي / Mois actif" className="bg-[#191522] text-emerald-400 font-bold">
+                  {financialMonthOptions
+                    .filter((opt) => opt.isCurrent)
+                    .map((opt) => (
+                      <option key={opt.value} value={opt.value} className="bg-[#191522] text-[#F4F0F8]">
+                        ★ {opt.labelAr} ({opt.value}) — الشهر الحالي
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="📋 الأشهر السابقة / Historique (18 mois)" className="bg-[#191522] text-[#958B9F] font-bold">
+                  {financialMonthOptions
+                    .filter((opt) => opt.isPast)
+                    .map((opt) => (
+                      <option key={opt.value} value={opt.value} className="bg-[#191522] text-[#F4F0F8]">
+                        {opt.labelAr} ({opt.value})
+                      </option>
+                    ))}
+                </optgroup>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 rtl:right-auto rtl:left-0 flex items-center px-2.5 text-[#958B9F] text-xs">
                 ▼
@@ -632,12 +772,16 @@ export default function AdminDashboard({
 
         {/* 3 Summary KPI Cards for the Selected Month */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
-          {/* Card 1: Paid Subscriptions (المؤدون) */}
+          {/* Card 1: Paid Subscriptions / Advance Payments */}
           <div className="p-4 sm:p-4.5 rounded-2xl bg-[#130F1A] border border-emerald-500/20 hover:border-emerald-500/40 transition shadow-lg shadow-black/20 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#958B9F]">
-                  إجمالي الاشتراكات المؤداة (Payés)
+                  {isFutureMonth
+                    ? 'إجمالي الدفعات المسبقة (Paiements d’avance)'
+                    : isCurrentMonth
+                    ? 'إجمالي المحصل للشهر (Encaissé)'
+                    : 'إجمالي الاشتراكات المؤداة (Payés)'}
                 </span>
                 <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   <CheckCircle className="w-4 h-4 text-emerald-400" />
@@ -653,45 +797,88 @@ export default function AdminDashboard({
             <div className="mt-3 pt-2.5 border-t border-[#261E33] flex items-center justify-between text-xs text-[#958B9F]">
               <span className="text-[#E0D8EB] font-bold flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span>{paidList.length} مشترك مسوى</span>
+                <span>
+                  {paidList.length} {isFutureMonth ? 'مشترك سدد مسبقاً' : 'مشترك مسوى'}
+                </span>
               </span>
-              <span className="font-mono text-[11px] text-emerald-400/90 font-semibold">مداخيل محصلة</span>
+              <span className="font-mono text-[11px] text-emerald-400/90 font-semibold">
+                {isFutureMonth ? 'مداخيل مسبقة محصلة' : 'مداخيل محصلة'}
+              </span>
             </div>
           </div>
 
-          {/* Card 2: Unpaid Subscribers (المتخلفون عن الأداء) */}
-          <div className="p-4 sm:p-4.5 rounded-2xl bg-[#130F1A] border border-rose-500/20 hover:border-rose-500/40 transition shadow-lg shadow-black/20 flex flex-col justify-between">
+          {/* Card 2: Unpaid / Projected Revenue to Collect */}
+          <div className={`p-4 sm:p-4.5 rounded-2xl bg-[#130F1A] border transition shadow-lg shadow-black/20 flex flex-col justify-between ${
+            isFutureMonth
+              ? 'border-amber-500/20 hover:border-amber-500/40'
+              : 'border-rose-500/20 hover:border-rose-500/40'
+          }`}>
             <div>
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#958B9F]">
-                  المتخلفون عن الأداء (Impayés)
+                  {isFutureMonth
+                    ? 'المداخيل المتوقعة للتحصيل (Revenu projeté)'
+                    : isCurrentMonth
+                    ? 'مستحقات قيد التحصيل (En attente)'
+                    : 'المتخلفون عن الأداء (Impayés)'}
                 </span>
-                <div className="p-1.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/30">
-                  <AlertTriangle className="w-4 h-4 text-rose-400" />
+                <div className={`p-1.5 rounded-xl border ${
+                  isFutureMonth
+                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/25'
+                    : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                }`}>
+                  {isFutureMonth ? (
+                    <Clock className="w-4 h-4 text-amber-400" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-rose-400" />
+                  )}
                 </div>
               </div>
               <div className="mt-2.5 flex items-baseline gap-1.5">
-                <span className="text-2xl sm:text-3xl font-black text-rose-400 font-mono tracking-tight">
+                <span className={`text-2xl sm:text-3xl font-black font-mono tracking-tight ${
+                  isFutureMonth ? 'text-amber-400' : 'text-rose-400'
+                }`}>
                   {totalUnpaid.toLocaleString()}
                 </span>
-                <span className="text-xs font-bold text-rose-400">{t('currency')}</span>
+                <span className={`text-xs font-bold ${
+                  isFutureMonth ? 'text-amber-400' : 'text-rose-400'
+                }`}>
+                  {t('currency')}
+                </span>
               </div>
             </div>
             <div className="mt-3 pt-2.5 border-t border-[#261E33] flex items-center justify-between text-xs text-[#958B9F]">
-              <span className="text-rose-400 font-bold flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-rose-500" />
-                <span>{unpaidList.length} مشتركين غير مؤدين</span>
+              <span className={`font-bold flex items-center gap-1.5 ${
+                isFutureMonth ? 'text-amber-300' : 'text-rose-400'
+              }`}>
+                <span className={`w-2 h-2 rounded-full ${
+                  isFutureMonth ? 'bg-amber-400' : 'bg-rose-500'
+                }`} />
+                <span>
+                  {unpaidList.length}{' '}
+                  {isFutureMonth
+                    ? 'اشتراك مستحق للتجديد'
+                    : isCurrentMonth
+                    ? 'اشتراك قيد التحصيل'
+                    : 'مشتركين غير مؤدين'}
+                </span>
               </span>
-              <span className="font-mono text-[11px] text-rose-400/90 font-semibold">مستحقات معلقة</span>
+              <span className={`font-mono text-[11px] font-semibold ${
+                isFutureMonth ? 'text-amber-400/90' : 'text-rose-400/90'
+              }`}>
+                {isFutureMonth ? 'مداخيل مرتقبة' : isCurrentMonth ? 'واجب السداد' : 'مستحقات معلقة'}
+              </span>
             </div>
           </div>
 
-          {/* Card 3: Collection Rate (نسبة التحصيل) */}
+          {/* Card 3: Collection / Advance Coverage Rate */}
           <div className="p-4 sm:p-4.5 rounded-2xl bg-[#130F1A] border border-[#261E33] hover:border-amber-500/30 transition shadow-lg shadow-black/20 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#958B9F]">
-                  نسبة التحصيل (Collection Rate)
+                  {isFutureMonth
+                    ? 'نسبة التغطية المسبقة (Couverture anticipée)'
+                    : 'نسبة التحصيل (Collection Rate)'}
                 </span>
                 <div className="p-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
                   <TrendingUp className="w-4 h-4 text-amber-400" />
@@ -720,9 +907,17 @@ export default function AdminDashboard({
               </div>
             </div>
             <div className="mt-3 pt-2.5 border-t border-[#261E33] flex items-center justify-between text-xs text-[#958B9F]">
-              <span>معدل تسوية اشتراكات {selectedMonthLabelAr}</span>
+              <span>
+                {isFutureMonth
+                  ? `معدل التسوية المسبقة لشهر ${selectedMonthLabelAr}`
+                  : `معدل تسوية اشتراكات ${selectedMonthLabelAr}`}
+              </span>
               <span className="text-amber-400 font-mono text-[11px] font-bold">
-                {collectionRate === 100 ? 'كامل 100%' : `${100 - collectionRate}% متبقية`}
+                {isFutureMonth
+                  ? `إجمالي المتوقع: ${totalProjectedRevenue.toLocaleString()} ${t('currency')}`
+                  : collectionRate === 100
+                  ? 'كامل 100%'
+                  : `${100 - collectionRate}% متبقية`}
               </span>
             </div>
           </div>
@@ -741,7 +936,7 @@ export default function AdminDashboard({
                   : 'text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30]/60'
               }`}
             >
-              <span>الجميع (All)</span>
+              <span>{isFutureMonth ? 'جميع الاشتراكات (Tous)' : 'الجميع (All)'}</span>
               <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-[#191522] text-[#E0D8EB]">
                 {allEligibleList.length}
               </span>
@@ -757,7 +952,7 @@ export default function AdminDashboard({
               }`}
             >
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span>المؤدون (Payés)</span>
+              <span>{isFutureMonth ? 'دفعات مسبقة (Payés d’avance)' : 'المؤدون (Payés)'}</span>
               <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-bold">
                 {paidList.length}
               </span>
@@ -768,13 +963,27 @@ export default function AdminDashboard({
               onClick={() => setHistoricalFilterTab('unpaid')}
               className={`min-h-[38px] px-3.5 py-1.5 rounded-xl font-medium transition cursor-pointer flex items-center gap-1.5 ${
                 historicalFilterTab === 'unpaid'
-                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold shadow-sm'
+                  ? isFutureMonth
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold shadow-sm'
+                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold shadow-sm'
+                  : isFutureMonth
+                  ? 'text-[#958B9F] hover:text-amber-400 hover:bg-[#241E30]/60'
                   : 'text-[#958B9F] hover:text-rose-400 hover:bg-[#241E30]/60'
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-rose-500" />
-              <span>غير المؤدين (Impayés)</span>
-              <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-rose-950/80 text-rose-300 border border-rose-800/60 font-bold">
+              <span className={`w-2 h-2 rounded-full ${isFutureMonth ? 'bg-amber-400' : 'bg-rose-500'}`} />
+              <span>
+                {isFutureMonth
+                  ? 'مستحق للتجديد (À renouveler)'
+                  : isCurrentMonth
+                  ? 'قيد التحصيل (En attente)'
+                  : 'غير المؤدين (Impayés)'}
+              </span>
+              <span className={`font-mono text-[10px] px-1.5 py-0.2 rounded-full font-bold border ${
+                isFutureMonth
+                  ? 'bg-amber-950/80 text-amber-300 border-amber-800/60'
+                  : 'bg-rose-950/80 text-rose-300 border-rose-800/60'
+              }`}>
                 {unpaidList.length}
               </span>
             </button>
@@ -785,7 +994,7 @@ export default function AdminDashboard({
             <Search className="w-3.5 h-3.5 text-[#958B9F] absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="بحث في كشف هذا الشهر..."
+              placeholder={`بحث في كشف ${selectedMonthLabelAr}...`}
               value={historicalSearchQuery}
               onChange={(e) => setHistoricalSearchQuery(e.target.value)}
               className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-1.5 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition"
@@ -799,13 +1008,19 @@ export default function AdminDashboard({
             <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto" />
             <p className="text-sm font-semibold text-[#F4F0F8]">
               {historicalFilterTab === 'unpaid'
-                ? `تهانينا! جميع المشتركين سددوا اشتراك ${selectedMonthLabelAr}.`
+                ? isFutureMonth
+                  ? `ممتاز! جميع المشتركين قاموا بالتسديد المسبق لشهر ${selectedMonthLabelAr}.`
+                  : `تهانينا! جميع المشتركين سددوا اشتراك ${selectedMonthLabelAr}.`
+                : historicalFilterTab === 'paid' && isFutureMonth
+                ? `لا توجد دفعات مسبقة مسجلة بعد لشهر ${selectedMonthLabelAr}.`
                 : 'لا توجد سجلات مطابقة في هذا التصنيف.'}
             </p>
             <p className="text-xs text-[#958B9F]">
               {historicalFilterTab === 'unpaid'
-                ? 'نسبة التحصيل بلغت 100% لهذا الشهر المالي المحدد.'
-                : 'يمكنك اختيار شهر آخر من القائمة للتدقيق.'}
+                ? isFutureMonth
+                  ? 'لا توجد اشتراكات معلقة للتجديد في هذا الشهر المستقبلي.'
+                  : 'نسبة التحصيل بلغت 100% لهذا الشهر المالي المحدد.'
+                : 'يمكنك اختيار شهر آخر من القائمة أو تسجيل دفعة جديدة.'}
             </p>
           </div>
         ) : (
@@ -818,12 +1033,16 @@ export default function AdminDashboard({
                     <th className="py-3 px-4">Quartier & Adresse</th>
                     <th className="py-3 px-4">CPE & PPPoE</th>
                     <th className="py-3 px-4">الواجب الشهري</th>
-                    <th className="py-3 px-4">حالة شهر {selectedMonthStr}</th>
+                    <th className="py-3 px-4">
+                      {isFutureMonth ? `وضعية شهر ${selectedMonthStr} (مستقبلي)` : `حالة شهر ${selectedMonthStr}`}
+                    </th>
                     <th className="py-3 px-4 text-right rtl:text-left">{t('actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#261E33] bg-[#130F1A]">
-                  {filteredReconciliationRows.map(({ client, payment, isPaid }) => {
+                  {filteredReconciliationRows.map((row) => {
+                    const { client, payment, isPaid } = row;
+                    const coverageDetail = 'coverageDetail' in row ? (row as any).coverageDetail : undefined;
                     const fee = client.monthlyFee || 50;
 
                     return (
@@ -890,15 +1109,38 @@ export default function AdminDashboard({
                         <td className="py-3.5 px-4">
                           {isPaid ? (
                             <div>
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                                <CheckCircle className="w-3 h-3" />
-                                <span>تم الأداء (Payé)</span>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                <CheckCircle className="w-3 h-3 text-emerald-400" />
+                                <span>
+                                  {isFutureMonth ? 'دفعة مسبقة (Payé d’avance)' : 'تم الأداء (Payé)'}
+                                </span>
                               </span>
-                              {payment && (
-                                <div className="text-[10px] text-[#958B9F] font-mono mt-1">
-                                  {payment.paymentDate} • {payment.receiptNumber}
-                                </div>
-                              )}
+                              <div className="text-[10px] text-[#958B9F] font-mono mt-1">
+                                {coverageDetail || (payment ? `${payment.paymentDate} • ${payment.receiptNumber}` : 'مسوى مسبقاً')}
+                              </div>
+                            </div>
+                          ) : isFutureMonth ? (
+                            <div>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                <Clock className="w-3 h-3 text-amber-400" />
+                                <span>مستحق للتجديد (À renouveler)</span>
+                              </span>
+                              <div className="text-[10px] text-[#958B9F] font-mono mt-0.5">
+                                تاريخ التجديد: {client.nextDueDate}
+                              </div>
+                              <div className="text-[10px] text-amber-400/90 font-mono font-semibold">
+                                متوقع: {fee} {t('currency')}
+                              </div>
+                            </div>
+                          ) : isCurrentMonth ? (
+                            <div>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                <Clock className="w-3 h-3 text-amber-400" />
+                                <span>قيد التحصيل (En attente)</span>
+                              </span>
+                              <div className="text-[10px] text-amber-400/80 font-mono mt-0.5">
+                                واجب السداد: {fee} {t('currency')}
+                              </div>
                             </div>
                           ) : (
                             <div>
@@ -918,26 +1160,34 @@ export default function AdminDashboard({
                           <div className="flex items-center justify-end rtl:justify-start gap-2">
                             {!isPaid ? (
                               <>
-                                {/* Action 2: 1-Tap WhatsApp Reminder */}
+                                {/* Action 1: WhatsApp Reminder */}
                                 <button
                                   type="button"
                                   onClick={() => handleSendUnpaidWhatsApp(client)}
                                   className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-sm shadow-emerald-950 hover:scale-105 active:scale-95 cursor-pointer"
-                                  title={`إرسال تذكير واتساب لشهر ${selectedMonthLabelAr}`}
+                                  title={
+                                    isFutureMonth
+                                      ? `إرسال تذكير مسبق لتجديد شهر ${selectedMonthLabelAr}`
+                                      : `إرسال تذكير واتساب لشهر ${selectedMonthLabelAr}`
+                                  }
                                 >
                                   <MessageSquare className="w-3.5 h-3.5" />
-                                  <span>تذكير واتساب</span>
+                                  <span>{isFutureMonth ? 'تذكير مسبق' : 'تذكير واتساب'}</span>
                                 </button>
 
-                                {/* Action 1: Record Payment for this month */}
+                                {/* Action 2: Record Payment */}
                                 <button
                                   type="button"
                                   onClick={() => onOpenPaymentModal(client.id, selectedMonthStr)}
                                   className="px-3 py-1.5 rounded-xl bg-[#241E30] hover:bg-[#2C243B] text-[#E0D8EB] border border-[#3A2F4C] font-semibold text-xs transition flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
-                                  title={`تسجيل دفعة شهر ${selectedMonthLabelAr}`}
+                                  title={
+                                    isFutureMonth
+                                      ? `تسجيل دفعة مسبقة لشهر ${selectedMonthLabelAr}`
+                                      : `تسجيل دفعة شهر ${selectedMonthLabelAr}`
+                                  }
                                 >
                                   <CreditCard className="w-3.5 h-3.5 text-amber-400" />
-                                  <span>تسجيل الدفعة</span>
+                                  <span>{isFutureMonth ? 'أداء مسبق' : 'تسجيل الدفعة'}</span>
                                 </button>
                               </>
                             ) : (

@@ -169,15 +169,26 @@ export default function RecordPaymentModal({
           </button>
         </div>
 
-        {/* If historical billing month reconciliation */}
+        {/* If targeted billing month reconciliation (historical or advance future) */}
         {initialBillingMonth && (
-          <div className="px-4 sm:px-6 py-2.5 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between text-xs text-amber-300 shrink-0">
+          <div className={`px-4 sm:px-6 py-2.5 border-b flex items-center justify-between text-xs shrink-0 ${
+            initialBillingMonth > getTodayDateStr().substring(0, 7)
+              ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+              : 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+          }`}>
             <span className="font-semibold flex items-center gap-1.5">
-              <span>📅</span>
-              <span>شهر الفوترة المستهدف للتسوية: <strong>{formatBillingMonthLabel(initialBillingMonth, 'ar')} ({initialBillingMonth})</strong></span>
+              <span>{initialBillingMonth > getTodayDateStr().substring(0, 7) ? '🔮' : '📅'}</span>
+              <span>
+                شهر الفوترة المستهدف:{' '}
+                <strong>{formatBillingMonthLabel(initialBillingMonth, 'ar')} ({initialBillingMonth})</strong>
+              </span>
             </span>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-200 border border-amber-500/30">
-              تسوية شهرية
+            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+              initialBillingMonth > getTodayDateStr().substring(0, 7)
+                ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/30'
+                : 'bg-amber-500/20 text-amber-200 border-amber-500/30'
+            }`}>
+              {initialBillingMonth > getTodayDateStr().substring(0, 7) ? '✨ دفعة مسبقة (Avance)' : 'تسوية شهرية'}
             </span>
           </div>
         )}
