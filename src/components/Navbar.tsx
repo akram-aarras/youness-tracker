@@ -20,7 +20,6 @@ import {
   Menu,
   X,
   Download,
-  RefreshCw,
   CreditCard,
   WifiOff,
 } from 'lucide-react';
@@ -41,8 +40,6 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab, onOpenPa
     t,
     dir,
     exportDataAsJSON,
-    refreshFromSupabase,
-    isSyncing,
     isOnline,
   } = useStore();
   const pathname = usePathname();
@@ -105,14 +102,16 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab, onOpenPa
           {/* Brand Logo & Nav Tabs */}
           <div className="flex items-center gap-4 sm:gap-6 min-w-0">
             <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group shrink-0">
-              <Image
-                src="/logo.png"
-                alt="Youness WiFi Logo"
-                width={32}
-                height={32}
-                className="h-8 w-auto object-contain shrink-0"
-                priority
-              />
+              <div className="relative flex items-center justify-center shrink-0">
+                <Image
+                  src="/logo.png"
+                  alt="Youness WiFi Logo"
+                  width={144}
+                  height={80}
+                  className="h-9 sm:h-10 w-auto object-contain shrink-0 transition-transform duration-200 group-hover:scale-105"
+                  priority
+                />
+              </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <span className="text-sm sm:text-base font-black tracking-tight text-[#F4F0F8] truncate">
@@ -206,24 +205,6 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab, onOpenPa
 
             {/* Theme Toggle (Desktop & Tablet) */}
             <ThemeToggle />
-
-            {/* Cloud Sync Button */}
-            <button
-              type="button"
-              onClick={() => refreshFromSupabase()}
-              disabled={isSyncing}
-              title="Synchroniser avec Supabase"
-              className={`p-2 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition cursor-pointer ${
-                isSyncing
-                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                  : 'bg-[#191522] border-[#2D253B]/70 text-[#958B9F] hover:text-[#F4F0F8] hover:border-[#3A2F4C]'
-              }`}
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-amber-400' : ''}`} />
-              <span className="hidden lg:inline text-[11px]">
-                {isSyncing ? 'Sync...' : 'Supabase'}
-              </span>
-            </button>
 
             {/* Language Switcher */}
             <LanguageSwitcher variant="amber" />
@@ -665,23 +646,6 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab, onOpenPa
                 </button>
               )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  refreshFromSupabase();
-                  setMobileMenuOpen(false);
-                }}
-                disabled={isSyncing}
-                className="w-full min-h-[44px] p-2.5 rounded-xl bg-[#241E30] hover:bg-[#2C243B] border border-[#3A2F4C] text-[#E0D8EB] flex items-center justify-between text-xs font-medium cursor-pointer transition"
-              >
-                <div className="flex items-center gap-2.5">
-                  <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-amber-400' : 'text-amber-400'} shrink-0`} />
-                  <span className="font-bold">Synchroniser avec Supabase</span>
-                </div>
-                <span className="text-[10px] text-amber-400 font-mono">
-                  {isSyncing ? 'Sync...' : 'En ligne'}
-                </span>
-              </button>
 
               {currentUser?.role === 'admin' && (
                 <button
