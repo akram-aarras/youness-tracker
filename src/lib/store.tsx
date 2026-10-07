@@ -74,8 +74,6 @@ interface StoreContextType {
   technicians: Technician[];
   isHydrated: boolean;
   isOnline: boolean;
-  simulatedDate: string | null;
-  setSimulatedDate: (date: string | null) => void;
   effectiveToday: string;
   getClientStatus: (client: Client) => Client['status'];
   getDaysDiff: (targetDateStr: string) => number;
@@ -655,44 +653,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return typeof navigator !== 'undefined' ? navigator.onLine : true;
   });
 
-  const [simulatedDate, setSimulatedDateState] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        return localStorage.getItem('youness_simulated_date') || null;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-
-  const setSimulatedDate = useCallback((date: string | null) => {
-    setSimulatedDateState(date);
-    try {
-      if (typeof window !== 'undefined') {
-        if (date) {
-          localStorage.setItem('youness_simulated_date', date);
-        } else {
-          localStorage.removeItem('youness_simulated_date');
-        }
-      }
-    } catch {}
-  }, []);
-
-  const effectiveToday = simulatedDate || getTodayDateStr();
+  const effectiveToday = getTodayDateStr();
 
   const getClientStatus = useCallback(
     (client: Client): Client['status'] => {
-      return calculateClientStatus(client.nextDueDate, client.status, effectiveToday);
+      return calculateClientStatus(client.nextDueDate, client.status);
     },
-    [effectiveToday]
+    []
   );
 
   const getDaysDiff = useCallback(
     (targetDateStr: string): number => {
-      return getDaysDiffFromToday(targetDateStr, effectiveToday);
+      return getDaysDiffFromToday(targetDateStr);
     },
-    [effectiveToday]
+    []
   );
 
   useEffect(() => {
@@ -1700,8 +1674,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         isHydrated,
         isSyncing,
         isOnline,
-        simulatedDate,
-        setSimulatedDate,
         effectiveToday,
         getClientStatus,
         getDaysDiff,

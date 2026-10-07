@@ -62,18 +62,14 @@ export default function AdminDashboard({
     language,
     dir,
     localizePlanName,
-    localizeStatus,
-    effectiveToday,
-    simulatedDate,
-    setSimulatedDate,
     getClientStatus,
     getDaysDiff,
   } = useStore();
   const [selectedPaymentForSlip, setSelectedPaymentForSlip] = React.useState<PaymentLog | null>(null);
   const [isBulkReminderOpen, setIsBulkReminderOpen] = React.useState(false);
 
-  // Dynamic effective date (simulated or real today)
-  const todayStr = effectiveToday || getTodayDateStr();
+  // Current calendar date
+  const todayStr = getTodayDateStr();
   const currentYearMonth = todayStr.substring(0, 7); // 'YYYY-MM'
 
   // Metric 1: Active Subscribers (active + due_soon), excluding archived clients
@@ -131,21 +127,13 @@ export default function AdminDashboard({
       // Sort most overdue first
       return getDaysDiff(a.nextDueDate) - getDaysDiff(b.nextDueDate);
     });
-
-  // Quick simulation dates
-  const realTodayStr = getTodayDateStr();
-  const [realY, realM] = realTodayStr.split('-').map(Number);
-  const nextMonthObj = new Date(realY, realM, 1);
-  const nextMonth1stStr = `${nextMonthObj.getFullYear()}-${String(nextMonthObj.getMonth() + 1).padStart(2, '0')}-01`;
-  const nextMonth15thStr = `${nextMonthObj.getFullYear()}-${String(nextMonthObj.getMonth() + 1).padStart(2, '0')}-15`;
-
   // ─────────────────────────────────────────────────────────────
   // 4. HISTORICAL & FUTURE MONTHLY RECONCILIATION & ADVANCE LEDGER
   // (التدقيق المالي، الدفعات المسبقة، ورصد الاشتراكات)
   // ─────────────────────────────────────────────────────────────
   const financialMonthOptions = React.useMemo(() => {
-    // Generate 18 past months and 12 future months relative to effective date
-    const baseList = getHistoricalMonthList(18, 12, effectiveToday);
+    // Generate 18 past months and 12 future months relative to current date
+    const baseList = getHistoricalMonthList(18, 12, todayStr);
     const existingSet = new Set(baseList.map((m) => m.value));
 
     // Ensure any custom billingMonth recorded in payments is included
@@ -165,16 +153,11 @@ export default function AdminDashboard({
     });
 
     return [...additional, ...baseList].sort((a, b) => b.value.localeCompare(a.value));
-  }, [payments, currentYearMonth, effectiveToday]);
+  }, [payments, currentYearMonth, todayStr]);
 
   const [selectedMonthStr, setSelectedMonthStr] = React.useState<string>(
     () => todayStr.substring(0, 7) // Defaults strictly to current calendar month (e.g. '2026-10')
   );
-
-  // Keep selectedMonthStr in sync when simulation date changes
-  React.useEffect(() => {
-    setSelectedMonthStr(todayStr.substring(0, 7));
-  }, [todayStr]);
 
   const [historicalFilterTab, setHistoricalFilterTab] = React.useState<'all' | 'paid' | 'unpaid'>('all');
   const [historicalSearchQuery, setHistoricalSearchQuery] = React.useState<string>('');
@@ -355,96 +338,6 @@ export default function AdminDashboard({
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
-      {/* DEV TESTING & SIMULATION BAR (Automated Rollover & Due Date Verification) */}
-      <div className={`p-4 rounded-2xl border transition-all ${
-        simulatedDate
-          ? 'bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border-amber-500/40 shadow-lg shadow-amber-500/5'
-          : 'bg-slate-50/80 dark:bg-slate-900/60 border-slate-200/70 dark:border-slate-800'
-      }`}>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-xl flex items-center justify-center shrink-0 ${
-              simulatedDate
-                ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
-                : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-            }`}>
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-bold text-slate-900 dark:text-white">
-                  {t('sim_bar_title')}
-                </span>
-                {simulatedDate ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-                    {t('sim_active_badge')}: {simulatedDate}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                    {t('sim_today_real')}: {realTodayStr}
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                {simulatedDate
-                  ? t('sim_banner_desc')
-                  : language === 'ar'
-                  ? 'اختبر انتقال الشهر القادم لمعاينة تصفير المداخيل تلقائياً، إدراج الاشتراكات المتأخرة، وتوليد تذكيرات واتساب.'
-                  : 'Testez le basculement au mois suivant pour vérifier la réinitialisation automatique à 0 DH, les impayés et les relances.'}
-              </p>
-            </div>
-          </div>
-
-          {/* Quick presets and date override controls */}
-          <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
-            <button
-              type="button"
-              onClick={() => setSimulatedDate(nextMonth1stStr)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-                simulatedDate === nextMonth1stStr
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 hover:border-amber-500/40'
-              }`}
-            >
-              <span>{t('sim_next_month_1st')} ({nextMonth1stStr})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSimulatedDate(nextMonth15thStr)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-                simulatedDate === nextMonth15thStr
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 hover:border-amber-500/40'
-              }`}
-            >
-              <span>{t('sim_next_month_15th')} ({nextMonth15thStr})</span>
-            </button>
-
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl px-2 py-1">
-              <input
-                type="date"
-                value={simulatedDate || ''}
-                onChange={(e) => setSimulatedDate(e.target.value || null)}
-                className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
-                title={t('sim_custom_date')}
-              />
-            </div>
-
-            {simulatedDate && (
-              <button
-                type="button"
-                onClick={() => setSimulatedDate(null)}
-                className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
-              >
-                <span>✕ {t('sim_exit_btn')}</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Top Welcome & Quick Actions Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_16px_rgba(0,0,0,0.04)] transition-all">
         <div>

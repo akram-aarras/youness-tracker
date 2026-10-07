@@ -40,8 +40,8 @@ export default function RecordPaymentModal({
   onClose,
   onSuccess,
 }: Props) {
-  const { clients, recordPayment, t, language, dir, effectiveToday } = useStore();
-  const defaultDateStr = effectiveToday || getTodayDateStr();
+  const { clients, recordPayment, t, language, dir } = useStore();
+  const defaultDateStr = getTodayDateStr();
 
   const [selectedClientId, setSelectedClientId] = useState<string>(
     initialClientId || (clients[0]?.id ?? '')

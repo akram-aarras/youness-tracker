@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Client, PaymentLog } from '@/lib/types';
-import { useStore, buildHistoricalUnpaidReminderUrl, cleanMoroccanPhoneNumber } from '@/lib/store';
+import { useStore, buildHistoricalUnpaidReminderUrl, cleanMoroccanPhoneNumber, getTodayDateStr } from '@/lib/store';
 import {
   X,
   MessageSquare,
@@ -43,7 +43,7 @@ export default function BulkUnpaidReminderModal({
   onClose,
   onRecordPayment,
 }: Props) {
-  const { t, language, dir, effectiveToday } = useStore();
+  const { t, language, dir } = useStore();
   const [sentMap, setSentMap] = useState<Record<string, boolean>>({});
   const [copiedAll, setCopiedAll] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
@@ -57,7 +57,7 @@ export default function BulkUnpaidReminderModal({
   const handleCopyReport = async () => {
     const lines = [
       `📊 *Youness WiFi - Rapport des Impayés (${monthLabel})*`,
-      `📅 Date d'évaluation : ${effectiveToday}`,
+      `📅 Date d'évaluation : ${getTodayDateStr()}`,
       `👥 Total abonnés non réglés : ${unpaidList.length}`,
       `💰 Montant total à recouvrer : ${totalUnpaidAmount.toLocaleString()} DH`,
       `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
