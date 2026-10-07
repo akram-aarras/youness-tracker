@@ -40,13 +40,14 @@ export default function RecordPaymentModal({
   onClose,
   onSuccess,
 }: Props) {
-  const { clients, recordPayment, t, language, dir } = useStore();
+  const { clients, recordPayment, t, language, dir, effectiveToday } = useStore();
+  const defaultDateStr = effectiveToday || getTodayDateStr();
 
   const [selectedClientId, setSelectedClientId] = useState<string>(
     initialClientId || (clients[0]?.id ?? '')
   );
   const [billingMonth, setBillingMonth] = useState<string>(
-    initialBillingMonth || getTodayDateStr().substring(0, 7)
+    initialBillingMonth || defaultDateStr.substring(0, 7)
   );
   const selectedClient = clients.find((c) => c.id === selectedClientId);
 
@@ -64,7 +65,7 @@ export default function RecordPaymentModal({
 
   // Payment details
   const [method, setMethod] = useState<PaymentMethod>('cash');
-  const [paymentDate, setPaymentDate] = useState<string>(getTodayDateStr());
+  const [paymentDate, setPaymentDate] = useState<string>(defaultDateStr);
   const [extendDays, setExtendDays] = useState<number>(30);
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -183,23 +184,23 @@ export default function RecordPaymentModal({
         {/* If targeted billing month reconciliation (historical or advance future) */}
         {initialBillingMonth && (
           <div className={`px-4 sm:px-6 py-2.5 border-b flex items-center justify-between text-xs shrink-0 ${
-            initialBillingMonth > getTodayDateStr().substring(0, 7)
+            initialBillingMonth > defaultDateStr.substring(0, 7)
               ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
               : 'bg-amber-500/10 border-amber-500/20 text-amber-300'
           }`}>
             <span className="font-semibold flex items-center gap-1.5">
-              <span>{initialBillingMonth > getTodayDateStr().substring(0, 7) ? '🔮' : '📅'}</span>
+              <span>{initialBillingMonth > defaultDateStr.substring(0, 7) ? '🔮' : '📅'}</span>
               <span>
                 {t('target_billing_month')}{' '}
                 <strong>{formatBillingMonthLabel(initialBillingMonth, language)} ({initialBillingMonth})</strong>
               </span>
             </span>
             <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
-              initialBillingMonth > getTodayDateStr().substring(0, 7)
+              initialBillingMonth > defaultDateStr.substring(0, 7)
                 ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/30'
                 : 'bg-amber-500/20 text-amber-200 border-amber-500/30'
             }`}>
-              {initialBillingMonth > getTodayDateStr().substring(0, 7)
+              {initialBillingMonth > defaultDateStr.substring(0, 7)
                 ? t('advance_payment_badge')
                 : t('monthly_reconciliation_badge')}
             </span>

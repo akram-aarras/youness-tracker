@@ -335,6 +335,25 @@ export interface Translations {
   nav_portal_noc: string;
   nav_field_mode: string;
   nav_active_session: string;
+
+  // Automated Month Rollover & Simulation
+  sim_bar_title: string;
+  sim_active_badge: string;
+  sim_exit_btn: string;
+  sim_next_month_1st: string;
+  sim_next_month_15th: string;
+  sim_today_real: string;
+  sim_custom_date: string;
+  sim_banner_desc: string;
+  remind_all_unpaid_btn: string;
+  bulk_remind_modal_title: string;
+  bulk_remind_modal_sub: string;
+  bulk_copy_report_btn: string;
+  bulk_copied_toast: string;
+  bulk_open_wa_btn: string;
+  bulk_sent_badge: string;
+  expected_monthly_label: string;
+  arrears_real_time_label: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -672,6 +691,25 @@ export const translations: Record<Language, Translations> = {
     nav_portal_noc: 'NOC Portal',
     nav_field_mode: 'Field Mode',
     nav_active_session: 'Active Session',
+
+    // Automated Month Rollover & Simulation
+    sim_bar_title: 'Temporal Simulation Mode (Dev & Audit)',
+    sim_active_badge: 'Simulation Active',
+    sim_exit_btn: 'Exit Simulation',
+    sim_next_month_1st: '1st of Next Month',
+    sim_next_month_15th: '15th of Next Month',
+    sim_today_real: 'Real Today',
+    sim_custom_date: 'Custom Date',
+    sim_banner_desc: 'Simulating new month rollover. KPIs reset dynamically, overdue accounts update automatically.',
+    remind_all_unpaid_btn: 'Remind All Unpaid',
+    bulk_remind_modal_title: 'Bulk WhatsApp Reminders',
+    bulk_remind_modal_sub: 'Direct payment reminder messages for all uncollected subscribers',
+    bulk_copy_report_btn: 'Copy Full Summary Report',
+    bulk_copied_toast: 'Report copied to clipboard',
+    bulk_open_wa_btn: 'Open WhatsApp',
+    bulk_sent_badge: 'Sent',
+    expected_monthly_label: 'Expected Revenue',
+    arrears_real_time_label: 'Real-Time Arrears',
   },
 
   fr: {
@@ -1008,6 +1046,25 @@ export const translations: Record<Language, Translations> = {
     nav_portal_noc: 'Portail NOC',
     nav_field_mode: 'Mode Terrain',
     nav_active_session: 'Session Active',
+
+    // Automated Month Rollover & Simulation
+    sim_bar_title: 'Mode Test & Simulation Temporelle (Dev & Audit)',
+    sim_active_badge: 'Simulation Active',
+    sim_exit_btn: 'Quitter la simulation',
+    sim_next_month_1st: '1er du mois prochain',
+    sim_next_month_15th: '15 du mois prochain',
+    sim_today_real: "Aujourd'hui (Réel)",
+    sim_custom_date: 'Date personnalisée',
+    sim_banner_desc: 'Simulation du passage au nouveau mois : Recettes à 0.00 DH, comptes impayés basculés automatiquement.',
+    remind_all_unpaid_btn: 'Relancer tous les impayés',
+    bulk_remind_modal_title: 'Relance Groupée WhatsApp',
+    bulk_remind_modal_sub: 'Messages de rappel de paiement pour tous les abonnés non réglés',
+    bulk_copy_report_btn: 'Copier le rapport complet',
+    bulk_copied_toast: 'Rapport copié dans le presse-papiers',
+    bulk_open_wa_btn: 'Ouvrir WhatsApp',
+    bulk_sent_badge: 'Envoyé',
+    expected_monthly_label: 'Revenus prévus',
+    arrears_real_time_label: 'Arriérés en temps réel',
   },
 
   ar: {
@@ -1344,6 +1401,25 @@ export const translations: Record<Language, Translations> = {
     nav_portal_noc: 'بوابة NOC',
     nav_field_mode: 'وضع الميدان',
     nav_active_session: 'الجلسة النشطة',
+
+    // Automated Month Rollover & Simulation
+    sim_bar_title: 'وضع الاختبار والمحاكاة الزمنية (تجديد الشهر التلقائي)',
+    sim_active_badge: 'المحاكاة مفعلة',
+    sim_exit_btn: 'إنهاء المحاكاة',
+    sim_next_month_1st: 'فاتح الشهر القادم',
+    sim_next_month_15th: '15 من الشهر القادم',
+    sim_today_real: 'اليوم (الفعلي)',
+    sim_custom_date: 'تاريخ مخصص',
+    sim_banner_desc: 'محاكاة حلول الشهر الجديد: تصفير مداخيل الشهر، ونقل المشتركين غير المسوين إلى قائمة المتأخرات تلقائياً.',
+    remind_all_unpaid_btn: 'تذكير جميع غير المؤدين',
+    bulk_remind_modal_title: 'تذكير جماعي عبر واتساب',
+    bulk_remind_modal_sub: 'إرسال رسائل تذكير مباشرة لجميع المشتركين غير المؤدين لهذا الشهر',
+    bulk_copy_report_btn: 'نسخ التقرير الشامل',
+    bulk_copied_toast: 'تم نسخ تقرير المتأخرات بنجاح',
+    bulk_open_wa_btn: 'فتح واتساب',
+    bulk_sent_badge: 'تم الإرسال',
+    expected_monthly_label: 'المداخيل المتوقعة',
+    arrears_real_time_label: 'المتأخرات الحية',
   },
 };
 

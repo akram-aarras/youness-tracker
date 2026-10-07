@@ -52,6 +52,8 @@ export default function ClientDirectory({
     language,
     localizePlanName,
     localizeStatus,
+    getClientStatus,
+    getDaysDiff,
   } = useStore();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -144,8 +146,9 @@ export default function ClientDirectory({
         selectedNeighborhood === 'ALL' || client.neighborhood === selectedNeighborhood;
 
       // Status filter
+      const effectiveStatus = getClientStatus(client);
       const matchStatus =
-        selectedStatusTab === 'ALL' || client.status === selectedStatusTab;
+        selectedStatusTab === 'ALL' || effectiveStatus === selectedStatusTab;
 
       return matchSearch && matchNeighborhood && matchStatus;
     });
@@ -257,7 +260,7 @@ export default function ClientDirectory({
             }`}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            {t('status_active')} ({clients.filter((c) => c.status === 'active').length})
+            {t('status_active')} ({clients.filter((c) => getClientStatus(c) === 'active').length})
           </button>
 
           <button
@@ -269,7 +272,7 @@ export default function ClientDirectory({
             }`}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            {t('status_due_soon')} ({clients.filter((c) => c.status === 'due_soon').length})
+            {t('status_due_soon')} ({clients.filter((c) => getClientStatus(c) === 'due_soon').length})
           </button>
 
           <button
@@ -281,7 +284,7 @@ export default function ClientDirectory({
             }`}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-            {t('status_overdue')} ({clients.filter((c) => c.status === 'overdue').length})
+            {t('status_overdue')} ({clients.filter((c) => getClientStatus(c) === 'overdue').length})
           </button>
 
           <button
@@ -293,7 +296,7 @@ export default function ClientDirectory({
             }`}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-            {t('status_suspended')} ({clients.filter((c) => c.status === 'suspended').length})
+            {t('status_suspended')} ({clients.filter((c) => getClientStatus(c) === 'suspended').length})
           </button>
 
           <button
@@ -305,7 +308,7 @@ export default function ClientDirectory({
             }`}
           >
             <Archive className="w-3.5 h-3.5 text-slate-400" />
-            {t('status_archived')} ({clients.filter((c) => c.status === 'archived').length})
+            {t('status_archived')} ({clients.filter((c) => getClientStatus(c) === 'archived').length})
           </button>
         </div>
       </div>
@@ -351,8 +354,9 @@ export default function ClientDirectory({
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                 {filteredClients.map((client) => {
-                  const daysDiff = getDaysDiffFromToday(client.nextDueDate);
-                  const isOverdue = daysDiff < 0;
+                  const status = getClientStatus(client);
+                  const daysDiff = getDaysDiff(client.nextDueDate);
+                  const isOverdue = status === 'overdue';
 
                   return (
                     <tr
@@ -407,25 +411,25 @@ export default function ClientDirectory({
                           {client.nextDueDate}
                         </div>
                         <div className="mt-1">
-                          {client.status === 'archived' ? (
+                          {status === 'archived' ? (
                             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 flex items-center gap-1 w-fit">
                               <Archive className="w-3 h-3" />
                               {t('status_archived')}
                             </span>
-                          ) : client.status === 'suspended' ? (
+                          ) : status === 'suspended' ? (
                             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200/80 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800 flex items-center gap-1 w-fit">
                               <ShieldAlert className="w-3 h-3" />
                               {t('status_suspended')}
                             </span>
-                          ) : isOverdue ? (
+                          ) : status === 'overdue' ? (
                             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 flex items-center gap-1 w-fit">
                               <AlertTriangle className="w-3 h-3" />
                               {Math.abs(daysDiff)}{language === 'ar' ? ' يوم ' : 'd '} {t('status_overdue')}
                             </span>
-                          ) : client.status === 'due_soon' ? (
+                          ) : status === 'due_soon' ? (
                             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 flex items-center gap-1 w-fit">
                               <Clock className="w-3 h-3" />
-                              {t('status_due_soon')} ({daysDiff}{language === 'ar' ? 'ي' : 'd'})
+                              {t('status_due_soon')} ({daysDiff === 0 ? (language === 'ar' ? 'اليوم' : "Aujourd'hui") : `${daysDiff}${language === 'ar' ? 'ي' : 'd'}`})
                             </span>
                           ) : (
                             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1 w-fit">

@@ -74,6 +74,11 @@ interface StoreContextType {
   technicians: Technician[];
   isHydrated: boolean;
   isOnline: boolean;
+  simulatedDate: string | null;
+  setSimulatedDate: (date: string | null) => void;
+  effectiveToday: string;
+  getClientStatus: (client: Client) => Client['status'];
+  getDaysDiff: (targetDateStr: string) => number;
   language: Language;
   dir: 'ltr' | 'rtl';
   setLanguage: (lang: Language) => void;
@@ -221,17 +226,29 @@ export function addMonthsToDateStr(dateStr: string, monthsToAdd: number = 1): st
 }
 
 // Helper to calculate days difference from today normalized to midnight (Real-Time Dynamic Sync)
-export function getDaysDiffFromToday(targetDateStr: string): number {
+export function getDaysDiffFromToday(targetDateStr: string, referenceDateInput?: string | Date): number {
   if (!targetDateStr) return 0;
   const parts = targetDateStr.split('-');
   if (parts.length !== 3) return 0;
   const target = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
   target.setHours(0, 0, 0, 0);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  let ref: Date;
+  if (referenceDateInput instanceof Date && !isNaN(referenceDateInput.getTime())) {
+    ref = new Date(referenceDateInput);
+  } else if (typeof referenceDateInput === 'string' && referenceDateInput.trim()) {
+    const refParts = referenceDateInput.split('-');
+    if (refParts.length === 3) {
+      ref = new Date(parseInt(refParts[0], 10), parseInt(refParts[1], 10) - 1, parseInt(refParts[2], 10));
+    } else {
+      ref = new Date();
+    }
+  } else {
+    ref = new Date();
+  }
+  ref.setHours(0, 0, 0, 0);
 
-  const diffTime = target.getTime() - today.getTime();
+  const diffTime = target.getTime() - ref.getTime();
   return Math.round(diffTime / (1000 * 60 * 60 * 24));
 }
 
@@ -334,16 +351,28 @@ export function getReceiptNumberOrFallback(
   return `REC-${yyyymmdd}-${suffix}`;
 }
 
-// Compute client status dynamically
-export function calculateClientStatus(nextDueDateStr: string, currentStatus?: Client['status']): Client['status'] {
+// Compute client status dynamically based on next_due_date and current/reference date
+export function calculateClientStatus(
+  nextDueDateStr: string,
+  currentStatus?: Client['status'],
+  referenceDateInput?: string | Date
+): Client['status'] {
   if (currentStatus === 'archived') return 'archived';
-  const daysDiff = getDaysDiffFromToday(nextDueDateStr);
+  const daysDiff = getDaysDiffFromToday(nextDueDateStr, referenceDateInput);
   if (daysDiff < 0) {
     if (daysDiff < -14) return 'suspended';
     return 'overdue';
   }
   if (daysDiff <= 3) return 'due_soon';
   return 'active';
+}
+
+// Subscription status helper for clients
+export function getSubscriptionStatus(
+  client: Client,
+  referenceDateInput?: string | Date
+): Client['status'] {
+  return calculateClientStatus(client.nextDueDate, client.status, referenceDateInput);
 }
 
 export function cleanMoroccanPhoneNumber(phone: string): string {
@@ -530,10 +559,24 @@ export interface MonthOption {
 
 export function getHistoricalMonthList(
   pastCount = 18,
-  futureCount = 12
+  futureCount = 12,
+  referenceDateInput?: string | Date
 ): MonthOption[] {
   const result: MonthOption[] = [];
-  const now = new Date();
+  let now: Date;
+  if (referenceDateInput instanceof Date && !isNaN(referenceDateInput.getTime())) {
+    now = new Date(referenceDateInput);
+  } else if (typeof referenceDateInput === 'string' && referenceDateInput.trim()) {
+    const parts = referenceDateInput.split('-');
+    if (parts.length >= 2) {
+      now = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1);
+    } else {
+      now = new Date();
+    }
+  } else {
+    now = new Date();
+  }
+
   const currentY = now.getFullYear();
   const currentM = now.getMonth();
   const currentVal = `${currentY}-${String(currentM + 1).padStart(2, '0')}`;
@@ -611,6 +654,46 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = useState<boolean>(() => {
     return typeof navigator !== 'undefined' ? navigator.onLine : true;
   });
+
+  const [simulatedDate, setSimulatedDateState] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem('youness_simulated_date') || null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const setSimulatedDate = useCallback((date: string | null) => {
+    setSimulatedDateState(date);
+    try {
+      if (typeof window !== 'undefined') {
+        if (date) {
+          localStorage.setItem('youness_simulated_date', date);
+        } else {
+          localStorage.removeItem('youness_simulated_date');
+        }
+      }
+    } catch {}
+  }, []);
+
+  const effectiveToday = simulatedDate || getTodayDateStr();
+
+  const getClientStatus = useCallback(
+    (client: Client): Client['status'] => {
+      return calculateClientStatus(client.nextDueDate, client.status, effectiveToday);
+    },
+    [effectiveToday]
+  );
+
+  const getDaysDiff = useCallback(
+    (targetDateStr: string): number => {
+      return getDaysDiffFromToday(targetDateStr, effectiveToday);
+    },
+    [effectiveToday]
+  );
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1452,7 +1535,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const monthsToAdd = Math.max(1, Math.round(extendDays / 30));
     const newDueDate = addMonthsToDateStr(prevDueDate, monthsToAdd);
 
-    const resolvedPaymentDate = paymentDate || getTodayDateStr();
+    const resolvedPaymentDate = paymentDate || effectiveToday;
     const resolvedBillingMonth = billingMonth || resolvedPaymentDate.substring(0, 7);
     const receiptNumber = generateReceiptNumber(payments, resolvedPaymentDate);
     const newPayment: PaymentLog = {
@@ -1476,7 +1559,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setPayments((prev) => [newPayment, ...prev]);
 
     // Update client due date, status, and optionally updated recurring monthly fee
-    const updatedStatus = calculateClientStatus(newDueDate);
+    const updatedStatus = calculateClientStatus(newDueDate, undefined, effectiveToday);
     const clientUpdates: Partial<Client> = {
       lastPaymentDate: resolvedPaymentDate,
       nextDueDate: newDueDate,
@@ -1617,6 +1700,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         isHydrated,
         isSyncing,
         isOnline,
+        simulatedDate,
+        setSimulatedDate,
+        effectiveToday,
+        getClientStatus,
+        getDaysDiff,
         language,
         dir,
         hasAdminAccount: users.some((u) => u.role === 'admin'),

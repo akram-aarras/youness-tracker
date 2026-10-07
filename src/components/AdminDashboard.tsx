@@ -29,8 +29,10 @@ import {
   CalendarDays,
   Search,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 import InvoiceReceiptModal from './Modals/InvoiceReceiptModal';
+import BulkUnpaidReminderModal from './Modals/BulkUnpaidReminderModal';
 import { PaymentLog } from '@/lib/types';
 
 interface Props {
@@ -61,20 +63,29 @@ export default function AdminDashboard({
     dir,
     localizePlanName,
     localizeStatus,
+    effectiveToday,
+    simulatedDate,
+    setSimulatedDate,
+    getClientStatus,
+    getDaysDiff,
   } = useStore();
   const [selectedPaymentForSlip, setSelectedPaymentForSlip] = React.useState<PaymentLog | null>(null);
+  const [isBulkReminderOpen, setIsBulkReminderOpen] = React.useState(false);
 
-  const todayStr = getTodayDateStr();
+  // Dynamic effective date (simulated or real today)
+  const todayStr = effectiveToday || getTodayDateStr();
   const currentYearMonth = todayStr.substring(0, 7); // 'YYYY-MM'
 
   // Metric 1: Active Subscribers (active + due_soon), excluding archived clients
   const nonArchivedClients = clients.filter((c) => c.status !== 'archived');
-  const activeSubscribersCount = clients.filter(
-    (c) => c.status === 'active' || c.status === 'due_soon'
-  ).length;
-  const overdueSubscribersCount = clients.filter(
-    (c) => c.status === 'overdue' || c.status === 'suspended'
-  ).length;
+  const activeSubscribersCount = nonArchivedClients.filter((c) => {
+    const s = getClientStatus(c);
+    return s === 'active' || s === 'due_soon';
+  }).length;
+  const overdueSubscribersCount = nonArchivedClients.filter((c) => {
+    const s = getClientStatus(c);
+    return s === 'overdue' || s === 'suspended';
+  }).length;
 
   // Metric 2: Monthly Revenue (strictly current YYYY-MM)
   // Naturally resets to 0.00 MAD on the 1st of every month without altering historical logs
@@ -84,17 +95,24 @@ export default function AdminDashboard({
   const currentMonthRevenue = currentMonthPayments.reduce((sum, p) => sum + p.amount, 0);
   const currentMonthExtraFees = currentMonthPayments.reduce((sum, p) => sum + (p.extraAmount ?? 0), 0);
 
+  // Expected monthly revenue & collection rate (based on active subscription fees)
+  const expectedMonthlyRevenue = nonArchivedClients.reduce((sum, c) => sum + (c.monthlyFee || 50), 0);
+  const monthCollectionRate = expectedMonthlyRevenue > 0
+    ? Math.round((currentMonthRevenue / expectedMonthlyRevenue) * 100)
+    : 0;
+
   // Dedicated Today's Revenue (exact todayStr)
   const todayPayments = payments.filter((p) => p.paymentDate === todayStr);
   const todayRevenue = todayPayments.reduce((sum, p) => sum + p.amount, 0);
 
   // Metric 3: Accurate Arrears Math (حساب المتأخرات الفعلي)
   // Accounts for cumulative overdue months rather than a single monthlyFee
-  const overdueClients = clients.filter(
-    (c) => c.status === 'overdue' || c.status === 'suspended'
-  );
+  const overdueClients = nonArchivedClients.filter((c) => {
+    const s = getClientStatus(c);
+    return s === 'overdue' || s === 'suspended';
+  });
   const totalOverdueAmount = overdueClients.reduce((sum, c) => {
-    const daysDiff = getDaysDiffFromToday(c.nextDueDate);
+    const daysDiff = getDaysDiff(c.nextDueDate);
     const monthsLate = Math.max(1, Math.ceil(Math.abs(daysDiff) / 30));
     return sum + (monthsLate * (c.monthlyFee || 50));
   }, 0);
@@ -104,24 +122,30 @@ export default function AdminDashboard({
   const urgentTicketsCount = openTickets.filter((tkt) => tkt.priority === 'urgent').length;
 
   // Urgent Action Center: Clients due within 3 days or currently overdue (excluding archived)
-  const urgentBillingClients = clients
+  const urgentBillingClients = nonArchivedClients
     .filter((c) => {
-      if (c.status === 'archived') return false;
-      const days = getDaysDiffFromToday(c.nextDueDate);
+      const days = getDaysDiff(c.nextDueDate);
       return days <= 3; // due soon (<= 3 days) or overdue (< 0)
     })
     .sort((a, b) => {
       // Sort most overdue first
-      return getDaysDiffFromToday(a.nextDueDate) - getDaysDiffFromToday(b.nextDueDate);
+      return getDaysDiff(a.nextDueDate) - getDaysDiff(b.nextDueDate);
     });
+
+  // Quick simulation dates
+  const realTodayStr = getTodayDateStr();
+  const [realY, realM] = realTodayStr.split('-').map(Number);
+  const nextMonthObj = new Date(realY, realM, 1);
+  const nextMonth1stStr = `${nextMonthObj.getFullYear()}-${String(nextMonthObj.getMonth() + 1).padStart(2, '0')}-01`;
+  const nextMonth15thStr = `${nextMonthObj.getFullYear()}-${String(nextMonthObj.getMonth() + 1).padStart(2, '0')}-15`;
 
   // ─────────────────────────────────────────────────────────────
   // 4. HISTORICAL & FUTURE MONTHLY RECONCILIATION & ADVANCE LEDGER
   // (التدقيق المالي، الدفعات المسبقة، ورصد الاشتراكات)
   // ─────────────────────────────────────────────────────────────
   const financialMonthOptions = React.useMemo(() => {
-    // Generate 18 past months and 12 future months
-    const baseList = getHistoricalMonthList(18, 12);
+    // Generate 18 past months and 12 future months relative to effective date
+    const baseList = getHistoricalMonthList(18, 12, effectiveToday);
     const existingSet = new Set(baseList.map((m) => m.value));
 
     // Ensure any custom billingMonth recorded in payments is included
@@ -141,11 +165,17 @@ export default function AdminDashboard({
     });
 
     return [...additional, ...baseList].sort((a, b) => b.value.localeCompare(a.value));
-  }, [payments, currentYearMonth]);
+  }, [payments, currentYearMonth, effectiveToday]);
 
   const [selectedMonthStr, setSelectedMonthStr] = React.useState<string>(
     () => todayStr.substring(0, 7) // Defaults strictly to current calendar month (e.g. '2026-10')
   );
+
+  // Keep selectedMonthStr in sync when simulation date changes
+  React.useEffect(() => {
+    setSelectedMonthStr(todayStr.substring(0, 7));
+  }, [todayStr]);
+
   const [historicalFilterTab, setHistoricalFilterTab] = React.useState<'all' | 'paid' | 'unpaid'>('all');
   const [historicalSearchQuery, setHistoricalSearchQuery] = React.useState<string>('');
 
@@ -325,6 +355,96 @@ export default function AdminDashboard({
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
+      {/* DEV TESTING & SIMULATION BAR (Automated Rollover & Due Date Verification) */}
+      <div className={`p-4 rounded-2xl border transition-all ${
+        simulatedDate
+          ? 'bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border-amber-500/40 shadow-lg shadow-amber-500/5'
+          : 'bg-slate-50/80 dark:bg-slate-900/60 border-slate-200/70 dark:border-slate-800'
+      }`}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-xl flex items-center justify-center shrink-0 ${
+              simulatedDate
+                ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
+                : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+            }`}>
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-slate-900 dark:text-white">
+                  {t('sim_bar_title')}
+                </span>
+                {simulatedDate ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                    {t('sim_active_badge')}: {simulatedDate}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                    {t('sim_today_real')}: {realTodayStr}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                {simulatedDate
+                  ? t('sim_banner_desc')
+                  : language === 'ar'
+                  ? 'اختبر انتقال الشهر القادم لمعاينة تصفير المداخيل تلقائياً، إدراج الاشتراكات المتأخرة، وتوليد تذكيرات واتساب.'
+                  : 'Testez le basculement au mois suivant pour vérifier la réinitialisation automatique à 0 DH, les impayés et les relances.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Quick presets and date override controls */}
+          <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
+            <button
+              type="button"
+              onClick={() => setSimulatedDate(nextMonth1stStr)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                simulatedDate === nextMonth1stStr
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 hover:border-amber-500/40'
+              }`}
+            >
+              <span>{t('sim_next_month_1st')} ({nextMonth1stStr})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSimulatedDate(nextMonth15thStr)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                simulatedDate === nextMonth15thStr
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 hover:border-amber-500/40'
+              }`}
+            >
+              <span>{t('sim_next_month_15th')} ({nextMonth15thStr})</span>
+            </button>
+
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl px-2 py-1">
+              <input
+                type="date"
+                value={simulatedDate || ''}
+                onChange={(e) => setSimulatedDate(e.target.value || null)}
+                className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
+                title={t('sim_custom_date')}
+              />
+            </div>
+
+            {simulatedDate && (
+              <button
+                type="button"
+                onClick={() => setSimulatedDate(null)}
+                className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
+              >
+                <span>✕ {t('sim_exit_btn')}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Top Welcome & Quick Actions Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_16px_rgba(0,0,0,0.04)] transition-all">
         <div>
@@ -432,14 +552,20 @@ export default function AdminDashboard({
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 text-[11px]">
-            <span className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 truncate">
-              <TrendingUp className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>{t('metric_today_revenue')}: {todayRevenue.toLocaleString()} {t('currency')}</span>
-            </span>
-            <span className="text-slate-400 dark:text-slate-500 font-mono text-[10px] shrink-0">
-              {currentMonthPayments.length} trans.
-            </span>
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-[11px]">
+            <div className="flex items-center justify-between gap-1">
+              <span className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 truncate">
+                <TrendingUp className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>{t('metric_today_revenue')}: {todayRevenue.toLocaleString()} {t('currency')}</span>
+              </span>
+              <span className="text-slate-400 dark:text-slate-500 font-mono text-[10px] shrink-0">
+                {currentMonthPayments.length} trans.
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-0.5 border-t border-slate-50 dark:border-slate-800/50">
+              <span>{t('expected_monthly_label')}: <strong className="font-mono text-slate-700 dark:text-slate-200">{expectedMonthlyRevenue.toLocaleString()} {t('currency')}</strong></span>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{monthCollectionRate}%</span>
+            </div>
           </div>
         </div>
 
@@ -467,7 +593,7 @@ export default function AdminDashboard({
               {overdueClients.length} {t('overdue_label')}
             </span>
             <span className="text-slate-400 dark:text-slate-500 text-[10px]">
-              Relance WhatsApp
+              {t('arrears_real_time_label')}
             </span>
           </div>
         </div>
@@ -573,7 +699,7 @@ export default function AdminDashboard({
                 </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                 {urgentBillingClients.map((client) => {
-                  const daysDiff = getDaysDiffFromToday(client.nextDueDate);
+                  const daysDiff = getDaysDiff(client.nextDueDate);
                   const isOverdue = daysDiff < 0;
 
                   return (
@@ -732,48 +858,65 @@ export default function AdminDashboard({
             </div>
           </div>
 
-          {/* Month & Year Dropdown Selector */}
-          <div className="flex items-center gap-2.5 self-start lg:self-auto w-full lg:w-auto">
-            <label className="text-xs text-[#958B9F] font-semibold shrink-0 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-amber-400" />
-              <span>{t('financial_month_label')}</span>
-            </label>
-            <div className="relative flex-1 lg:w-64">
-              <select
-                value={selectedMonthStr}
-                onChange={(e) => setSelectedMonthStr(e.target.value)}
-                className="w-full appearance-none bg-[#130F1A] border border-[#2D253B] hover:border-amber-500/50 rounded-xl px-3.5 py-2.5 text-xs text-[#F4F0F8] font-bold focus:outline-none focus:border-amber-500 transition cursor-pointer pr-8"
-              >
-                <optgroup label="✨ الأشهر القادمة / Mois à venir (Avances)" className="bg-[#191522] text-amber-400 font-bold">
-                  {financialMonthOptions
-                    .filter((opt) => opt.isFuture)
-                    .map((opt) => (
-                      <option key={opt.value} value={opt.value} className="bg-[#191522] text-[#F4F0F8]">
-                        {opt.labelAr} ({opt.value}) • دفعة مسبقة
-                      </option>
-                    ))}
-                </optgroup>
-                <optgroup label="📍 الشهر الحالي / Mois actif" className="bg-[#191522] text-emerald-400 font-bold">
-                  {financialMonthOptions
-                    .filter((opt) => opt.isCurrent)
-                    .map((opt) => (
-                      <option key={opt.value} value={opt.value} className="bg-[#191522] text-[#F4F0F8]">
-                        ★ {opt.labelAr} ({opt.value}) — الشهر الحالي
-                      </option>
-                    ))}
-                </optgroup>
-                <optgroup label="📋 الأشهر السابقة / Historique (18 mois)" className="bg-[#191522] text-[#958B9F] font-bold">
-                  {financialMonthOptions
-                    .filter((opt) => opt.isPast)
-                    .map((opt) => (
-                      <option key={opt.value} value={opt.value} className="bg-[#191522] text-[#F4F0F8]">
-                        {opt.labelAr} ({opt.value})
-                      </option>
-                    ))}
-                </optgroup>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 rtl:right-auto rtl:left-0 flex items-center px-2.5 text-[#958B9F] text-xs">
-                ▼
+          {/* Month & Year Dropdown Selector and Bulk Reminder Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 self-start lg:self-auto w-full lg:w-auto">
+            {/* Action: Relancer Tous les Impayés */}
+            <button
+              type="button"
+              onClick={() => setIsBulkReminderOpen(true)}
+              disabled={unpaidList.length === 0}
+              className="min-h-[40px] px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-md shadow-emerald-950/40 cursor-pointer shrink-0"
+              title={t('remind_all_unpaid_btn')}
+            >
+              <MessageSquare className="w-4 h-4 text-white shrink-0" />
+              <span className="whitespace-nowrap">{t('remind_all_unpaid_btn')}</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-emerald-950/60 text-emerald-200 font-mono text-[10px] font-bold border border-emerald-400/30">
+                {unpaidList.length}
+              </span>
+            </button>
+
+            <div className="flex items-center gap-2.5 flex-1 sm:flex-initial">
+              <label className="text-xs text-[#958B9F] font-semibold shrink-0 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                <span>{t('financial_month_label')}</span>
+              </label>
+              <div className="relative flex-1 lg:w-64">
+                <select
+                  value={selectedMonthStr}
+                  onChange={(e) => setSelectedMonthStr(e.target.value)}
+                  className="w-full appearance-none bg-[#130F1A] border border-[#2D253B] hover:border-amber-500/50 rounded-xl px-3.5 py-2.5 text-xs text-[#F4F0F8] font-bold focus:outline-none focus:border-amber-500 transition cursor-pointer pr-8"
+                >
+                  <optgroup label="✨ الأشهر القادمة / Mois à venir (Avances)" className="bg-[#191522] text-amber-400 font-bold">
+                    {financialMonthOptions
+                      .filter((opt) => opt.isFuture)
+                      .map((opt) => (
+                        <option key={opt.value} value={opt.value} className="bg-[#191522] text-[#F4F0F8]">
+                          {opt.labelAr} ({opt.value}) • دفعة مسبقة
+                        </option>
+                      ))}
+                  </optgroup>
+                  <optgroup label="📍 الشهر الحالي / Mois actif" className="bg-[#191522] text-emerald-400 font-bold">
+                    {financialMonthOptions
+                      .filter((opt) => opt.isCurrent)
+                      .map((opt) => (
+                        <option key={opt.value} value={opt.value} className="bg-[#191522] text-[#F4F0F8]">
+                          ★ {opt.labelAr} ({opt.value}) — الشهر الحالي
+                        </option>
+                      ))}
+                  </optgroup>
+                  <optgroup label="📋 الأشهر السابقة / Historique (18 mois)" className="bg-[#191522] text-[#958B9F] font-bold">
+                    {financialMonthOptions
+                      .filter((opt) => opt.isPast)
+                      .map((opt) => (
+                        <option key={opt.value} value={opt.value} className="bg-[#191522] text-[#F4F0F8]">
+                          {opt.labelAr} ({opt.value})
+                        </option>
+                      ))}
+                  </optgroup>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 rtl:right-auto rtl:left-0 flex items-center px-2.5 text-[#958B9F] text-xs">
+                  ▼
+                </div>
               </div>
             </div>
           </div>
@@ -1390,6 +1533,22 @@ export default function AdminDashboard({
           payment={selectedPaymentForSlip}
           client={clients.find((c) => c.id === selectedPaymentForSlip.clientId)}
           onClose={() => setSelectedPaymentForSlip(null)}
+        />
+      )}
+
+      {/* Bulk Unpaid WhatsApp Reminder Modal */}
+      {isBulkReminderOpen && (
+        <BulkUnpaidReminderModal
+          monthStr={selectedMonthStr}
+          monthLabel={language === 'ar' ? selectedMonthLabelAr : selectedMonthLabelFr}
+          isFutureMonth={isFutureMonth}
+          unpaidList={unpaidList}
+          totalUnpaidAmount={totalUnpaid}
+          onClose={() => setIsBulkReminderOpen(false)}
+          onRecordPayment={(clientId) => {
+            setIsBulkReminderOpen(false);
+            onOpenPaymentModal(clientId, selectedMonthStr);
+          }}
         />
       )}
     </div>
