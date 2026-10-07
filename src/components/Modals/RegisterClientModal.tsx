@@ -40,7 +40,7 @@ export const TETOUAN_NEIGHBORHOODS = [
   'El Oulya',
 ];
 
-const ANTENNA_MODELS = [
+export const ANTENNA_MODELS = [
   'Ubiquiti LiteBeam 5AC',
   'Ubiquiti LiteBeam 5AC Gen2',
   'Ubiquiti NanoStation 5AC Loco',
@@ -50,7 +50,7 @@ const ANTENNA_MODELS = [
   'Ubiquiti airFiber 60 LR',
 ];
 
-const ROUTER_MODELS = [
+export const ROUTER_MODELS = [
   'Standard Router',
   'TP-Link Archer C6 AC1200',
   'TP-Link Archer C54',
@@ -61,7 +61,7 @@ const ROUTER_MODELS = [
   'MikroTik hEX S + UniFi U6-Lite',
 ];
 
-const SECTOR_TOWERS = [
+export const SECTOR_TOWERS = [
   'Tour Boujarah (Relais Centre)',
   'Relais Jbel Dersa (Tétouan Nord)',
   'Pylône Wilaya / Sania Rmel',
@@ -162,17 +162,17 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-2xl bg-[#191522] sm:border sm:border-[#2D253B]/70 rounded-none sm:rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-2xl bg-white dark:bg-slate-900 sm:border sm:border-slate-200/80 dark:sm:border-slate-800 rounded-none sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#2D253B]/70 bg-[#130F1A]/95 shrink-0">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 sm:p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-              <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 shrink-0">
+          <div className="flex items-center space-x-3 rtl:space-x-reverse">
+            <div className="p-2 sm:p-2.5 rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400 border border-orange-100 dark:border-orange-500/20 shrink-0">
+              <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 dark:text-orange-400" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-[#F4F0F8]">Register New Installation</h3>
-              <p className="text-[11px] sm:text-xs text-[#958B9F]">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Register New Installation</h3>
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                 Onboard subscriber in Tétouan, configure wireless CPE, & set billing
               </p>
             </div>
@@ -180,21 +180,21 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] transition cursor-pointer"
+            className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-[#2D253B]/70 bg-[#130F1A] px-2 sm:px-6 overflow-x-auto no-scrollbar shrink-0">
+        <div className="flex border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 sm:px-6 overflow-x-auto no-scrollbar shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('info')}
             className={`py-2.5 sm:py-3 px-3 sm:px-4 text-xs font-semibold flex items-center gap-1.5 sm:gap-2 border-b-2 transition cursor-pointer shrink-0 ${
               activeTab === 'info'
-                ? 'border-amber-400 text-amber-400 bg-amber-500/10'
-                : 'border-transparent text-[#958B9F] hover:text-[#F4F0F8]'
+                ? 'border-orange-500 text-orange-600 dark:text-orange-400 bg-orange-50/50 dark:bg-orange-950/20'
+                : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <MapPin className="w-3.5 h-3.5" />
@@ -205,8 +205,8 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
             onClick={() => setActiveTab('hardware')}
             className={`py-2.5 sm:py-3 px-3 sm:px-4 text-xs font-semibold flex items-center gap-1.5 sm:gap-2 border-b-2 transition cursor-pointer shrink-0 ${
               activeTab === 'hardware'
-                ? 'border-amber-400 text-amber-400 bg-amber-500/10'
-                : 'border-transparent text-[#958B9F] hover:text-[#F4F0F8]'
+                ? 'border-orange-500 text-orange-600 dark:text-orange-400 bg-orange-50/50 dark:bg-orange-950/20'
+                : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Radio className="w-3.5 h-3.5" />
@@ -217,8 +217,8 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
             onClick={() => setActiveTab('billing')}
             className={`py-2.5 sm:py-3 px-3 sm:px-4 text-xs font-semibold flex items-center gap-1.5 sm:gap-2 border-b-2 transition cursor-pointer shrink-0 ${
               activeTab === 'billing'
-                ? 'border-amber-400 text-amber-400 bg-amber-500/10'
-                : 'border-transparent text-[#958B9F] hover:text-[#F4F0F8]'
+                ? 'border-orange-500 text-orange-600 dark:text-orange-400 bg-orange-50/50 dark:bg-orange-950/20'
+                : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <CreditCard className="w-3.5 h-3.5" />
@@ -581,14 +581,14 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 text-xs sm:text-sm font-medium text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] rounded-xl transition cursor-pointer"
+                className="px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
               >
                 Annuler
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('hardware')}
-                className="min-h-[48px] py-3 px-5 text-xs sm:text-sm font-bold bg-[#241E30] hover:bg-[#2C243B] border border-[#3A2F4C] text-[#E0D8EB] rounded-xl transition flex items-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                className="min-h-[46px] py-2.5 px-5 text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl transition flex items-center gap-2 cursor-pointer shadow-xs hover:shadow"
               >
                 <span>Étape Suivante: Matériel →</span>
               </button>
@@ -600,14 +600,14 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
               <button
                 type="button"
                 onClick={() => setActiveTab('info')}
-                className="px-4 py-2.5 text-xs sm:text-sm font-medium text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] rounded-xl transition cursor-pointer"
+                className="px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
               >
                 ← Retour
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('billing')}
-                className="min-h-[48px] py-3 px-5 text-xs sm:text-sm font-bold bg-[#241E30] hover:bg-[#2C243B] border border-[#3A2F4C] text-[#E0D8EB] rounded-xl transition flex items-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                className="min-h-[46px] py-2.5 px-5 text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl transition flex items-center gap-2 cursor-pointer shadow-xs hover:shadow"
               >
                 <span>Étape Suivante: Facturation →</span>
               </button>
@@ -619,15 +619,15 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
               <button
                 type="button"
                 onClick={() => setActiveTab('hardware')}
-                className="px-4 py-2.5 text-xs sm:text-sm font-medium text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] rounded-xl transition cursor-pointer"
+                className="px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
               >
                 ← Retour
               </button>
               <button
                 type="submit"
-                className="min-h-[48px] py-3 px-6 text-xs sm:text-sm font-bold bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-xl shadow-lg shadow-amber-500/15 transition flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                className="min-h-[46px] py-2.5 px-6 text-xs sm:text-sm font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl shadow-md shadow-orange-500/20 transition flex items-center gap-2 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
-                <CheckCircle className="w-4 h-4 text-slate-950 shrink-0" />
+                <CheckCircle className="w-4 h-4 text-white shrink-0" />
                 <span>حفظ وتأكيد التثبيت</span>
               </button>
             </div>

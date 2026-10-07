@@ -65,11 +65,24 @@ export function mapClientToRow(client: Partial<Client>): Record<string, any> {
   return row;
 }
 
+function fallbackReceiptNumber(rowOrPayment: Record<string, any>): string {
+  const dateStr = String(rowOrPayment.payment_date || rowOrPayment.paymentDate || '')
+    .replace(/[^0-9]/g, '')
+    .slice(0, 8);
+  const yyyymmdd = dateStr.length === 8 ? dateStr : new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const idDigits = String(rowOrPayment.id || '').replace(/\D/g, '');
+  const suffix = idDigits.length >= 4 ? idDigits.slice(-4) : '0001';
+  return `REC-${yyyymmdd}-${suffix}`;
+}
+
 export function mapRowToPayment(row: Record<string, any>): PaymentLog {
   const paymentDate = row.payment_date ? String(row.payment_date).split('T')[0] : '';
+  const receiptNumber = (row.receipt_number && String(row.receipt_number).trim())
+    ? String(row.receipt_number).trim()
+    : fallbackReceiptNumber(row);
   return {
     id: row.id,
-    receiptNumber: row.receipt_number || '',
+    receiptNumber,
     clientId: row.client_id || '',
     clientName: row.client_name || '',
     amount: Number(row.amount) || 0,
@@ -87,9 +100,12 @@ export function mapRowToPayment(row: Record<string, any>): PaymentLog {
 }
 
 export function mapPaymentToRow(payment: PaymentLog): Record<string, any> {
+  const receiptNumber = (payment.receiptNumber && payment.receiptNumber.trim())
+    ? payment.receiptNumber.trim()
+    : fallbackReceiptNumber(payment);
   return {
     id: payment.id,
-    receipt_number: payment.receiptNumber,
+    receipt_number: receiptNumber,
     client_id: payment.clientId,
     client_name: payment.clientName,
     amount: payment.amount,
@@ -246,6 +262,7 @@ export async function updateClientInSupabase(id: string, updates: Partial<Client
   if (!supabase) return false;
   try {
     const row = mapClientToRow(updates);
+    delete row.id;
     const { error } = await supabase.from('clients').update(row).eq('id', id);
     if (error) {
       console.warn('[Supabase] updateClient failed:', error.message);

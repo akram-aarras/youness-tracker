@@ -102,7 +102,7 @@ export default function TechnicianView() {
     setResolutionNote(
       status === 'resolved'
         ? t('resolution_default_note')
-        : 'Intervention sur place en cours.'
+        : t('field_intervention_in_progress')
     );
   };
 
@@ -265,7 +265,7 @@ export default function TechnicianView() {
           ) : (
             <div className="flex items-center gap-1.5 bg-emerald-950/80 px-2.5 py-1.5 rounded-xl border border-emerald-800/80 text-[10px] font-bold text-emerald-300 shrink-0">
               <Shield className="w-3 h-3 text-emerald-400" />
-              <span>Interventions Assignées</span>
+              <span>{t('assigned_tasks_badge')}</span>
             </div>
           )}
         </div>
@@ -333,10 +333,10 @@ export default function TechnicianView() {
         <div className="bg-rose-500/15 border-b border-rose-500/30 px-4 py-2 flex items-center justify-between text-xs text-rose-300">
           <div className="flex items-center gap-2">
             <WifiOff className="w-3.5 h-3.5 text-rose-400 shrink-0 animate-pulse" />
-            <span className="font-semibold text-[11px]">Mode hors ligne (Réseau 4G indisponible)</span>
+            <span className="font-semibold text-[11px]">{t('offline_mode_banner')}</span>
           </div>
           <span className="text-[10px] bg-rose-950/80 px-2 py-0.5 rounded border border-rose-800 text-rose-300">
-            Enregistré en local
+            {t('saved_locally')}
           </span>
         </div>
       )}
@@ -585,7 +585,7 @@ export default function TechnicianView() {
                 required
                 value={resolutionNote}
                 onChange={(e) => setResolutionNote(e.target.value)}
-                placeholder="Ex: Replaced RJ45 connector, reset PoE adapter, signal -61 dBm..."
+                placeholder={t('resolution_placeholder')}
                 className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
               />
             </div>
@@ -593,15 +593,15 @@ export default function TechnicianView() {
             {/* Quick Note Suggestions for Mobile Field Workers */}
             <div className="space-y-1">
               <span className="text-[10px] text-[#958B9F] uppercase font-bold">
-                Quick 1-Tap Notes:
+                {t('quick_notes_label')}
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {[
-                  'Replaced RJ45 connector',
-                  'Reset POE adapter',
-                  'Re-aligned antenna (-61 dBm)',
-                  'New Cat6 cable drop',
-                  'Reconfigured PPPoE',
+                  t('preset_note_rj45'),
+                  t('preset_note_poe'),
+                  t('preset_note_realign'),
+                  t('preset_note_cable'),
+                  t('preset_note_pppoe'),
                 ].map((note) => (
                   <button
                     key={note}

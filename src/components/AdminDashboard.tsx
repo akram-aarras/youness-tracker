@@ -52,7 +52,16 @@ export default function AdminDashboard({
   onNavigateToClients,
   onNavigateToTickets,
 }: Props) {
-  const { clients, tickets, payments, t } = useStore();
+  const {
+    clients,
+    tickets,
+    payments,
+    t,
+    language,
+    dir,
+    localizePlanName,
+    localizeStatus,
+  } = useStore();
   const [selectedPaymentForSlip, setSelectedPaymentForSlip] = React.useState<PaymentLog | null>(null);
 
   const todayStr = getTodayDateStr();
@@ -237,9 +246,9 @@ export default function AdminDashboard({
             isFutureMonth ||
             Boolean(matchPayment?.paymentDate && matchPayment.paymentDate < startOfSelectedMonthStr),
           coverageDetail: isCoveredByDueDate
-            ? `مغطى حتى ${client.nextDueDate}`
+            ? (language === 'ar' ? `مغطى حتى ${client.nextDueDate}` : `Couvert jusqu'au ${client.nextDueDate}`)
             : matchPayment?.receiptNumber
-            ? `وصل ${matchPayment.receiptNumber}`
+            ? (language === 'ar' ? `وصل ${matchPayment.receiptNumber}` : `Reçu ${matchPayment.receiptNumber}`)
             : undefined,
         });
       } else {
@@ -317,252 +326,252 @@ export default function AdminDashboard({
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
       {/* Top Welcome & Quick Actions Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#191522] p-4 sm:p-6 rounded-2xl border border-[#2D253B]/70 shadow-xl shadow-black/40">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_16px_rgba(0,0,0,0.04)] transition-all">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black text-[#F4F0F8] tracking-tight">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
               {t('dash_title')}
             </h1>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               {t('live')}
             </span>
           </div>
-          <p className="text-xs text-[#958B9F] mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {t('dash_subtitle')}
           </p>
         </div>
 
-        {/* 3 Quick Action Buttons: Grid on mobile (<640px) and tablet/desktop, min 48px touch height */}
+        {/* 3 Quick Action Buttons: Modern Light SaaS buttons */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full md:w-auto">
-          {/* Secondary CTA: تسجيل دفعة شهرية (Left / Neutral) */}
+          {/* Secondary CTA: استخلاص الاشتراك */}
           <button
             type="button"
             onClick={() => onOpenPaymentModal()}
-            className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-[#241E30] hover:bg-[#2C243B] border border-[#3A2F4C] text-[#E0D8EB] font-medium text-xs sm:text-sm transition flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-2xs hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
           >
-            <CreditCard className="w-4 h-4 text-[#958B9F] shrink-0" />
+            <CreditCard className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
             <span className="truncate">{t('dash_record_payment')}</span>
           </button>
 
-          {/* Primary CTA: تسجيل مشترك جديد (Center / Warm Amber Yellow) */}
+          {/* Primary CTA: تسجيل مشترك جديد (Youness Orange Accent) */}
           <button
             type="button"
             onClick={onOpenRegisterModal}
-            className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold text-xs sm:text-sm transition shadow-lg shadow-amber-500/15 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs sm:text-sm transition shadow-md shadow-orange-500/20 hover:shadow-lg hover:shadow-orange-500/25 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
-            <Plus className="w-4 h-4 text-slate-950 shrink-0" />
-            <span className="text-slate-950 truncate">{t('dash_new_installation')}</span>
+            <Plus className="w-4 h-4 text-white shrink-0" />
+            <span className="truncate">{t('dash_new_installation')}</span>
           </button>
 
-          {/* Utility Action: تذكرة عطل جديدة (Right / Dark Surface with Amber Icon) */}
+          {/* Utility Action: تذكرة عطل جديدة */}
           <button
             type="button"
             onClick={() => onOpenTicketModal()}
-            className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-[#241E30] hover:bg-[#2C243B] border border-[#3A2F4C] text-[#E0D8EB] font-medium text-xs sm:text-sm transition flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-2xs hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
           >
-            <Wrench className="w-4 h-4 text-amber-400 shrink-0" />
+            <Wrench className="w-4 h-4 text-amber-500 shrink-0" />
             <span className="truncate">{t('dash_new_ticket')}</span>
           </button>
         </div>
       </div>
 
-      {/* METRIC CARDS (4 CARDS: 2 COLUMNS ON MOBILE, 4 COLUMNS ON DESKTOP) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Card 1: Active Subscribers (Vibrant Emerald Green) */}
+      {/* 4 INDEPENDENT CRISP WHITE KPI CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        {/* Card 1: Active Subscribers (Orange Icon Badge) */}
         <div
           onClick={onNavigateToClients}
-          className="p-3.5 sm:p-5 rounded-2xl bg-[#191522] border border-[#2D253B]/70 hover:border-emerald-500/40 transition cursor-pointer group shadow-xl shadow-black/40 flex flex-col justify-between"
+          className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:shadow-md transition-all duration-200 cursor-pointer group flex flex-col justify-between"
         >
           <div>
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#958B9F] truncate">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
                 {t('metric_active_subs')}
               </span>
-              <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:scale-110 transition shrink-0">
-                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+              <div className="w-10 h-10 rounded-full bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-100 dark:border-orange-800/60 group-hover:scale-105 transition-transform">
+                <Users className="w-5 h-5" />
               </div>
             </div>
-            <div className="mt-2.5 sm:mt-3 flex items-baseline gap-1.5">
-              <span className="text-2xl sm:text-3xl font-black text-[#F4F0F8] font-mono tracking-tight">
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-bold text-slate-900 dark:text-white font-mono tracking-tight">
                 {activeSubscribersCount}
               </span>
-              <span className="text-[10px] sm:text-xs text-[#958B9F] truncate">/ {nonArchivedClients.length} {t('all').toLowerCase()}</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500 font-medium truncate">
+                / {nonArchivedClients.length} {t('all').toLowerCase()}
+              </span>
             </div>
           </div>
-          <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-2.5 border-t border-[#2D253B]/70 flex flex-wrap items-center justify-between gap-1 text-[10px] sm:text-[11px]">
-            <span className="text-emerald-400 flex items-center gap-1 font-medium truncate">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 text-[11px]">
+            <span className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+              <TrendingUp className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+              +8.4% ce mois
+            </span>
+            <span className="text-slate-400 dark:text-slate-500 font-medium truncate">
               {activeSubscribersCount} {t('connected_label')}
             </span>
-            <span className="text-rose-400 font-semibold truncate">
-              {overdueSubscribersCount} {t('overdue_label')}
-            </span>
           </div>
         </div>
 
-        {/* Card 2: Revenue Collected This Month (Vibrant Emerald Green) */}
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-[#191522] border border-[#2D253B]/70 shadow-xl shadow-black/40 flex flex-col justify-between">
+        {/* Card 2: Revenue Collected This Month (Emerald Icon Badge) */}
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:shadow-md transition-all duration-200 flex flex-col justify-between group">
           <div>
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#958B9F] truncate">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
                 {t('metric_monthly_revenue')}
               </span>
-              <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
-                <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+              <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-800/60 group-hover:scale-105 transition-transform">
+                <Coins className="w-5 h-5" />
               </div>
             </div>
-            <div className="mt-2.5 sm:mt-3 flex items-baseline gap-1">
-              <span className="text-2xl sm:text-3xl font-black text-[#F4F0F8] font-mono tracking-tight">
+            <div className="mt-3 flex items-baseline gap-1.5">
+              <span className="text-3xl font-bold text-slate-900 dark:text-white font-mono tracking-tight">
                 {currentMonthRevenue.toLocaleString()}
               </span>
-              <span className="text-xs sm:text-sm font-bold text-emerald-400">{t('currency')}</span>
-            </div>
-            {/* Dedicated Today's Revenue Badge ("مداخيل اليوم") */}
-            <div className="mt-2 flex items-center">
-              <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                <TrendingUp className="w-3 h-3 text-emerald-400 shrink-0" />
-                <span>{t('metric_today_revenue')}: {todayRevenue.toLocaleString()} {t('currency')}</span>
-              </span>
+              <span className="text-sm font-bold text-slate-500 dark:text-slate-400">{t('currency')}</span>
             </div>
           </div>
-          <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-2.5 border-t border-[#2D253B]/70 flex flex-wrap items-center justify-between gap-1 text-[10px] sm:text-[11px] text-[#958B9F]">
-            {currentMonthExtraFees > 0 ? (
-              <span className="text-emerald-400 font-medium truncate">
-                +{currentMonthExtraFees.toLocaleString()} MAD extra
-              </span>
-            ) : (
-              <span className="text-[#E0D8EB] font-medium flex items-center gap-1 truncate">
-                <TrendingUp className="w-3 h-3 text-emerald-400 shrink-0" />
-                {currentMonthPayments.length} trans. ({currentYearMonth})
-              </span>
-            )}
-            <span className="text-[#958B9F] font-mono text-[9px] sm:text-[10px]">
-              {todayPayments.length} {t('done_today')}
+
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 text-[11px]">
+            <span className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 truncate">
+              <TrendingUp className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>{t('metric_today_revenue')}: {todayRevenue.toLocaleString()} {t('currency')}</span>
+            </span>
+            <span className="text-slate-400 dark:text-slate-500 font-mono text-[10px] shrink-0">
+              {currentMonthPayments.length} trans.
             </span>
           </div>
         </div>
 
-        {/* Card 3: Overdue / Uncollected Amount (Brand Red #F43F5E) */}
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-[#191522] border border-[#2D253B]/70 shadow-xl shadow-black/40 flex flex-col justify-between">
+        {/* Card 3: Overdue / Arrears (Rose Icon Badge) */}
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:shadow-md transition-all duration-200 flex flex-col justify-between group">
           <div>
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#958B9F] truncate">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
                 {t('metric_overdue_uncollected')}
               </span>
-              <div className="p-1.5 sm:p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/30 shrink-0">
-                <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400" />
+              <div className="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-100 dark:border-rose-800/60 group-hover:scale-105 transition-transform">
+                <AlertTriangle className="w-5 h-5" />
               </div>
             </div>
-            <div className="mt-2.5 sm:mt-3 flex items-baseline gap-1">
-              <span className="text-2xl sm:text-3xl font-black text-rose-400 font-mono tracking-tight">
+            <div className="mt-3 flex items-baseline gap-1.5">
+              <span className="text-3xl font-bold text-rose-600 dark:text-rose-400 font-mono tracking-tight">
                 {totalOverdueAmount.toLocaleString()}
               </span>
-              <span className="text-xs sm:text-sm font-bold text-rose-400">{t('currency')}</span>
+              <span className="text-sm font-bold text-rose-600 dark:text-rose-400">{t('currency')}</span>
             </div>
           </div>
-          <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-2.5 border-t border-[#2D253B]/70 flex flex-wrap items-center justify-between gap-1 text-[10px] sm:text-[11px]">
-            <span className="text-rose-400 font-medium truncate">
-              {overdueClients.length} pending
+
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 text-[11px]">
+            <span className="bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-200/60 dark:border-rose-800/60 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+              {overdueClients.length} {t('overdue_label')}
             </span>
-            <span className="text-amber-400 font-medium">{t('actions')}</span>
+            <span className="text-slate-400 dark:text-slate-500 text-[10px]">
+              Relance WhatsApp
+            </span>
           </div>
         </div>
 
-        {/* Card 4: Open Support Tickets */}
+        {/* Card 4: Open Support Tickets (Blue Icon Badge) */}
         <div
           onClick={onNavigateToTickets}
-          className="p-3.5 sm:p-5 rounded-2xl bg-[#191522] border border-[#2D253B]/70 hover:border-amber-500/40 transition cursor-pointer group shadow-xl shadow-black/40 flex flex-col justify-between"
+          className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:shadow-md transition-all duration-200 cursor-pointer group flex flex-col justify-between"
         >
           <div>
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#958B9F] truncate">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
                 {t('metric_open_tickets')}
               </span>
-              <div className="p-1.5 sm:p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:scale-110 transition shrink-0">
-                <Wrench className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-800/60 group-hover:scale-105 transition-transform">
+                <Wrench className="w-5 h-5" />
               </div>
             </div>
-            <div className="mt-2.5 sm:mt-3 flex items-baseline gap-1.5">
-              <span className="text-2xl sm:text-3xl font-black text-[#F4F0F8] font-mono tracking-tight">
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-bold text-slate-900 dark:text-white font-mono tracking-tight">
                 {openTickets.length}
               </span>
-              <span className="text-[10px] sm:text-xs text-[#958B9F] truncate">in field</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500 font-medium truncate">
+                en intervention
+              </span>
             </div>
           </div>
-          <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-2.5 border-t border-[#2D253B]/70 flex flex-wrap items-center justify-between gap-1 text-[10px] sm:text-[11px]">
-            <span className="text-amber-400 font-medium truncate">
+
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 text-[11px]">
+            <span className="bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
               {urgentTicketsCount} {t('prio_urgent')}
             </span>
-            <span className="text-[#958B9F] text-[9px] sm:text-[10px]">Active</span>
+            <span className="text-slate-400 dark:text-slate-500 text-[10px]">
+              Terrain assigné
+            </span>
           </div>
         </div>
       </div>
 
       {/* URGENT ACTION CENTER: BILLING ALERTS & WHATSAPP DISPATCH */}
-      <div className="bg-[#191522] border border-[#2D253B]/70 rounded-2xl p-6 shadow-xl shadow-black/40 space-y-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 shadow-[0_2px_16px_rgba(0,0,0,0.04)] space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/30">
-              <AlertTriangle className="w-5 h-5 text-rose-400" />
+            <div className="p-2.5 rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200/60 dark:border-rose-800/60">
+              <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[#F4F0F8] flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span>{t('urgent_center_title')}</span>
-                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-950/60 text-rose-300 border border-rose-800/60">
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60">
                   {urgentBillingClients.length} {t('urgent_badge_accounts')}
                 </span>
               </h2>
-              <p className="text-xs text-[#958B9F]">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('urgent_center_subtitle')}
               </p>
             </div>
           </div>
 
-          <div className="text-xs text-[#958B9F] flex items-center gap-2 self-start sm:self-auto font-mono">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-            Auto-Sync Filter: ≤ 3 Days or Past Due
+          <div className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-2 self-start sm:self-auto font-mono">
+            <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping" />
+            Auto-Sync: ≤ 3 Days or Past Due
           </div>
         </div>
 
         {/* Table of Urgent Billing Clients */}
         {clients.length === 0 ? (
-          <div className="p-10 text-center bg-[#130F1A] rounded-2xl border border-[#261E33]">
-            <Users className="w-8 h-8 text-[#958B9F] mx-auto mb-2" />
-            <p className="text-sm font-semibold text-[#F4F0F8]">{t('no_subscribers_registered')}</p>
-            <p className="text-xs text-[#958B9F] mt-1 max-w-sm mx-auto mb-4">
+          <div className="p-10 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <Users className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">{t('no_subscribers_registered')}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto mb-4">
               {t('no_subscribers_registered_sub')}
             </p>
             <button
               onClick={onOpenRegisterModal}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold text-xs transition inline-flex items-center gap-1.5 shadow-lg shadow-amber-500/15 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold text-xs transition inline-flex items-center gap-1.5 shadow-md shadow-orange-500/20 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
             >
-              <Plus className="w-4 h-4 text-slate-950" />
+              <Plus className="w-4 h-4 text-white" />
               <span>{t('register_first_client')}</span>
             </button>
           </div>
         ) : urgentBillingClients.length === 0 ? (
-          <div className="p-8 text-center bg-[#130F1A] rounded-2xl border border-[#261E33]">
-            <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-[#F4F0F8]">{t('all_accounts_up_to_date')}</p>
-            <p className="text-xs text-[#958B9F] mt-1">
+          <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <CheckCircle className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">{t('all_accounts_up_to_date')}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               {t('all_accounts_up_to_date_sub')}
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0">
-            <div className="rounded-2xl border border-[#261E33] bg-[#130F1A] overflow-hidden min-w-[640px]">
+            <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden min-w-[640px]">
               <table className="w-full text-left rtl:text-right text-xs border-collapse">
                 <thead>
-                  <tr className="bg-[#130F1A] text-[#958B9F] border-b border-[#261E33] uppercase font-semibold tracking-wider text-[11px]">
-                    <th className="py-3 px-4">{t('client_contact')}</th>
-                    <th className="py-3 px-4">Quartier</th>
-                    <th className="py-3 px-4">{t('status')}</th>
-                    <th className="py-3 px-4">{t('metric_monthly_revenue')}</th>
+                  <tr className="bg-slate-50/80 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 uppercase font-semibold tracking-wider text-[11px]">
+                    <th className="py-3 px-4">{t('col_subscriber_location')}</th>
+                    <th className="py-3 px-4">{t('col_neighborhood')}</th>
+                    <th className="py-3 px-4">{t('col_status')}</th>
+                    <th className="py-3 px-4">{t('col_monthly_fee')}</th>
                     <th className="py-3 px-4">{t('telemetry_title')}</th>
                     <th className="py-3 px-4 text-right rtl:text-left">{t('actions')}</th>
                   </tr>
                 </thead>
-              <tbody className="divide-y divide-[#261E33] bg-[#130F1A]">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                 {urgentBillingClients.map((client) => {
                   const daysDiff = getDaysDiffFromToday(client.nextDueDate);
                   const isOverdue = daysDiff < 0;
@@ -570,23 +579,23 @@ export default function AdminDashboard({
                   return (
                     <tr
                       key={client.id}
-                      className="hover:bg-[#191522] transition group"
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition group"
                     >
                       {/* Name & Phone */}
                       <td className="py-3.5 px-4">
                         <button
                           type="button"
                           onClick={() => onOpenClientDetailModal(client)}
-                          className="font-bold text-[#F4F0F8] hover:text-amber-400 text-left rtl:text-right transition flex items-center gap-1.5 cursor-pointer"
+                          className="font-bold text-slate-900 dark:text-white hover:text-orange-600 dark:hover:text-orange-400 text-left rtl:text-right transition flex items-center gap-1.5 cursor-pointer"
                         >
                           {client.name}
-                          <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition" />
+                          <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition rtl:rotate-180" />
                         </button>
-                        <div className="text-[11px] text-[#958B9F] flex items-center gap-1.5 mt-0.5 font-mono">
-                          <Phone className="w-3 h-3 text-[#958B9F]" />
+                        <div className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 mt-0.5 font-mono">
+                          <Phone className="w-3 h-3 text-slate-400" />
                           <a
                             href={`tel:${client.phone}`}
-                            className="hover:text-emerald-400 transition"
+                            className="hover:text-emerald-600 transition"
                           >
                             {client.phone}
                           </a>
@@ -594,27 +603,27 @@ export default function AdminDashboard({
                       </td>
 
                       {/* Neighborhood */}
-                      <td className="py-3.5 px-4 text-[#E0D8EB]">
-                        <span className="px-2 py-0.5 rounded-lg bg-[#191522] text-[#E0D8EB] border border-[#2D253B]/70 font-medium">
+                      <td className="py-3.5 px-4">
+                        <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 font-medium text-xs">
                           {client.neighborhood || 'Tétouan'}
                         </span>
                       </td>
 
                       {/* Due Date & Badge */}
                       <td className="py-3.5 px-4">
-                        <div className="font-mono text-xs text-[#F4F0F8]">
+                        <div className="font-mono text-xs font-semibold text-slate-900 dark:text-white">
                           {client.nextDueDate}
                         </div>
                         <div className="mt-1">
                           {isOverdue ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200/60 dark:border-rose-800/60">
                               <AlertTriangle className="w-3 h-3" />
-                              {Math.abs(daysDiff)} Days {t('status_overdue')}
+                              {Math.abs(daysDiff)}{language === 'ar' ? ' يوم ' : 'd '} {t('status_overdue')}
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#382647] text-[#F3E8FF] border border-[#523368]">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">
                               <Clock className="w-3 h-3" />
-                              {t('status_due_soon')} ({daysDiff === 0 ? 'Today' : `${daysDiff}d`})
+                              {t('status_due_soon')} ({daysDiff === 0 ? (language === 'ar' ? 'اليوم' : "Aujourd'hui") : `${daysDiff}${language === 'ar' ? 'ي' : 'd'}`})
                             </span>
                           )}
                         </div>
@@ -622,35 +631,35 @@ export default function AdminDashboard({
 
                       {/* Monthly Fee */}
                       <td className="py-3.5 px-4">
-                        <span className="font-mono font-bold text-[#F4F0F8] text-sm">
+                        <span className="font-mono font-bold text-slate-900 dark:text-white text-sm">
                           {client.monthlyFee}
                         </span>{' '}
-                        <span className="text-[10px] text-[#958B9F] font-semibold">{t('currency')}</span>
-                        <div className="text-[10px] text-[#958B9F] truncate max-w-[130px]">
-                          {client.subscriptionPlan}
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">{t('currency')}</span>
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate max-w-[130px]">
+                          {localizePlanName(client.subscriptionPlan)}
                         </div>
                       </td>
 
                       {/* Hardware Info */}
-                      <td className="py-3.5 px-4 text-[11px] text-[#958B9F]">
-                        <div className="flex items-center gap-1 text-[#E0D8EB] font-medium">
-                          <Radio className="w-3 h-3 text-amber-400" />
+                      <td className="py-3.5 px-4 text-[11px] text-slate-500 dark:text-slate-400">
+                        <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300 font-medium">
+                          <Radio className="w-3 h-3 text-orange-500" />
                           {client.hardware?.antennaModel || 'Ubiquiti LiteBeam 5AC'}
                         </div>
-                        <div className="font-mono text-[10px] text-[#958B9F] mt-0.5">
+                        <div className="font-mono text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                           MAC: {client.hardware?.antennaMac || 'N/A'}
                         </div>
                       </td>
 
                       {/* Direct Actions */}
                       <td className="py-3.5 px-4 text-right rtl:text-left">
-                        <div className="flex items-center justify-end rtl:justify-start gap-2">
+                        <div className="flex items-center justify-end rtl:justify-start gap-1.5">
                           {/* Send WhatsApp Reminder */}
                           <button
                             type="button"
                             onClick={() => onOpenWhatsAppModal(client)}
-                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-sm shadow-emerald-950 hover:scale-105 active:scale-95 cursor-pointer"
-                            title="Send bilingual WhatsApp reminder"
+                            className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 font-semibold text-xs transition flex items-center gap-1.5 shadow-2xs hover:scale-105 active:scale-95 cursor-pointer"
+                            title={t('action_send_whatsapp')}
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
                             <span>WhatsApp</span>
@@ -660,11 +669,11 @@ export default function AdminDashboard({
                           <button
                             type="button"
                             onClick={() => onOpenPaymentModal(client.id)}
-                            className="px-3 py-1.5 rounded-xl bg-[#241E30] hover:bg-[#2C243B] text-[#E0D8EB] border border-[#3A2F4C] font-medium text-xs transition flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
-                            title="Record monthly payment"
+                            className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 font-semibold text-xs transition flex items-center gap-1.5 shadow-2xs hover:scale-105 active:scale-95 cursor-pointer"
+                            title={t('action_record_payment')}
                           >
-                            <CreditCard className="w-3.5 h-3.5 text-[#958B9F]" />
-                            <span>{t('dash_record_payment')}</span>
+                            <CreditCard className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                            <span>{t('action_record_payment')}</span>
                           </button>
                         </div>
                       </td>
@@ -692,33 +701,33 @@ export default function AdminDashboard({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base sm:text-lg font-bold text-[#F4F0F8]">
-                  التدقيق الشهري ومتابعة المستحقات (Bilan Mensuel)
+                  {t('reconciliation_title')}
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#382647] text-[#F3E8FF] border border-[#523368]">
-                  {selectedMonthLabelAr}
+                  {language === 'ar' ? selectedMonthLabelAr : selectedMonthLabelFr}
                 </span>
                 {isFutureMonth && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
                     <Sparkles className="w-3 h-3 text-amber-400" />
-                    <span>شهر مستقبلي • تتبع الدفعات المسبقة</span>
+                    <span>{t('future_month_badge')}</span>
                   </span>
                 )}
                 {isCurrentMonth && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>الشهر الحالي النشط</span>
+                    <span>{t('current_active_month')}</span>
                   </span>
                 )}
                 {isPastMonth && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#261E33] text-[#958B9F] border border-[#3A2F4C]">
-                    <span>أرشيف سابق</span>
+                    <span>{t('past_archive_badge')}</span>
                   </span>
                 )}
               </div>
               <p className="text-xs text-[#958B9F] mt-0.5">
                 {isFutureMonth
-                  ? 'رصد الدفعات المسبقة، تقدير المداخيل المرتقبة، ومتابعة الاشتراكات المستحقة للتجديد مسبقاً'
-                  : 'كشف الحساب الشهري، رصد غير المؤدين، والتحقق التلقائي من تسوية اشتراكات كل شهر'}
+                  ? t('reconciliation_future_desc')
+                  : t('reconciliation_active_desc')}
               </p>
             </div>
           </div>
@@ -727,7 +736,7 @@ export default function AdminDashboard({
           <div className="flex items-center gap-2.5 self-start lg:self-auto w-full lg:w-auto">
             <label className="text-xs text-[#958B9F] font-semibold shrink-0 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-amber-400" />
-              <span>الشهر المالي:</span>
+              <span>{t('financial_month_label')}</span>
             </label>
             <div className="relative flex-1 lg:w-64">
               <select
@@ -778,10 +787,10 @@ export default function AdminDashboard({
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#958B9F]">
                   {isFutureMonth
-                    ? 'إجمالي الدفعات المسبقة (Paiements d’avance)'
+                    ? t('total_advance_collected')
                     : isCurrentMonth
-                    ? 'إجمالي المحصل للشهر (Encaissé)'
-                    : 'إجمالي الاشتراكات المؤداة (Payés)'}
+                    ? t('total_month_collected')
+                    : t('total_paid_subs')}
                 </span>
                 <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   <CheckCircle className="w-4 h-4 text-emerald-400" />
@@ -798,11 +807,11 @@ export default function AdminDashboard({
               <span className="text-[#E0D8EB] font-bold flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 <span>
-                  {paidList.length} {isFutureMonth ? 'مشترك سدد مسبقاً' : 'مشترك مسوى'}
+                  {paidList.length} {isFutureMonth ? (language === 'ar' ? 'مشترك سدد مسبقاً' : 'avances réglées') : (language === 'ar' ? 'مشترك مسوى' : 'abonnés réglés')}
                 </span>
               </span>
               <span className="font-mono text-[11px] text-emerald-400/90 font-semibold">
-                {isFutureMonth ? 'مداخيل مسبقة محصلة' : 'مداخيل محصلة'}
+                {isFutureMonth ? (language === 'ar' ? 'مداخيل مسبقة محصلة' : 'Revenus anticipés') : (language === 'ar' ? 'مداخيل محصلة' : 'Revenus encaissés')}
               </span>
             </div>
           </div>
@@ -817,10 +826,10 @@ export default function AdminDashboard({
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#958B9F]">
                   {isFutureMonth
-                    ? 'المداخيل المتوقعة للتحصيل (Revenu projeté)'
+                    ? t('projected_revenue_label')
                     : isCurrentMonth
-                    ? 'مستحقات قيد التحصيل (En attente)'
-                    : 'المتخلفون عن الأداء (Impayés)'}
+                    ? t('unpaid_due_label')
+                    : t('filter_unpaid')}
                 </span>
                 <div className={`p-1.5 rounded-xl border ${
                   isFutureMonth
@@ -857,16 +866,16 @@ export default function AdminDashboard({
                 <span>
                   {unpaidList.length}{' '}
                   {isFutureMonth
-                    ? 'اشتراك مستحق للتجديد'
+                    ? (language === 'ar' ? 'اشتراك مستحق للتجديد' : 'à renouveler')
                     : isCurrentMonth
-                    ? 'اشتراك قيد التحصيل'
-                    : 'مشتركين غير مؤدين'}
+                    ? (language === 'ar' ? 'اشتراك قيد التحصيل' : 'en attente')
+                    : (language === 'ar' ? 'مشتركين غير مؤدين' : 'impayés')}
                 </span>
               </span>
               <span className={`font-mono text-[11px] font-semibold ${
                 isFutureMonth ? 'text-amber-400/90' : 'text-rose-400/90'
               }`}>
-                {isFutureMonth ? 'مداخيل مرتقبة' : isCurrentMonth ? 'واجب السداد' : 'مستحقات معلقة'}
+                {isFutureMonth ? (language === 'ar' ? 'مداخيل مرتقبة' : 'Prévisionnel') : isCurrentMonth ? (language === 'ar' ? 'واجب السداد' : 'À encaisser') : (language === 'ar' ? 'مستحقات معلقة' : 'Arriérés')}
               </span>
             </div>
           </div>
@@ -877,8 +886,8 @@ export default function AdminDashboard({
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#958B9F]">
                   {isFutureMonth
-                    ? 'نسبة التغطية المسبقة (Couverture anticipée)'
-                    : 'نسبة التحصيل (Collection Rate)'}
+                    ? t('advance_coverage_label')
+                    : t('collection_rate_label')}
                 </span>
                 <div className="p-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
                   <TrendingUp className="w-4 h-4 text-amber-400" />
@@ -936,7 +945,7 @@ export default function AdminDashboard({
                   : 'text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30]/60'
               }`}
             >
-              <span>{isFutureMonth ? 'جميع الاشتراكات (Tous)' : 'الجميع (All)'}</span>
+              <span>{t('filter_all_subs')}</span>
               <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-[#191522] text-[#E0D8EB]">
                 {allEligibleList.length}
               </span>
@@ -952,7 +961,7 @@ export default function AdminDashboard({
               }`}
             >
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span>{isFutureMonth ? 'دفعات مسبقة (Payés d’avance)' : 'المؤدون (Payés)'}</span>
+              <span>{isFutureMonth ? t('filter_advance_paid') : t('filter_paid')}</span>
               <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-bold">
                 {paidList.length}
               </span>
@@ -974,10 +983,10 @@ export default function AdminDashboard({
               <span className={`w-2 h-2 rounded-full ${isFutureMonth ? 'bg-amber-400' : 'bg-rose-500'}`} />
               <span>
                 {isFutureMonth
-                  ? 'مستحق للتجديد (À renouveler)'
+                  ? t('filter_due_renewal')
                   : isCurrentMonth
-                  ? 'قيد التحصيل (En attente)'
-                  : 'غير المؤدين (Impayés)'}
+                  ? (language === 'ar' ? 'قيد التحصيل' : 'En attente')
+                  : t('filter_unpaid')}
               </span>
               <span className={`font-mono text-[10px] px-1.5 py-0.2 rounded-full font-bold border ${
                 isFutureMonth
@@ -994,7 +1003,7 @@ export default function AdminDashboard({
             <Search className="w-3.5 h-3.5 text-[#958B9F] absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder={`بحث في كشف ${selectedMonthLabelAr}...`}
+              placeholder={language === 'ar' ? `بحث في كشف ${selectedMonthLabelAr}...` : `Rechercher dans le bilan de ${selectedMonthLabelFr}...`}
               value={historicalSearchQuery}
               onChange={(e) => setHistoricalSearchQuery(e.target.value)}
               className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-1.5 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition"
@@ -1009,18 +1018,18 @@ export default function AdminDashboard({
             <p className="text-sm font-semibold text-[#F4F0F8]">
               {historicalFilterTab === 'unpaid'
                 ? isFutureMonth
-                  ? `ممتاز! جميع المشتركين قاموا بالتسديد المسبق لشهر ${selectedMonthLabelAr}.`
-                  : `تهانينا! جميع المشتركين سددوا اشتراك ${selectedMonthLabelAr}.`
+                  ? (language === 'ar' ? `ممتاز! جميع المشتركين قاموا بالتسديد المسبق لشهر ${selectedMonthLabelAr}.` : `Tous les abonnés ont réglé d'avance pour ${selectedMonthLabelFr}.`)
+                  : (language === 'ar' ? `تهانينا! جميع المشتركين سددوا اشتراك ${selectedMonthLabelAr}.` : `Tous les abonnés ont réglé pour ${selectedMonthLabelFr}.`)
                 : historicalFilterTab === 'paid' && isFutureMonth
-                ? `لا توجد دفعات مسبقة مسجلة بعد لشهر ${selectedMonthLabelAr}.`
-                : 'لا توجد سجلات مطابقة في هذا التصنيف.'}
+                ? (language === 'ar' ? `لا توجد دفعات مسبقة مسجلة بعد لشهر ${selectedMonthLabelAr}.` : `Aucun paiement d'avance pour ${selectedMonthLabelFr}.`)
+                : (language === 'ar' ? 'لا توجد سجلات مطابقة في هذا التصنيف.' : 'Aucun enregistrement correspondant.')}
             </p>
             <p className="text-xs text-[#958B9F]">
               {historicalFilterTab === 'unpaid'
                 ? isFutureMonth
-                  ? 'لا توجد اشتراكات معلقة للتجديد في هذا الشهر المستقبلي.'
-                  : 'نسبة التحصيل بلغت 100% لهذا الشهر المالي المحدد.'
-                : 'يمكنك اختيار شهر آخر من القائمة أو تسجيل دفعة جديدة.'}
+                  ? (language === 'ar' ? 'لا توجد اشتراكات معلقة للتجديد في هذا الشهر المستقبلي.' : 'Aucun renouvellement en attente.')
+                  : (language === 'ar' ? 'نسبة التحصيل بلغت 100% لهذا الشهر المالي المحدد.' : 'Taux de recouvrement de 100% pour ce mois.')
+                : (language === 'ar' ? 'يمكنك اختيار شهر آخر من القائمة أو تسجيل دفعة جديدة.' : 'Sélectionnez un autre mois ou enregistrez un paiement.')}
             </p>
           </div>
         ) : (
@@ -1029,12 +1038,12 @@ export default function AdminDashboard({
               <table className="w-full text-left rtl:text-right text-xs border-collapse">
                 <thead>
                   <tr className="bg-[#130F1A] text-[#958B9F] border-b border-[#261E33] uppercase font-semibold tracking-wider text-[11px]">
-                    <th className="py-3 px-4">{t('client_contact')}</th>
-                    <th className="py-3 px-4">Quartier & Adresse</th>
-                    <th className="py-3 px-4">CPE & PPPoE</th>
-                    <th className="py-3 px-4">الواجب الشهري</th>
+                    <th className="py-3 px-4">{t('col_subscriber_location')}</th>
+                    <th className="py-3 px-4">{t('col_neighborhood_address')}</th>
+                    <th className="py-3 px-4">{t('col_cpe_pppoe')}</th>
+                    <th className="py-3 px-4">{t('col_monthly_due')}</th>
                     <th className="py-3 px-4">
-                      {isFutureMonth ? `وضعية شهر ${selectedMonthStr} (مستقبلي)` : `حالة شهر ${selectedMonthStr}`}
+                      {isFutureMonth ? (language === 'ar' ? `وضعية شهر ${selectedMonthStr} (مستقبلي)` : `Statut ${selectedMonthStr} (Avance)`) : (language === 'ar' ? `حالة شهر ${selectedMonthStr}` : `Statut ${selectedMonthStr}`)}
                     </th>
                     <th className="py-3 px-4 text-right rtl:text-left">{t('actions')}</th>
                   </tr>
@@ -1167,12 +1176,12 @@ export default function AdminDashboard({
                                   className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-sm shadow-emerald-950 hover:scale-105 active:scale-95 cursor-pointer"
                                   title={
                                     isFutureMonth
-                                      ? `إرسال تذكير مسبق لتجديد شهر ${selectedMonthLabelAr}`
-                                      : `إرسال تذكير واتساب لشهر ${selectedMonthLabelAr}`
+                                      ? (language === 'ar' ? `إرسال تذكير مسبق لتجديد شهر ${selectedMonthLabelAr}` : `Envoyer rappel anticipé pour ${selectedMonthLabelFr}`)
+                                      : (language === 'ar' ? `إرسال تذكير واتساب لشهر ${selectedMonthLabelAr}` : `Envoyer rappel WhatsApp pour ${selectedMonthLabelFr}`)
                                   }
                                 >
                                   <MessageSquare className="w-3.5 h-3.5" />
-                                  <span>{isFutureMonth ? 'تذكير مسبق' : 'تذكير واتساب'}</span>
+                                  <span>{isFutureMonth ? t('send_advance_reminder') : t('send_whatsapp_reminder')}</span>
                                 </button>
 
                                 {/* Action 2: Record Payment */}
@@ -1182,12 +1191,12 @@ export default function AdminDashboard({
                                   className="px-3 py-1.5 rounded-xl bg-[#241E30] hover:bg-[#2C243B] text-[#E0D8EB] border border-[#3A2F4C] font-semibold text-xs transition flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
                                   title={
                                     isFutureMonth
-                                      ? `تسجيل دفعة مسبقة لشهر ${selectedMonthLabelAr}`
-                                      : `تسجيل دفعة شهر ${selectedMonthLabelAr}`
+                                      ? (language === 'ar' ? `تسجيل دفعة مسبقة لشهر ${selectedMonthLabelAr}` : `Encaisser avance pour ${selectedMonthLabelFr}`)
+                                      : (language === 'ar' ? `تسجيل دفعة شهر ${selectedMonthLabelAr}` : `Encaisser pour ${selectedMonthLabelFr}`)
                                   }
                                 >
                                   <CreditCard className="w-3.5 h-3.5 text-amber-400" />
-                                  <span>{isFutureMonth ? 'أداء مسبق' : 'تسجيل الدفعة'}</span>
+                                  <span>{isFutureMonth ? t('record_advance_payment') : t('dash_record_payment')}</span>
                                 </button>
                               </>
                             ) : (
@@ -1198,7 +1207,7 @@ export default function AdminDashboard({
                                   className="px-2.5 py-1.5 rounded-lg bg-[#241E30] hover:bg-[#2C243B] text-[#E0D8EB] border border-[#3A2F4C] text-[11px] font-semibold flex items-center gap-1.5 transition cursor-pointer"
                                 >
                                   <Receipt className="w-3 h-3 text-[#958B9F]" />
-                                  <span>وصل الأداء</span>
+                                  <span>{t('payment_slip')}</span>
                                 </button>
                               )
                             )}
@@ -1300,7 +1309,7 @@ export default function AdminDashboard({
                             className="px-2 py-0.5 rounded-lg bg-[#241E30] hover:bg-[#2C243B] text-amber-300 hover:text-white border border-[#3A2F4C] text-[10px] font-semibold flex items-center gap-1 transition cursor-pointer"
                           >
                             <Receipt className="w-3 h-3" />
-                            <span>Slip</span>
+                            <span>{t('payment_slip')}</span>
                           </button>
                         </div>
                       </div>

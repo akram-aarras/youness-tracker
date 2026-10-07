@@ -20,7 +20,16 @@ import {
   INITIAL_USERS,
 } from './mockData';
 
-import { Language, Translations, getTranslation } from './i18n';
+import {
+  Language,
+  Translations,
+  getTranslation,
+  localizePlanName,
+  localizeStatus,
+  localizeTicketStatus,
+  localizeTicketPriority,
+  localizePaymentMethod,
+} from './i18n';
 import { encodeSession, SESSION_COOKIE_NAME } from './auth';
 import {
   supabase,
@@ -69,6 +78,11 @@ interface StoreContextType {
   dir: 'ltr' | 'rtl';
   setLanguage: (lang: Language) => void;
   t: (key: keyof Translations, params?: Record<string, string | number>) => string;
+  localizePlanName: (planName?: string, lang?: Language) => string;
+  localizeStatus: (status?: string, lang?: Language) => string;
+  localizeTicketStatus: (status?: string, lang?: Language) => string;
+  localizeTicketPriority: (priority?: string, lang?: Language) => string;
+  localizePaymentMethod: (method?: string, lang?: Language) => string;
   hasAdminAccount: boolean;
   login: (
     identifier: string,
@@ -100,8 +114,8 @@ interface StoreContextType {
       initialPayment?: boolean;
     }
   ) => Client;
-  updateClient: (id: string, updates: Partial<Client>) => void;
-  deleteClient: (clientId: string) => void;
+  updateClient: (id: string, updates: Partial<Client>) => Promise<boolean>;
+  deleteClient: (clientId: string) => Promise<boolean>;
   archiveClient: (clientId: string) => void;
   exportDataAsJSON: () => string;
   importDataFromJSON: (jsonData: string) => {
@@ -221,14 +235,103 @@ export function getDaysDiffFromToday(targetDateStr: string): number {
   return Math.round(diffTime / (1000 * 60 * 60 * 24));
 }
 
-// Generate chronological receipt number: REC-YYYYMMDD-XXXX
-export function generateReceiptNumber(seq: number): string {
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  const suffix = String(seq).padStart(4, '0');
-  return `REC-${yyyy}${mm}${dd}-${suffix}`;
+// Generate dynamic auto-incrementing receipt number: REC-YYYYMMDD-XXXX
+// Calculates XXXX based on the daily payment count / sequential payment index for that date
+export function generateReceiptNumber(
+  existingPaymentsOrSeq?: PaymentLog[] | number,
+  targetDateInput?: string | Date
+): string {
+  // Determine date components (YYYYMMDD)
+  let yyyy: number;
+  let mm: string;
+  let dd: string;
+
+  if (targetDateInput instanceof Date && !isNaN(targetDateInput.getTime())) {
+    yyyy = targetDateInput.getFullYear();
+    mm = String(targetDateInput.getMonth() + 1).padStart(2, '0');
+    dd = String(targetDateInput.getDate()).padStart(2, '0');
+  } else if (typeof targetDateInput === 'string' && targetDateInput.trim()) {
+    const cleanStr = targetDateInput.replace(/[^0-9]/g, '');
+    if (cleanStr.length >= 8) {
+      yyyy = parseInt(cleanStr.slice(0, 4), 10);
+      mm = cleanStr.slice(4, 6);
+      dd = cleanStr.slice(6, 8);
+    } else {
+      const parsed = new Date(targetDateInput);
+      if (!isNaN(parsed.getTime())) {
+        yyyy = parsed.getFullYear();
+        mm = String(parsed.getMonth() + 1).padStart(2, '0');
+        dd = String(parsed.getDate()).padStart(2, '0');
+      } else {
+        const today = new Date();
+        yyyy = today.getFullYear();
+        mm = String(today.getMonth() + 1).padStart(2, '0');
+        dd = String(today.getDate()).padStart(2, '0');
+      }
+    }
+  } else {
+    const today = new Date();
+    yyyy = today.getFullYear();
+    mm = String(today.getMonth() + 1).padStart(2, '0');
+    dd = String(today.getDate()).padStart(2, '0');
+  }
+
+  const dateKey = `${yyyy}${mm}${dd}`;
+  const prefix = `REC-${dateKey}-`;
+
+  // If directly passed a numeric sequence
+  if (typeof existingPaymentsOrSeq === 'number') {
+    const suffix = String(Math.max(1, existingPaymentsOrSeq)).padStart(4, '0');
+    return `${prefix}${suffix}`;
+  }
+
+  const payments = Array.isArray(existingPaymentsOrSeq) ? existingPaymentsOrSeq : [];
+
+  // Calculate XXXX based on daily payment count or highest existing sequence for this date
+  let maxDailySeq = 0;
+  let todayCount = 0;
+
+  for (const p of payments) {
+    if (!p) continue;
+    const pDate = p.paymentDate ? p.paymentDate.replace(/[^0-9]/g, '').slice(0, 8) : '';
+    const hasMatchingPrefix = p.receiptNumber && p.receiptNumber.startsWith(prefix);
+    const hasSameDate = pDate === dateKey;
+
+    if (hasMatchingPrefix) {
+      todayCount++;
+      const numPart = parseInt(p.receiptNumber.slice(prefix.length), 10);
+      if (!isNaN(numPart) && numPart > maxDailySeq) {
+        maxDailySeq = numPart;
+      }
+    } else if (hasSameDate) {
+      todayCount++;
+    }
+  }
+
+  const nextSeq = Math.max(maxDailySeq + 1, todayCount + 1);
+  const suffix = String(nextSeq).padStart(4, '0');
+  return `${prefix}${suffix}`;
+}
+
+export function getReceiptNumberOrFallback(
+  payment?: Partial<PaymentLog> | Record<string, any> | null
+): string {
+  if (!payment) return generateReceiptNumber(1);
+  const existingNum = payment.receiptNumber || (payment as any).receipt_number;
+  if (typeof existingNum === 'string' && existingNum.trim().length > 0) {
+    return existingNum.trim();
+  }
+
+  const paymentDate = payment.paymentDate || (payment as any).payment_date || '';
+  const dateStr = paymentDate
+    ? String(paymentDate).replace(/[^0-9]/g, '').slice(0, 8)
+    : getTodayDateStr().replace(/[^0-9]/g, '').slice(0, 8);
+  const yyyymmdd = dateStr.length === 8 ? dateStr : getTodayDateStr().replace(/[^0-9]/g, '').slice(0, 8);
+
+  const id = payment.id ? String(payment.id) : '';
+  const idDigits = id.replace(/\D/g, '');
+  const suffix = idDigits.length >= 4 ? idDigits.slice(-4) : '0001';
+  return `REC-${yyyymmdd}-${suffix}`;
 }
 
 // Compute client status dynamically
@@ -346,6 +449,8 @@ export function buildWhatsAppReceipt(
   const baseFee = payment.baseFee || (payment.amount - (payment.extraAmount || 0));
   const hasExtra = (payment.extraAmount || 0) > 0;
 
+  const receiptNumber = getReceiptNumberOrFallback(payment);
+
   const extraLineFr = hasExtra
     ? `• Frais supplémentaires : *+${payment.extraAmount} MAD* (${payment.extraReason || 'Ajustement'})\n`
     : '';
@@ -353,7 +458,7 @@ export function buildWhatsAppReceipt(
     ? `• مصاريف إضافية : *+${payment.extraAmount} درهم* (${payment.extraReason || 'مصاريف إضافية'})\n`
     : '';
 
-  const message = `🧾 *Youness WiFi - Reçu de Paiement #${payment.receiptNumber}*
+  const message = `🧾 *Youness WiFi - Reçu de Paiement #${receiptNumber}*
 
 Salam M. / Mme *${payment.clientName}*,
 
@@ -540,6 +645,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const t = (key: keyof Translations, params?: Record<string, string | number>) => {
     return getTranslation(language, key, params);
   };
+
+  const boundLocalizePlanName = useCallback(
+    (planName?: string, lang?: Language) => localizePlanName(planName, lang || language),
+    [language]
+  );
+  const boundLocalizeStatus = useCallback(
+    (status?: string, lang?: Language) => localizeStatus(status, lang || language),
+    [language]
+  );
+  const boundLocalizeTicketStatus = useCallback(
+    (status?: string, lang?: Language) => localizeTicketStatus(status, lang || language),
+    [language]
+  );
+  const boundLocalizeTicketPriority = useCallback(
+    (priority?: string, lang?: Language) => localizeTicketPriority(priority, lang || language),
+    [language]
+  );
+  const boundLocalizePaymentMethod = useCallback(
+    (method?: string, lang?: Language) => localizePaymentMethod(method, lang || language),
+    [language]
+  );
 
   // Keep documentElement direction and language in sync
   useEffect(() => {
@@ -1093,13 +1219,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const deleteClient = (clientId: string) => {
+  const deleteClient = async (clientId: string): Promise<boolean> => {
     setClients((prev) => prev.filter((c) => c.id !== clientId));
     setTickets((prev) => prev.filter((t) => t.clientId !== clientId));
     setPayments((prev) => prev.filter((p) => p.clientId !== clientId));
-    deleteClientFromSupabase(clientId).catch((err) => {
+    try {
+      return await deleteClientFromSupabase(clientId);
+    } catch (err) {
       console.warn('[Supabase] Failed to delete client:', err);
-    });
+      return false;
+    }
   };
 
   const archiveClient = (clientId: string) => {
@@ -1229,9 +1358,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     if (clientData.initialPayment) {
       const initialFee = newClient.monthlyFee || 50;
+      const receiptNumber = generateReceiptNumber(payments, todayStr);
       const newPayment: PaymentLog = {
         id: `pay-${Date.now()}`,
-        receiptNumber: generateReceiptNumber(payments.length + 1),
+        receiptNumber,
         clientId: id,
         clientName: newClient.name,
         amount: initialFee,
@@ -1256,7 +1386,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return newClient;
   };
 
-  const updateClient = (id: string, updates: Partial<Client>) => {
+  const updateClient = async (id: string, updates: Partial<Client>): Promise<boolean> => {
     let resolvedUpdates: Partial<Client> = { ...updates };
     setClients((prev) =>
       prev.map((c) => {
@@ -1273,9 +1403,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     );
 
     // Supabase mutation: update client in database
-    updateClientInSupabase(id, resolvedUpdates).catch((err) => {
+    try {
+      return await updateClientInSupabase(id, resolvedUpdates);
+    } catch (err) {
       console.warn('[Supabase] Failed to update client in DB:', err);
-    });
+      return false;
+    }
   };
 
   const recordPayment = ({
@@ -1319,9 +1452,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const monthsToAdd = Math.max(1, Math.round(extendDays / 30));
     const newDueDate = addMonthsToDateStr(prevDueDate, monthsToAdd);
 
-    const receiptNumber = generateReceiptNumber(payments.length + 1);
     const resolvedPaymentDate = paymentDate || getTodayDateStr();
     const resolvedBillingMonth = billingMonth || resolvedPaymentDate.substring(0, 7);
+    const receiptNumber = generateReceiptNumber(payments, resolvedPaymentDate);
     const newPayment: PaymentLog = {
       id: `pay-${Date.now()}`,
       receiptNumber,
@@ -1489,6 +1622,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         hasAdminAccount: users.some((u) => u.role === 'admin'),
         setLanguage,
         t,
+        localizePlanName: boundLocalizePlanName,
+        localizeStatus: boundLocalizeStatus,
+        localizeTicketStatus: boundLocalizeTicketStatus,
+        localizeTicketPriority: boundLocalizeTicketPriority,
+        localizePaymentMethod: boundLocalizePaymentMethod,
         login,
         logout,
         registerOwner,
@@ -1528,3 +1666,11 @@ export function useStore() {
   }
   return context;
 }
+
+export {
+  localizePlanName,
+  localizeStatus,
+  localizeTicketStatus,
+  localizeTicketPriority,
+  localizePaymentMethod,
+};

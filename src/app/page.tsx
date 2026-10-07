@@ -34,8 +34,8 @@ export default function HomePage() {
   // Prevent flash during hydration
   if (!isHydrated) {
     return (
-      <div className="min-h-screen bg-[#0F0C14] flex items-center justify-center text-xs text-[#958B9F] font-mono">
-        <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping mr-2" />
+      <div className="min-h-screen bg-[#F4F5F7] dark:bg-[#0F0C14] flex items-center justify-center text-xs text-slate-500 dark:text-[#958B9F] font-mono">
+        <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping mr-2" />
         Authenticating Secure NOC Gateway...
       </div>
     );
@@ -53,7 +53,7 @@ export default function HomePage() {
 
   // Owner / Admin NOC View
   return (
-    <div className="min-h-screen bg-[#0F0C14] text-[#F4F0F8] flex flex-col relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#F4F5F7] dark:bg-[#0F0C14] text-slate-900 dark:text-[#F4F0F8] flex flex-col relative overflow-x-hidden transition-colors">
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}

@@ -17,8 +17,16 @@ import {
   ChevronRight,
   ShieldAlert,
   Archive,
+  Pencil,
+  Trash2,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  Loader2,
+  Info,
 } from 'lucide-react';
 import { TETOUAN_NEIGHBORHOODS } from './Modals/RegisterClientModal';
+import EditClientModal from './Modals/EditClientModal';
 
 interface Props {
   onOpenRegisterModal: () => void;
@@ -35,12 +43,67 @@ export default function ClientDirectory({
   onOpenWhatsAppModal,
   onOpenClientDetailModal,
 }: Props) {
-  const { clients, t } = useStore();
+  const {
+    clients,
+    tickets,
+    payments,
+    deleteClient,
+    t,
+    language,
+    localizePlanName,
+    localizeStatus,
+  } = useStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedNeighborhood, setSelectedNeighborhood] = useState('ALL');
   const [selectedStatusTab, setSelectedStatusTab] = useState<'ALL' | SubscriptionStatus>('ALL');
+
+  // Edit & Delete modal states
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [deletingClient, setDeletingClient] = useState<Client | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Toast feedback state
+  const [toast, setToast] = useState<{
+    id: number;
+    type: 'success' | 'error' | 'info';
+    message: string;
+  } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ id: Date.now(), type, message });
+  };
+
+  React.useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => {
+      setToast(null);
+    }, 4500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const handleConfirmDelete = async () => {
+    if (!deletingClient) return;
+    setIsDeleting(true);
+    const clientToDelete = deletingClient;
+    try {
+      await deleteClient(clientToDelete.id);
+      setDeletingClient(null);
+      showToast(
+        t('delete_success_toast', { name: clientToDelete.name }),
+        'success'
+      );
+    } catch (err) {
+      console.error('Failed to delete client:', err);
+      showToast(
+        t('delete_error_toast', { name: clientToDelete.name }),
+        'error'
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Debounce search input by 200ms to scale smoothly across 500+ records
   React.useEffect(() => {
@@ -87,68 +150,68 @@ export default function ClientDirectory({
       return matchSearch && matchNeighborhood && matchStatus;
     });
   }, [clients, debouncedSearch, selectedNeighborhood, selectedStatusTab]);
-
   // Signal level badge helper
   const getSignalColor = (dbm: number) => {
-    if (dbm >= -62) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
-    if (dbm >= -70) return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
-    if (dbm >= -78) return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
-    return 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+    if (dbm >= -62) return 'text-emerald-700 bg-emerald-50 border-emerald-200/60 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/20';
+    if (dbm >= -70) return 'text-blue-700 bg-blue-50 border-blue-200/60 dark:text-blue-400 dark:bg-blue-500/10 dark:border-blue-500/20';
+    if (dbm >= -78) return 'text-amber-700 bg-amber-50 border-amber-200/60 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/20';
+    return 'text-rose-700 bg-rose-50 border-rose-200/60 dark:text-rose-400 dark:bg-rose-500/10 dark:border-rose-500/20';
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#191522] p-4 sm:p-6 rounded-2xl border border-[#2D253B]/70 shadow-xl shadow-black/40">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black text-[#F4F0F8] tracking-tight">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
               {t('dir_title')}
             </h1>
-            <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-[#241E30] text-amber-400 border border-[#3A2F4C]">
+            <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
               {clients.length} {t('all')}
             </span>
           </div>
-          <p className="text-xs text-[#958B9F] mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             {t('dir_subtitle')}
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full sm:w-auto">
-          {/* Secondary CTA: تسجيل دفعة شهرية (Left / Neutral) */}
+          {/* Secondary CTA: تسجيل دفعة شهرية (Clean White Button) */}
           <button
             type="button"
             onClick={() => onOpenPaymentModal()}
-            className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-[#241E30] hover:bg-[#2C243B] border border-[#3A2F4C] text-[#E0D8EB] font-medium text-xs sm:text-sm transition flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="w-full min-h-[46px] py-2.5 px-4 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 border border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-xs hover:shadow cursor-pointer"
           >
-            <CreditCard className="w-4 h-4 text-[#958B9F] shrink-0" />
+            <CreditCard className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
             <span className="truncate">{t('dash_record_payment')}</span>
           </button>
 
-          {/* Primary CTA: تسجيل مشترك جديد (Center / Warm Amber Yellow) */}
+          {/* Primary CTA: تسجيل مشترك جديد (Vibrant Orange Modern Button) */}
           <button
             type="button"
             onClick={onOpenRegisterModal}
-            className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold text-xs sm:text-sm transition shadow-lg shadow-amber-500/15 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="w-full min-h-[46px] py-2.5 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs sm:text-sm transition shadow-md shadow-orange-500/20 flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
           >
-            <UserPlus className="w-4 h-4 text-slate-950 shrink-0" />
-            <span className="text-slate-950 truncate">{t('dash_new_installation')}</span>
+            <UserPlus className="w-4 h-4 text-white shrink-0" />
+            <span className="truncate">{t('dash_new_installation')}</span>
           </button>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-[#191522] border border-[#2D253B]/70 rounded-2xl p-5 shadow-xl shadow-black/40 space-y-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)] space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {/* Search box */}
+          {/* Search box with ID for Ctrl+K integration */}
           <div className="relative md:col-span-2">
-            <Search className="w-4 h-4 text-[#958B9F] absolute left-3.5 rtl:left-auto rtl:right-3.5 top-3" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 rtl:left-auto rtl:right-3.5 top-3.5" />
             <input
+              id="client-directory-search-input"
               type="text"
               placeholder={t('dir_search_placeholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-2 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition"
+              className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-xl pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition"
             />
           </div>
 
@@ -157,7 +220,7 @@ export default function ClientDirectory({
             <select
               value={selectedNeighborhood}
               onChange={(e) => setSelectedNeighborhood(e.target.value)}
-              className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3 py-2 text-xs text-[#F4F0F8] focus:outline-none focus:border-amber-500 transition"
+              className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-orange-500 transition cursor-pointer"
             >
               {neighborhoods.map((n) => (
                 <option key={n} value={n}>
@@ -168,18 +231,18 @@ export default function ClientDirectory({
           </div>
         </div>
 
-        {/* Status Pill Tabs */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#2D253B]/70 text-xs">
-          <span className="text-[#958B9F] font-semibold text-[11px] uppercase mr-1 rtl:mr-0 rtl:ml-1">
+        {/* Status Pill Tabs (Light SaaS Pastel Palette) */}
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+          <span className="text-slate-400 dark:text-slate-500 font-semibold text-[11px] uppercase mr-1 rtl:mr-0 rtl:ml-1">
             {t('status')}:
           </span>
 
           <button
             onClick={() => setSelectedStatusTab('ALL')}
-            className={`px-3 py-1 rounded-xl font-medium transition cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
               selectedStatusTab === 'ALL'
-                ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368] font-bold'
-                : 'text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30]/60'
+                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             {t('all')} ({clients.length})
@@ -187,46 +250,46 @@ export default function ClientDirectory({
 
           <button
             onClick={() => setSelectedStatusTab('active')}
-            className={`px-3 py-1 rounded-xl font-medium transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
               selectedStatusTab === 'active'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
-                : 'text-[#958B9F] hover:text-emerald-400'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-emerald-700 hover:bg-emerald-50/50'
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             {t('status_active')} ({clients.filter((c) => c.status === 'active').length})
           </button>
 
           <button
             onClick={() => setSelectedStatusTab('due_soon')}
-            className={`px-3 py-1 rounded-xl font-medium transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
               selectedStatusTab === 'due_soon'
-                ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368] font-bold'
-                : 'text-[#958B9F] hover:text-amber-400'
+                ? 'bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-amber-700 hover:bg-amber-50/50'
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
             {t('status_due_soon')} ({clients.filter((c) => c.status === 'due_soon').length})
           </button>
 
           <button
             onClick={() => setSelectedStatusTab('overdue')}
-            className={`px-3 py-1 rounded-xl font-medium transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
               selectedStatusTab === 'overdue'
-                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold'
-                : 'text-[#958B9F] hover:text-rose-400'
+                ? 'bg-rose-50 text-rose-700 border border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-rose-700 hover:bg-rose-50/50'
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
             {t('status_overdue')} ({clients.filter((c) => c.status === 'overdue').length})
           </button>
 
           <button
             onClick={() => setSelectedStatusTab('suspended')}
-            className={`px-3 py-1 rounded-xl font-medium transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
               selectedStatusTab === 'suspended'
-                ? 'bg-red-950 text-red-300 border border-red-800 font-bold'
-                : 'text-[#958B9F] hover:text-red-400'
+                ? 'bg-red-50 text-red-700 border border-red-200/80 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-red-700 hover:bg-red-50/50'
             }`}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
@@ -235,10 +298,10 @@ export default function ClientDirectory({
 
           <button
             onClick={() => setSelectedStatusTab('archived')}
-            className={`px-3 py-1 rounded-xl font-medium transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
               selectedStatusTab === 'archived'
-                ? 'bg-slate-800 text-slate-200 border border-slate-600 font-bold'
-                : 'text-[#958B9F] hover:text-slate-300'
+                ? 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100/50'
             }`}
           >
             <Archive className="w-3.5 h-3.5 text-slate-400" />
@@ -247,46 +310,46 @@ export default function ClientDirectory({
         </div>
       </div>
 
-      {/* Directory Table */}
-      <div className="bg-[#191522] border border-[#2D253B]/70 rounded-2xl overflow-hidden shadow-xl shadow-black/40">
+      {/* Directory Table - Carte Blanche Spacieuse */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
         {clients.length === 0 ? (
           <div className="p-16 text-center space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400 border border-orange-100 dark:border-orange-500/20 flex items-center justify-center mx-auto">
               <UserPlus className="w-7 h-7" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#F4F0F8]">{t('no_clients_found')}</h3>
-              <p className="text-xs text-[#958B9F] max-w-sm mx-auto mt-1">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">{t('no_clients_found')}</h3>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1">
                 {t('no_subscribers_registered_sub')}
               </p>
             </div>
             <button
               onClick={onOpenRegisterModal}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold text-xs transition inline-flex items-center gap-2 shadow-lg shadow-amber-500/15 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs sm:text-sm transition inline-flex items-center gap-2 shadow-md shadow-orange-500/20 cursor-pointer"
             >
-              <UserPlus className="w-4 h-4 text-slate-950" />
+              <UserPlus className="w-4 h-4 text-white" />
               <span>{t('register_first_client')}</span>
             </button>
           </div>
         ) : filteredClients.length === 0 ? (
-          <div className="p-12 text-center text-xs text-[#958B9F]">
+          <div className="p-12 text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             {t('no_clients_match_filters')}
           </div>
         ) : (
           <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0">
-            <table className="w-full text-left rtl:text-right text-xs border-collapse min-w-[700px]">
+            <table className="w-full text-left rtl:text-right text-xs border-collapse min-w-[860px]">
               <thead>
-                <tr className="bg-[#130F1A] text-[#958B9F] border-b border-[#261E33] uppercase font-semibold tracking-wider text-[11px]">
-                  <th className="py-3 px-4">{t('client_contact')}</th>
-                  <th className="py-3 px-4">Quartier</th>
-                  <th className="py-3 px-4">{t('metric_monthly_revenue')}</th>
-                  <th className="py-3 px-4">{t('status')}</th>
-                  <th className="py-3 px-4">{t('antenna_model')}</th>
-                  <th className="py-3 px-4">PPPoE & Router</th>
-                  <th className="py-3 px-4 text-right rtl:text-left">{t('actions')}</th>
+                <tr className="bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 uppercase font-semibold tracking-wider text-[11px]">
+                  <th className="py-3.5 px-4">{t('col_subscriber_location')}</th>
+                  <th className="py-3.5 px-4">{t('col_neighborhood')}</th>
+                  <th className="py-3.5 px-4">{t('col_monthly_fee')}</th>
+                  <th className="py-3.5 px-4">{t('col_status')}</th>
+                  <th className="py-3.5 px-4">{t('col_cpe_antenna')}</th>
+                  <th className="py-3.5 px-4">{t('col_pppoe_router')}</th>
+                  <th className="py-3.5 px-4 text-right rtl:text-left min-w-[210px]">{t('actions')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#261E33] bg-[#130F1A]">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                 {filteredClients.map((client) => {
                   const daysDiff = getDaysDiffFromToday(client.nextDueDate);
                   const isOverdue = daysDiff < 0;
@@ -294,78 +357,78 @@ export default function ClientDirectory({
                   return (
                     <tr
                       key={client.id}
-                      className="hover:bg-[#191522] transition group"
+                      className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition group"
                     >
                       {/* Name & Phone */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-4 px-4">
                         <button
                           type="button"
                           onClick={() => onOpenClientDetailModal(client)}
-                          className="font-bold text-[#F4F0F8] hover:text-amber-400 text-left rtl:text-right transition flex items-center gap-1.5 cursor-pointer"
+                          className="font-bold text-slate-900 dark:text-slate-100 hover:text-orange-600 dark:hover:text-orange-400 text-left rtl:text-right transition flex items-center gap-1.5 cursor-pointer"
                         >
-                          <span>{client.name}</span>
-                          <ChevronRight className="w-3 h-3 text-[#958B9F] group-hover:text-amber-400 transition" />
+                          <span className="text-sm">{client.name}</span>
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-orange-500 transition rtl:rotate-180" />
                         </button>
-                        <div className="text-[11px] text-[#958B9F] flex items-center gap-2 mt-0.5 font-mono">
-                          <Phone className="w-3 h-3 text-[#958B9F]" />
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-1 font-mono">
+                          <Phone className="w-3 h-3 text-slate-400" />
                           <a
                             href={`tel:${client.phone}`}
-                            className="hover:text-emerald-400 transition"
+                            className="hover:text-emerald-600 dark:hover:text-emerald-400 transition"
                           >
                             {client.phone}
                           </a>
                         </div>
                       </td>
 
-                      {/* Neighborhood */}
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-[#E0D8EB]">
+                      {/* Neighborhood - Étiquette gris neutre discrète */}
+                      <td className="py-4 px-4">
+                        <span className="inline-block bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium px-2.5 py-1 rounded-lg text-xs">
                           {client.neighborhood || 'Tétouan'}
-                        </div>
-                        <div className="text-[10px] text-[#958B9F] truncate max-w-[150px]">
+                        </span>
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate max-w-[150px] mt-1">
                           {client.address || 'N/A'}
                         </div>
                       </td>
 
                       {/* Plan & Fee */}
-                      <td className="py-3.5 px-4">
-                        <div className="font-mono font-bold text-[#F4F0F8] text-sm">
+                      <td className="py-4 px-4">
+                        <div className="font-mono font-bold text-slate-900 dark:text-slate-100 text-sm">
                           {client.monthlyFee || 100}{' '}
-                          <span className="text-[10px] text-[#958B9F]">{t('currency')}/mo</span>
+                          <span className="text-[10px] text-slate-500 font-normal">{t('currency')}/mo</span>
                         </div>
-                        <div className="text-[10px] text-[#958B9F]">
-                          {client.subscriptionPlan}
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                          {localizePlanName(client.subscriptionPlan)}
                         </div>
                       </td>
 
-                      {/* Due Date & Status */}
-                      <td className="py-3.5 px-4">
-                        <div className="font-mono text-[#F4F0F8] text-xs">
+                      {/* Due Date & Status - Pastilles pastel douces */}
+                      <td className="py-4 px-4">
+                        <div className="font-mono text-slate-700 dark:text-slate-300 text-xs">
                           {client.nextDueDate}
                         </div>
                         <div className="mt-1">
                           {client.status === 'archived' ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1 w-fit">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 flex items-center gap-1 w-fit">
                               <Archive className="w-3 h-3" />
                               {t('status_archived')}
                             </span>
                           ) : client.status === 'suspended' ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-950 text-red-300 border border-red-800 flex items-center gap-1 w-fit">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200/80 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800 flex items-center gap-1 w-fit">
                               <ShieldAlert className="w-3 h-3" />
                               {t('status_suspended')}
                             </span>
                           ) : isOverdue ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center gap-1 w-fit">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 flex items-center gap-1 w-fit">
                               <AlertTriangle className="w-3 h-3" />
-                              {Math.abs(daysDiff)}d {t('status_overdue')}
+                              {Math.abs(daysDiff)}{language === 'ar' ? ' يوم ' : 'd '} {t('status_overdue')}
                             </span>
                           ) : client.status === 'due_soon' ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#382647] text-[#F3E8FF] border border-[#523368] flex items-center gap-1 w-fit">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 flex items-center gap-1 w-fit">
                               <Clock className="w-3 h-3" />
-                              {t('status_due_soon')} ({daysDiff}d)
+                              {t('status_due_soon')} ({daysDiff}{language === 'ar' ? 'ي' : 'd'})
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1 w-fit">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1 w-fit">
                               <CheckCircle className="w-3 h-3" />
                               {t('status_active')}
                             </span>
@@ -374,61 +437,91 @@ export default function ClientDirectory({
                       </td>
 
                       {/* Hardware & Signal */}
-                      <td className="py-3.5 px-4">
-                        <div className="text-[#F4F0F8] font-medium flex items-center gap-1">
-                          <Radio className="w-3 h-3 text-amber-400" />
-                          <span>{client.hardware?.antennaModel || 'Ubiquiti LiteBeam 5AC'}</span>
+                      <td className="py-4 px-4">
+                        <div className="text-slate-800 dark:text-slate-200 font-medium flex items-center gap-1">
+                          <Radio className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                          <span className="truncate">{client.hardware?.antennaModel || 'Ubiquiti LiteBeam 5AC'}</span>
                         </div>
                         <div className="flex items-center gap-2 mt-1">
                           <span
-                            className={`px-1.5 py-0.2 rounded text-[10px] font-mono border font-bold ${getSignalColor(
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono border font-bold ${getSignalColor(
                               client.hardware?.signalStrengthDbm || -65
                             )}`}
                           >
                             {client.hardware?.signalStrengthDbm || -65} dBm
                           </span>
-                          <span className="font-mono text-[10px] text-[#958B9F]">
+                          <span className="font-mono text-[10px] text-slate-400">
                             {client.hardware?.antennaMac || 'N/A'}
                           </span>
                         </div>
                       </td>
 
                       {/* PPPoE & Router */}
-                      <td className="py-3.5 px-4">
-                        <div className="font-mono text-amber-300 text-[11px]">
+                      <td className="py-4 px-4">
+                        <div className="font-mono text-orange-600 dark:text-orange-400 font-bold text-xs">
                           {client.hardware?.pppoeUsername || 'N/A'}
                         </div>
-                        <div className="text-[10px] text-[#958B9F]">
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                           {client.hardware?.routerModel || 'Standard Router'}
                         </div>
                       </td>
 
-                      {/* Actions */}
-                      <td className="py-3.5 px-4 text-right rtl:text-left">
+                      {/* Actions - Icônes Circulaires Minimalistes */}
+                      <td className="py-4 px-4 text-right rtl:text-left min-w-[210px]">
                         <div className="flex items-center justify-end rtl:justify-start gap-1.5">
+                          {/* WhatsApp */}
                           <button
                             type="button"
                             onClick={() => onOpenWhatsAppModal(client)}
-                            className="p-2 rounded-xl bg-[#241E30] hover:bg-emerald-600 text-[#E0D8EB] hover:text-white border border-[#3A2F4C] transition cursor-pointer"
-                            title="WhatsApp"
+                            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border border-slate-200/60 hover:border-emerald-200 dark:bg-slate-800 dark:hover:bg-emerald-950/40 dark:text-slate-300 dark:hover:text-emerald-300 dark:border-slate-700 transition flex items-center justify-center cursor-pointer shrink-0 touch-manipulation hover:scale-105 active:scale-95 shadow-2xs"
+                            title={t('action_send_whatsapp')}
+                            aria-label={`${t('action_send_whatsapp')} - ${client.name}`}
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
                           </button>
+
+                          {/* Record Payment */}
                           <button
                             type="button"
                             onClick={() => onOpenPaymentModal(client.id)}
-                            className="p-2 rounded-xl bg-[#241E30] hover:bg-[#2C243B] text-[#E0D8EB] hover:text-[#F4F0F8] border border-[#3A2F4C] transition cursor-pointer"
-                            title={t('dash_record_payment')}
+                            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 border border-slate-200/60 hover:border-orange-200 dark:bg-slate-800 dark:hover:bg-orange-950/40 dark:text-slate-300 dark:hover:text-orange-400 dark:border-slate-700 transition flex items-center justify-center cursor-pointer shrink-0 touch-manipulation hover:scale-105 active:scale-95 shadow-2xs"
+                            title={t('action_record_payment')}
+                            aria-label={`${t('action_record_payment')} - ${client.name}`}
                           >
                             <CreditCard className="w-3.5 h-3.5" />
                           </button>
+
+                          {/* Create Ticket */}
                           <button
                             type="button"
                             onClick={() => onOpenTicketModal(client.id)}
-                            className="p-2 rounded-xl bg-[#241E30] hover:bg-[#2C243B] text-amber-400 hover:text-amber-300 border border-[#3A2F4C] transition cursor-pointer"
-                            title={t('dash_new_ticket')}
+                            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200/60 hover:border-blue-200 dark:bg-slate-800 dark:hover:bg-blue-950/40 dark:text-slate-300 dark:hover:text-blue-400 dark:border-slate-700 transition flex items-center justify-center cursor-pointer shrink-0 touch-manipulation hover:scale-105 active:scale-95 shadow-2xs"
+                            title={t('action_open_ticket')}
+                            aria-label={`${t('action_open_ticket')} - ${client.name}`}
                           >
                             <Wrench className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Edit Client */}
+                          <button
+                            type="button"
+                            onClick={() => setEditingClient(client)}
+                            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-sky-50 text-slate-600 hover:text-sky-600 border border-slate-200/60 hover:border-sky-200 dark:bg-slate-800 dark:hover:bg-sky-950/40 dark:text-slate-300 dark:hover:text-sky-400 dark:border-slate-700 transition flex items-center justify-center cursor-pointer shrink-0 touch-manipulation hover:scale-105 active:scale-95 shadow-2xs"
+                            title={t('action_edit')}
+                            aria-label={`${t('action_edit')} - ${client.name}`}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Delete Client */}
+                          <button
+                            type="button"
+                            onClick={() => setDeletingClient(client)}
+                            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200/60 hover:border-rose-200 dark:bg-slate-800 dark:hover:bg-rose-950/40 dark:text-slate-300 dark:hover:text-rose-400 dark:border-slate-700 transition flex items-center justify-center cursor-pointer shrink-0 touch-manipulation hover:scale-105 active:scale-95 shadow-2xs"
+                            title={t('action_delete')}
+                            aria-label={`${t('action_delete')} - ${client.name}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -440,6 +533,158 @@ export default function ClientDirectory({
           </div>
         )}
       </div>
+
+      {/* Edit Client Modal */}
+      {editingClient && (
+        <EditClientModal
+          client={editingClient}
+          onClose={() => setEditingClient(null)}
+          onSuccess={(msg) => {
+            setEditingClient(null);
+            showToast(msg, 'success');
+          }}
+        />
+      )}
+
+      {/* Delete Confirmation Modal - Light SaaS Modern Dialog */}
+      {deletingClient && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-confirm-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150"
+        >
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-rose-50 text-rose-600 border border-rose-200/60 shrink-0">
+                <Trash2 className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h4 id="delete-confirm-title" className="text-base font-bold text-rose-700 dark:text-rose-400">
+                  {t('delete_modal_title')}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {t('delete_modal_sub')}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+                {t('delete_modal_confirm_msg', { name: deletingClient.name })}
+              </p>
+
+              {/* Client & cascade summary pill */}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                  <span>{t('client_contact')} :</span>
+                  <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">{deletingClient.phone}</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                  <span>{t('col_neighborhood')} :</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{deletingClient.neighborhood || 'Tétouan'}</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200/80 dark:border-slate-700">
+                  <span>{t('payment_history_count_label')}</span>
+                  <span className="font-mono font-bold text-orange-600 dark:text-orange-400">
+                    {payments.filter((p) => p.clientId === deletingClient.id).length}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                  <span>{t('tickets_count_label')}</span>
+                  <span className="font-mono font-bold text-orange-600 dark:text-orange-400">
+                    {tickets.filter((t) => t.clientId === deletingClient.id).length}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-700 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span>
+                  {t('delete_modal_cascade_warning')}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingClient(null)}
+                disabled={isDeleting}
+                className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition cursor-pointer border border-slate-200 dark:border-slate-700"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-rose-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{t('deleting_in_progress')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{t('delete_confirm_btn')}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification - Light SaaS Pill */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 max-w-sm sm:max-w-md w-[calc(100%-3rem)] animate-in fade-in slide-in-from-bottom-4 duration-300 pointer-events-auto"
+        >
+          <div
+            className={`p-3.5 sm:p-4 rounded-2xl border shadow-xl backdrop-blur-xl flex items-center justify-between gap-3 ${
+              toast.type === 'success'
+                ? 'bg-white/95 dark:bg-slate-900/95 border-emerald-200 text-emerald-800 dark:text-emerald-300 shadow-emerald-500/10'
+                : toast.type === 'error'
+                ? 'bg-white/95 dark:bg-slate-900/95 border-rose-200 text-rose-800 dark:text-rose-300 shadow-rose-500/10'
+                : 'bg-white/95 dark:bg-slate-900/95 border-amber-200 text-amber-800 dark:text-amber-300 shadow-amber-500/10'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {toast.type === 'success' && (
+                <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-200">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+              )}
+              {toast.type === 'error' && (
+                <div className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-200">
+                  <AlertCircle className="w-4 h-4" />
+                </div>
+              )}
+              {toast.type === 'info' && (
+                <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200">
+                  <Info className="w-4 h-4" />
+                </div>
+              )}
+              <span className="text-xs sm:text-sm font-medium text-slate-900 dark:text-slate-100">
+                {toast.message}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0"
+              aria-label="Fermer la notification"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
