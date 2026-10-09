@@ -30,6 +30,7 @@ import {
   Search,
   Sparkles,
   RefreshCw,
+  Download,
 } from 'lucide-react';
 import InvoiceReceiptModal from './Modals/InvoiceReceiptModal';
 import BulkUnpaidReminderModal from './Modals/BulkUnpaidReminderModal';
@@ -64,6 +65,7 @@ export default function AdminDashboard({
     localizePlanName,
     getClientStatus,
     getDaysDiff,
+    exportBilanCSV,
   } = useStore();
   const [selectedPaymentForSlip, setSelectedPaymentForSlip] = React.useState<PaymentLog | null>(null);
   const [isBulkReminderOpen, setIsBulkReminderOpen] = React.useState(false);
@@ -332,6 +334,7 @@ export default function AdminDashboard({
   }, [paidList, unpaidList, allEligibleList, historicalFilterTab, historicalSearchQuery]);
 
   const handleSendUnpaidWhatsApp = (client: Client) => {
+    if (!client.phone || !client.phone.trim()) return;
     const { url } = buildHistoricalUnpaidReminderUrl(client, selectedMonthLabelAr, isFutureMonth);
     window.open(url, '_blank');
   };
@@ -612,12 +615,16 @@ export default function AdminDashboard({
                         </button>
                         <div className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 mt-0.5 font-mono">
                           <Phone className="w-3 h-3 text-slate-400" />
-                          <a
-                            href={`tel:${client.phone}`}
-                            className="hover:text-emerald-600 transition"
-                          >
-                            {client.phone}
-                          </a>
+                          {client.phone ? (
+                            <a
+                              href={`tel:${client.phone}`}
+                              className="hover:text-emerald-600 transition"
+                            >
+                              {client.phone}
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500 italic font-sans">—</span>
+                          )}
                         </div>
                       </td>
 
@@ -674,15 +681,27 @@ export default function AdminDashboard({
                       <td className="py-3.5 px-4 text-right rtl:text-left">
                         <div className="flex items-center justify-end rtl:justify-start gap-1.5">
                           {/* Send WhatsApp Reminder */}
-                          <button
-                            type="button"
-                            onClick={() => onOpenWhatsAppModal(client)}
-                            className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 font-semibold text-xs transition flex items-center gap-1.5 shadow-2xs hover:scale-105 active:scale-95 cursor-pointer"
-                            title={t('action_send_whatsapp')}
-                          >
-                            <MessageSquare className="w-3.5 h-3.5" />
-                            <span>WhatsApp</span>
-                          </button>
+                          {client.phone ? (
+                            <button
+                              type="button"
+                              onClick={() => onOpenWhatsAppModal(client)}
+                              className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 font-semibold text-xs transition flex items-center gap-1.5 shadow-2xs hover:scale-105 active:scale-95 cursor-pointer"
+                              title={t('action_send_whatsapp')}
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              <span>WhatsApp</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled
+                              className="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-600 border border-slate-200/40 dark:border-slate-800 font-semibold text-xs flex items-center gap-1.5 shadow-none cursor-not-allowed opacity-50"
+                              title="Numéro de téléphone non renseigné"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              <span>WhatsApp</span>
+                            </button>
+                          )}
 
                           {/* Record Payment (Secondary Neutral CTA) */}
                           <button
@@ -766,6 +785,18 @@ export default function AdminDashboard({
               <span className="px-1.5 py-0.2 rounded-full bg-emerald-950/60 text-emerald-200 font-mono text-[10px] font-bold border border-emerald-400/30">
                 {unpaidList.length}
               </span>
+            </button>
+
+            {/* Action: Exporter le Bilan CSV */}
+            <button
+              type="button"
+              onClick={() => exportBilanCSV(selectedMonthStr, allEligibleList)}
+              disabled={allEligibleList.length === 0}
+              className="min-h-[40px] px-3.5 py-2 rounded-xl bg-[#241E30] hover:bg-[#2D253B] disabled:opacity-40 disabled:cursor-not-allowed text-[#E0D8EB] hover:text-white font-bold text-xs transition flex items-center justify-center gap-2 border border-[#3A2F4C] shadow-md shadow-black/30 cursor-pointer shrink-0"
+              title={t('export_bilan_csv_btn')}
+            >
+              <Download className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="whitespace-nowrap">{t('export_bilan_csv_btn')}</span>
             </button>
 
             <div className="flex items-center gap-2.5 flex-1 sm:flex-initial">
@@ -1107,12 +1138,16 @@ export default function AdminDashboard({
                           </button>
                           <div className="text-[11px] text-[#958B9F] flex items-center gap-1.5 mt-0.5 font-mono">
                             <Phone className="w-3 h-3 text-[#958B9F]" />
-                            <a
-                              href={`tel:${client.phone}`}
-                              className="hover:text-emerald-400 transition"
-                            >
-                              {client.phone}
-                            </a>
+                            {client.phone ? (
+                              <a
+                                href={`tel:${client.phone}`}
+                                className="hover:text-emerald-400 transition"
+                              >
+                                {client.phone}
+                              </a>
+                            ) : (
+                              <span className="text-[#695F77] italic font-sans">—</span>
+                            )}
                           </div>
                         </td>
 
@@ -1206,19 +1241,31 @@ export default function AdminDashboard({
                             {!isPaid ? (
                               <>
                                 {/* Action 1: WhatsApp Reminder */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleSendUnpaidWhatsApp(client)}
-                                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-sm shadow-emerald-950 hover:scale-105 active:scale-95 cursor-pointer"
-                                  title={
-                                    isFutureMonth
-                                      ? (language === 'ar' ? `إرسال تذكير مسبق لتجديد شهر ${selectedMonthLabelAr}` : `Envoyer rappel anticipé pour ${selectedMonthLabelFr}`)
-                                      : (language === 'ar' ? `إرسال تذكير واتساب لشهر ${selectedMonthLabelAr}` : `Envoyer rappel WhatsApp pour ${selectedMonthLabelFr}`)
-                                  }
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5" />
-                                  <span>{isFutureMonth ? t('send_advance_reminder') : t('send_whatsapp_reminder')}</span>
-                                </button>
+                                {client.phone ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendUnpaidWhatsApp(client)}
+                                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-sm shadow-emerald-950 hover:scale-105 active:scale-95 cursor-pointer"
+                                    title={
+                                      isFutureMonth
+                                        ? (language === 'ar' ? `إرسال تذكير مسبق لتجديد شهر ${selectedMonthLabelAr}` : `Envoyer rappel anticipé pour ${selectedMonthLabelFr}`)
+                                        : (language === 'ar' ? `إرسال تذكير واتساب لشهر ${selectedMonthLabelAr}` : `Envoyer rappel WhatsApp pour ${selectedMonthLabelFr}`)
+                                    }
+                                  >
+                                    <MessageSquare className="w-3.5 h-3.5" />
+                                    <span>{isFutureMonth ? t('send_advance_reminder') : t('send_whatsapp_reminder')}</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled
+                                    className="px-3 py-1.5 rounded-xl bg-[#191522] text-[#695F77] border border-[#2D253B] font-semibold text-xs flex items-center gap-1.5 cursor-not-allowed opacity-50 shadow-none"
+                                    title={language === 'ar' ? 'لا يوجد رقم هاتف' : 'Numéro non renseigné'}
+                                  >
+                                    <MessageSquare className="w-3.5 h-3.5" />
+                                    <span>{language === 'ar' ? 'بدون هاتف' : 'Sans tél'}</span>
+                                  </button>
+                                )}
 
                                 {/* Action 2: Record Payment */}
                                 <button

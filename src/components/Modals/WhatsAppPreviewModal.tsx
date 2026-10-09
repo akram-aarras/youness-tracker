@@ -251,9 +251,17 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
           <div className="p-3 rounded-xl bg-[#382647]/40 border border-[#523368] text-xs text-[#F3E8FF] flex items-start gap-2.5">
             <span className="text-base leading-none">💡</span>
             <p>
-              Clicking <strong className="text-white">"Launch WhatsApp"</strong> will open
-              the official WhatsApp chat with <strong>+{cleanPhone}</strong> and pre-load this
-              exact bilingual message in the chat input.
+              {cleanPhone ? (
+                <>
+                  Clicking <strong className="text-white">&quot;Launch WhatsApp&quot;</strong> will open
+                  the official WhatsApp chat with <strong>+{cleanPhone}</strong> and pre-load this
+                  exact bilingual message in the chat input.
+                </>
+              ) : (
+                <>
+                  Cet abonné n&apos;a pas de numéro de téléphone enregistré. Vous pouvez copier le message ci-dessus pour le transmettre manuellement.
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -277,16 +285,28 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
             <span>{copied ? 'Copié' : 'Copier'}</span>
           </button>
 
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={onClose}
-            className="flex-1 sm:flex-initial min-h-[48px] px-5 py-3 text-xs sm:text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-950 transition flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] cursor-pointer order-1 sm:order-3"
-          >
-            <ExternalLink className="w-4 h-4" />
-            <span>Envoyer WhatsApp</span>
-          </a>
+          {cleanPhone ? (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onClose}
+              className="flex-1 sm:flex-initial min-h-[48px] px-5 py-3 text-xs sm:text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-950 transition flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] cursor-pointer order-1 sm:order-3"
+            >
+              <ExternalLink className="w-4 h-4" />
+              <span>Envoyer WhatsApp</span>
+            </a>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="flex-1 sm:flex-initial min-h-[48px] px-5 py-3 text-xs sm:text-sm font-semibold bg-[#241E30] text-[#695F77] border border-[#2D253B] rounded-xl transition flex items-center justify-center gap-2 cursor-not-allowed opacity-60 order-1 sm:order-3"
+              title="Numéro de téléphone non renseigné"
+            >
+              <ExternalLink className="w-4 h-4" />
+              <span>Numéro non renseigné</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

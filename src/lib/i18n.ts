@@ -231,6 +231,7 @@ export interface Translations {
   send_whatsapp_reminder: string;
   record_advance_payment: string;
   payment_slip: string;
+  export_bilan_csv_btn: string;
 
   // Technician & Field Additions
   assigned_tasks_badge: string;
@@ -587,6 +588,7 @@ export const translations: Record<Language, Translations> = {
     send_whatsapp_reminder: 'WhatsApp Reminder',
     record_advance_payment: 'Advance Payment',
     payment_slip: 'Receipt Slip',
+    export_bilan_csv_btn: 'Export Ledger (CSV)',
 
     // Technician & Field Additions
     assigned_tasks_badge: 'Assigned Field Tasks',
@@ -942,6 +944,7 @@ export const translations: Record<Language, Translations> = {
     send_whatsapp_reminder: 'Rappel WhatsApp',
     record_advance_payment: 'Règlement d’Avance',
     payment_slip: 'Reçu de Paiement',
+    export_bilan_csv_btn: 'Exporter le Bilan (CSV)',
 
     // Technician & Field Additions
     assigned_tasks_badge: 'Interventions Assignées',
@@ -1297,6 +1300,7 @@ export const translations: Record<Language, Translations> = {
     send_whatsapp_reminder: 'تذكير واتساب',
     record_advance_payment: 'أداء مسبق',
     payment_slip: 'وصل الأداء',
+    export_bilan_csv_btn: 'تصدير الكشف (CSV)',
 
     // Technician & Field Additions
     assigned_tasks_badge: 'المهام المعينة',

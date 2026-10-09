@@ -375,12 +375,16 @@ export default function ClientDirectory({
                         </button>
                         <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-1 font-mono">
                           <Phone className="w-3 h-3 text-slate-400" />
-                          <a
-                            href={`tel:${client.phone}`}
-                            className="hover:text-emerald-600 dark:hover:text-emerald-400 transition"
-                          >
-                            {client.phone}
-                          </a>
+                          {client.phone ? (
+                            <a
+                              href={`tel:${client.phone}`}
+                              className="hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+                            >
+                              {client.phone}
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500 font-sans italic">—</span>
+                          )}
                         </div>
                       </td>
 
@@ -474,15 +478,27 @@ export default function ClientDirectory({
                       <td className="py-4 px-4 text-right rtl:text-left min-w-[210px]">
                         <div className="flex items-center justify-end rtl:justify-start gap-1.5">
                           {/* WhatsApp */}
-                          <button
-                            type="button"
-                            onClick={() => onOpenWhatsAppModal(client)}
-                            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border border-slate-200/60 hover:border-emerald-200 dark:bg-slate-800 dark:hover:bg-emerald-950/40 dark:text-slate-300 dark:hover:text-emerald-300 dark:border-slate-700 transition flex items-center justify-center cursor-pointer shrink-0 touch-manipulation hover:scale-105 active:scale-95 shadow-2xs"
-                            title={t('action_send_whatsapp')}
-                            aria-label={`${t('action_send_whatsapp')} - ${client.name}`}
-                          >
-                            <MessageSquare className="w-3.5 h-3.5" />
-                          </button>
+                          {client.phone ? (
+                            <button
+                              type="button"
+                              onClick={() => onOpenWhatsAppModal(client)}
+                              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border border-slate-200/60 hover:border-emerald-200 dark:bg-slate-800 dark:hover:bg-emerald-950/40 dark:text-slate-300 dark:hover:text-emerald-300 dark:border-slate-700 transition flex items-center justify-center cursor-pointer shrink-0 touch-manipulation hover:scale-105 active:scale-95 shadow-2xs"
+                              title={t('action_send_whatsapp')}
+                              aria-label={`${t('action_send_whatsapp')} - ${client.name}`}
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled
+                              className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 border border-slate-200/40 dark:border-slate-800 transition flex items-center justify-center cursor-not-allowed opacity-50 shrink-0 shadow-none"
+                              title={language === 'ar' ? 'لا يوجد رقم هاتف' : 'Non renseigné'}
+                              aria-label={`${t('action_send_whatsapp')} - ${language === 'ar' ? 'لا يوجد رقم هاتف' : 'Non renseigné'}`}
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </button>
+                          )}
 
                           {/* Record Payment */}
                           <button
@@ -582,7 +598,7 @@ export default function ClientDirectory({
               <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 space-y-1.5 text-xs">
                 <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
                   <span>{t('client_contact')} :</span>
-                  <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">{deletingClient.phone}</span>
+                  <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">{deletingClient.phone || '—'}</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
                   <span>{t('col_neighborhood')} :</span>

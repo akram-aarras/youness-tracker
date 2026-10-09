@@ -15,6 +15,7 @@ import {
   Calculator,
   Sparkles,
   HelpCircle,
+  Loader2,
 } from 'lucide-react';
 import InvoiceReceiptModal from './InvoiceReceiptModal';
 
@@ -116,7 +117,7 @@ export default function RecordPaymentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClient) return;
+    if (isSubmitting || !selectedClient) return;
 
     setIsSubmitting(true);
     try {
@@ -175,7 +176,8 @@ export default function RecordPaymentModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            disabled={isSubmitting}
+            className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -632,17 +634,27 @@ export default function RecordPaymentModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                disabled={isSubmitting}
+                className="px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:pointer-events-none rounded-xl transition cursor-pointer"
               >
                 {t('cancel')}
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 sm:flex-initial min-h-[46px] px-6 py-2.5 text-xs sm:text-sm font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl shadow-md shadow-orange-500/20 disabled:opacity-50 transition flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                className="flex-1 sm:flex-initial min-h-[46px] px-6 py-2.5 text-xs sm:text-sm font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl shadow-md shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none transition flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
-                <CreditCard className="w-4 h-4 text-white shrink-0" />
-                <span className="truncate">{t('confirm_payment_btn_text', { amount: totalAmount })}</span>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 text-white animate-spin shrink-0" />
+                    <span>{language === 'ar' ? 'جاري التسجيل...' : 'Enregistrement...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4 text-white shrink-0" />
+                    <span className="truncate">{t('confirm_payment_btn_text', { amount: totalAmount })}</span>
+                  </>
+                )}
               </button>
             </div>
           </form>

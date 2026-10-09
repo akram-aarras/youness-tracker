@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useStore, isValidMoroccanPhone } from '@/lib/store';
+import { useStore, isValidMoroccanPhone, cleanMoroccanPhoneNumber } from '@/lib/store';
 import { Client, SubscriptionStatus } from '@/lib/types';
 import {
   X,
@@ -87,20 +87,21 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
   const [pppoePassword, setPppoePassword] = useState(client.hardware?.pppoePassword || '');
 
   // Validation
-  const isPhoneValid = isValidMoroccanPhone(phone);
   const isPhoneFilled = phone.trim().length > 0;
+  const isPhoneValid = !isPhoneFilled || isValidMoroccanPhone(phone);
   const isNameFilled = name.trim().length > 0;
   const canSubmit = isNameFilled && isPhoneValid && !isSubmitting;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     if (!isNameFilled) {
       setActiveTab('info');
       return;
     }
 
-    if (!isPhoneValid) {
+    if (isPhoneFilled && !isValidMoroccanPhone(phone)) {
       setActiveTab('info');
       return;
     }
@@ -114,7 +115,7 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
 
       const updatedPayload: Partial<Client> = {
         name: name.trim(),
-        phone: phone.trim(),
+        phone: isPhoneFilled ? (cleanMoroccanPhoneNumber(phone) || phone.trim()) : '',
         neighborhood: selectedNeighborhood,
         address: address.trim() || undefined,
         googleMapsUrl: googleMapsUrl.trim() || undefined,
@@ -281,12 +282,11 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                 {/* Phone Number with Moroccan Validation */}
                 <div>
                   <label className="block text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1.5">
-                    Numéro de téléphone portable (Maroc) <span className="text-rose-400">*</span>
+                    Numéro de téléphone portable (Maroc) <span className="text-[#958B9F] font-normal text-[10px]">(Optionnel / اختياري)</span>
                   </label>
                   <div className="relative">
                     <input
                       type="tel"
-                      required
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="06XXXXXXXX / 07XXXXXXXX / +212..."

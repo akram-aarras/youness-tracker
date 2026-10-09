@@ -121,6 +121,14 @@ interface StoreContextType {
   deleteClient: (clientId: string) => Promise<boolean>;
   archiveClient: (clientId: string) => void;
   exportDataAsJSON: () => string;
+  exportBilanCSV: (
+    monthStr: string,
+    rows: Array<{
+      client: Client;
+      isPaid: boolean;
+      payment?: PaymentLog;
+    }>
+  ) => void;
   importDataFromJSON: (jsonData: string) => {
     success: boolean;
     error?: string;
@@ -373,22 +381,32 @@ export function getSubscriptionStatus(
   return calculateClientStatus(client.nextDueDate, client.status, referenceDateInput);
 }
 
-export function cleanMoroccanPhoneNumber(phone: string): string {
-  if (!phone || typeof phone !== 'string') return '';
-  let cleaned = phone.replace(/[\s\-\(\)\+]/g, '');
-  if (!cleaned) return '';
-  if (cleaned.startsWith('0')) {
-    cleaned = '212' + cleaned.slice(1);
-  } else if (!cleaned.startsWith('212')) {
-    cleaned = '212' + cleaned;
+export function cleanMoroccanPhoneNumber(phone?: string | null): string {
+  if (!phone || typeof phone !== 'string' || !phone.trim()) return '';
+  // Strip all non-digit characters (spaces, dashes, parentheses, dots, slashes, plus)
+  let digits = phone.replace(/\D/g, '');
+  if (!digits) return '';
+
+  // Handle international dial prefixes: '00212' or '212'
+  if (digits.startsWith('00212')) {
+    digits = digits.slice(5);
+  } else if (digits.startsWith('212')) {
+    digits = digits.slice(3);
   }
-  return cleaned;
+
+  // Strip domestic leading zeros (e.g. '06...', '07...', '05...', or '+212 06...')
+  while (digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+
+  return digits ? `212${digits}` : '';
 }
 
-export function isValidMoroccanPhone(phone: string): boolean {
-  if (!phone || typeof phone !== 'string') return false;
-  const cleaned = phone.replace(/[\s\-\(\)\+]/g, '');
-  return /^(?:(?:0[567]\d{8})|(?:212[567]\d{8}))$/.test(cleaned);
+export function isValidMoroccanPhone(phone?: string | null): boolean {
+  if (!phone || typeof phone !== 'string' || !phone.trim()) return true;
+  const cleaned = cleanMoroccanPhoneNumber(phone);
+  // Valid Moroccan phone numbers: 212 followed by 5 (landline), 6, or 7 (mobile), and 8 more digits (total 11 digits)
+  return /^212[567]\d{8}$/.test(cleaned);
 }
 
 export function buildWhatsAppReminder(
@@ -462,7 +480,9 @@ Moyens de paiement : Espèces ou Virement CIH / Attijariwafa.
 📍 _Service Client & Support Technique Youness WiFi_`;
   }
 
-  const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+  const url = cleanPhone
+    ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+    : `https://wa.me/?text=${encodeURIComponent(message)}`;
 
   return { url, text: message, cleanPhone };
 }
@@ -638,6 +658,119 @@ export function buildHistoricalUnpaidReminderUrl(
     ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
     : `https://wa.me/?text=${encodeURIComponent(message)}`;
   return { url, text: message, cleanPhone };
+}
+
+export function generateBilanCSV(
+  monthStr: string,
+  rows: Array<{
+    client: Client;
+    isPaid: boolean;
+    payment?: PaymentLog;
+  }>,
+  language: 'ar' | 'fr' | 'en' = 'fr'
+): string {
+  // UTF-8 BOM (\uFEFF) ensures Microsoft Excel on Windows renders Arabic text legibly
+  const BOM = '\uFEFF';
+
+  // Semicolon (;) delimiter matches Windows regional Excel expectations
+  const headers = language === 'ar'
+    ? [
+        'معرف المشترك',
+        'اسم المشترك',
+        'الهاتف',
+        'الحي',
+        'الباقة',
+        'الواجب الشهري (درهم)',
+        'حالة الأداء',
+        'تاريخ الاستحقاق',
+        'تاريخ الأداء',
+        'طريقة الدفع',
+        'رقم التوصيل',
+        'مصاريف إضافية (درهم)',
+        'المستخلص',
+        'ملاحظات',
+      ]
+    : [
+        'ID Abonné',
+        'Nom Abonné',
+        'Téléphone',
+        'Quartier',
+        'Forfait',
+        'Montant Mensuel (MAD)',
+        'Statut Paiement',
+        'Date Échéance',
+        'Date Paiement',
+        'Mode de Paiement',
+        'N° Reçu',
+        'Frais Supp (MAD)',
+        'Encaissé Par',
+        'Notes',
+      ];
+
+  const escapeCSVCell = (val: string | number | undefined | null): string => {
+    if (val === undefined || val === null) return '""';
+    const str = String(val);
+    const escaped = str.replace(/"/g, '""');
+    return `"${escaped}"`;
+  };
+
+  const lines: string[] = [
+    headers.map(escapeCSVCell).join(';'),
+  ];
+
+  for (const row of rows) {
+    const c = row.client;
+    const p = row.payment;
+    const isPaid = row.isPaid;
+    const fee = c.monthlyFee || 50;
+
+    const statusLabel = isPaid
+      ? (language === 'ar' ? 'مؤدى' : 'Réglé')
+      : (language === 'ar' ? 'غير مؤدى' : 'Impayé');
+
+    const rowValues = [
+      c.id,
+      c.name,
+      c.phone ? cleanMoroccanPhoneNumber(c.phone) : '',
+      c.neighborhood || 'Tétouan',
+      c.subscriptionPlan || 'Abonnement Standard',
+      fee,
+      statusLabel,
+      c.nextDueDate || '',
+      p?.paymentDate || '',
+      p?.method ? p.method.toUpperCase().replace('_', ' ') : '',
+      p?.receiptNumber || '',
+      p?.extraAmount ? p.extraAmount : 0,
+      p?.recordedBy || '',
+      p?.notes || c.notes || '',
+    ];
+
+    lines.push(rowValues.map(escapeCSVCell).join(';'));
+  }
+
+  return BOM + lines.join('\r\n');
+}
+
+export function downloadBilanCSV(
+  monthStr: string,
+  rows: Array<{
+    client: Client;
+    isPaid: boolean;
+    payment?: PaymentLog;
+  }>,
+  language: 'ar' | 'fr' | 'en' = 'fr'
+) {
+  if (typeof window === 'undefined') return;
+  const csvContent = generateBilanCSV(monthStr, rows, language);
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `Bilan_${monthStr}_YounessWiFi.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -1087,6 +1220,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   };
 
   const switchRole = (role: Role, techId?: string) => {
+    // RBAC Security: Only administrators can switch roles or preview technician views
+    if (currentUser?.role === 'technician' || currentUser?.role === 'field_lead') {
+      console.warn('[Security] Unauthorized role switch rejected: field technicians cannot switch roles.');
+      return;
+    }
     if (role === 'admin') {
       const adminUser = users.find((u) => u.role === 'admin') || INITIAL_USERS[0];
       setCurrentUser(adminUser);
@@ -1277,6 +1415,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteClient = async (clientId: string): Promise<boolean> => {
+    // RBAC Security: Only admin can delete subscribers. Technicians & Field Leads are strictly blocked.
+    if (currentUser?.role === 'technician' || currentUser?.role === 'field_lead') {
+      console.warn('[Security] Unauthorized: Technicians and Field Leads cannot delete subscribers.');
+      return false;
+    }
     setClients((prev) => prev.filter((c) => c.id !== clientId));
     setTickets((prev) => prev.filter((t) => t.clientId !== clientId));
     setPayments((prev) => prev.filter((p) => p.clientId !== clientId));
@@ -1289,6 +1432,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   };
 
   const archiveClient = (clientId: string) => {
+    // RBAC Security: Only admin can archive subscribers.
+    if (currentUser?.role === 'technician' || currentUser?.role === 'field_lead') {
+      console.warn('[Security] Unauthorized: Technicians and Field Leads cannot archive subscribers.');
+      return;
+    }
     setClients((prev) =>
       prev.map((c) => (c.id === clientId ? { ...c, status: 'archived' } : c))
     );
@@ -1379,10 +1527,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       wifiPassword: clientData.hardware?.wifiPassword?.trim() || undefined,
       pppoeUsername: clientData.hardware?.pppoeUsername?.trim() || autoPppoeUser,
       pppoePassword: clientData.hardware?.pppoePassword?.trim() || '123456',
-      signalStrengthDbm:
-        typeof clientData.hardware?.signalStrengthDbm === 'number' && !isNaN(clientData.hardware.signalStrengthDbm)
-          ? clientData.hardware.signalStrengthDbm
-          : -65,
+      signalStrengthDbm: (() => {
+        const raw = clientData.hardware?.signalStrengthDbm;
+        if (typeof raw === 'number' && !isNaN(raw)) return raw;
+        if (typeof raw === 'string') {
+          const parsed = parseInt(String(raw).replace(/[^\d-]/g, ''), 10);
+          if (!isNaN(parsed)) return parsed;
+        }
+        return -65;
+      })(),
       sectorTower: clientData.hardware?.sectorTower?.trim() || 'Tour Boujarah (Relais Centre)',
     };
 
@@ -1390,7 +1543,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       ...clientData,
       id,
       name: safeClientName,
-      phone: clientData.phone.trim(),
+      phone: clientData.phone?.trim()
+        ? cleanMoroccanPhoneNumber(clientData.phone) || clientData.phone.trim()
+        : '',
       neighborhood: clientData.neighborhood?.trim() || 'Wilaya',
       address: clientData.address?.trim() || 'Tétouan',
       googleMapsUrl:
@@ -1444,12 +1599,38 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateClient = async (id: string, updates: Partial<Client>): Promise<boolean> => {
-    let resolvedUpdates: Partial<Client> = { ...updates };
+    let sanitizedUpdates: Partial<Client> = { ...updates };
+    if (sanitizedUpdates.phone !== undefined) {
+      sanitizedUpdates.phone = sanitizedUpdates.phone?.trim()
+        ? cleanMoroccanPhoneNumber(sanitizedUpdates.phone) || sanitizedUpdates.phone.trim()
+        : '';
+    }
+    if (sanitizedUpdates.hardware && sanitizedUpdates.hardware.signalStrengthDbm !== undefined) {
+      const raw = sanitizedUpdates.hardware.signalStrengthDbm;
+      let val = -65;
+      if (typeof raw === 'number' && !isNaN(raw)) val = raw;
+      else if (typeof raw === 'string') {
+        const parsed = parseInt(String(raw).replace(/[^\d-]/g, ''), 10);
+        if (!isNaN(parsed)) val = parsed;
+      }
+      sanitizedUpdates.hardware = {
+        ...sanitizedUpdates.hardware,
+        signalStrengthDbm: val,
+      };
+    }
+
+    let resolvedUpdates: Partial<Client> = { ...sanitizedUpdates };
     setClients((prev) =>
       prev.map((c) => {
         if (c.id === id) {
-          const updated = { ...c, ...updates };
-          if (updates.nextDueDate || updates.status) {
+          const updated = {
+            ...c,
+            ...sanitizedUpdates,
+            hardware: sanitizedUpdates.hardware
+              ? { ...c.hardware, ...sanitizedUpdates.hardware }
+              : c.hardware,
+          };
+          if (sanitizedUpdates.nextDueDate || sanitizedUpdates.status) {
             updated.status = calculateClientStatus(updated.nextDueDate, updated.status);
           }
           resolvedUpdates = updated;
@@ -1702,6 +1883,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         deleteClient,
         archiveClient,
         exportDataAsJSON,
+        exportBilanCSV: (monthStr, rows) => downloadBilanCSV(monthStr, rows, language),
         importDataFromJSON,
         recordPayment,
         createTicket,

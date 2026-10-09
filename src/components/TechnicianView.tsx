@@ -33,6 +33,7 @@ export default function TechnicianView() {
     technicians,
     updateTicketStatus,
     t,
+    language,
     dir,
     isOnline,
   } = useStore();
@@ -477,15 +478,25 @@ export default function TechnicianView() {
                 {/* 1-TAP BIG TOUCH BUTTONS: CALL & MAPS */}
                 <div className="grid grid-cols-2 gap-2.5 pt-1">
                   {/* Direct 1-tap Call Button */}
-                  <a
-                    href={`tel:${ticket.clientPhone}`}
-                    className="py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-950 transition active:scale-95"
-                  >
-                    <Phone className="w-4 h-4 fill-white" />
-                    <span>
-                      {t('call')} ({ticket.clientPhone.slice(-4)})
-                    </span>
-                  </a>
+                  {ticket.clientPhone ? (
+                    <a
+                      href={`tel:${ticket.clientPhone}`}
+                      className="py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-950 transition active:scale-95"
+                    >
+                      <Phone className="w-4 h-4 fill-white" />
+                      <span>
+                        {t('call')} ({ticket.clientPhone.slice(-4)})
+                      </span>
+                    </a>
+                  ) : (
+                    <div
+                      className="py-3 px-4 rounded-2xl bg-[#130F1A] border border-[#261E33] text-[#695F77] font-bold text-xs flex items-center justify-center gap-2 cursor-not-allowed opacity-60"
+                      title={language === 'ar' ? 'لا يوجد رقم هاتف' : 'Numéro non renseigné'}
+                    >
+                      <Phone className="w-4 h-4 text-[#695F77]" />
+                      <span>{language === 'ar' ? 'بدون هاتف' : 'Sans tél'}</span>
+                    </div>
+                  )}
 
                   {/* Direct 1-tap Google Maps Navigation */}
                   <a

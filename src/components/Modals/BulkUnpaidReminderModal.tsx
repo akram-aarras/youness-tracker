@@ -49,6 +49,7 @@ export default function BulkUnpaidReminderModal({
   const [searchFilter, setSearchFilter] = useState('');
 
   const handleOpenWhatsApp = (client: Client) => {
+    if (!client.phone || !client.phone.trim()) return;
     const { url } = buildHistoricalUnpaidReminderUrl(client, monthLabel, isFutureMonth);
     setSentMap((prev) => ({ ...prev, [client.id]: true }));
     window.open(url, '_blank');
@@ -64,7 +65,8 @@ export default function BulkUnpaidReminderModal({
       ...unpaidList.map((item, idx) => {
         const c = item.client;
         const fee = c.monthlyFee || 50;
-        return `${idx + 1}. *${c.name}* (${c.neighborhood || 'Tétouan'}) - ${fee} DH - 📞 ${c.phone} - Échéance: ${c.nextDueDate}`;
+        const phoneLabel = c.phone?.trim() ? `📞 ${c.phone}` : '📞 Non renseigné';
+        return `${idx + 1}. *${c.name}* (${c.neighborhood || 'Tétouan'}) - ${fee} DH - ${phoneLabel} - Échéance: ${c.nextDueDate}`;
       }),
       `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
       `📍 Youness WiFi Operations - Tétouan`,
@@ -84,7 +86,7 @@ export default function BulkUnpaidReminderModal({
     const q = searchFilter.toLowerCase();
     return (
       item.client.name.toLowerCase().includes(q) ||
-      item.client.phone.includes(q) ||
+      (item.client.phone && item.client.phone.includes(q)) ||
       (item.client.neighborhood || '').toLowerCase().includes(q)
     );
   });
@@ -231,7 +233,7 @@ export default function BulkUnpaidReminderModal({
                         )}
                       </div>
                       <div className="text-xs text-[#958B9F] flex items-center gap-2 mt-0.5">
-                        <span className="font-mono">{client.phone}</span>
+                        <span className="font-mono">{client.phone?.trim() || '—'}</span>
                         <span>•</span>
                         <span className="text-amber-400 font-semibold">{fee} {t('currency')}</span>
                         <span>•</span>
@@ -257,18 +259,30 @@ export default function BulkUnpaidReminderModal({
                       </button>
                     )}
 
-                    <button
-                      type="button"
-                      onClick={() => handleOpenWhatsApp(client)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                        isSent
-                          ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/40'
-                          : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                      }`}
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      <span>{isSent ? (language === 'ar' ? 'إعادة الإرسال' : 'Renvoyer') : t('bulk_open_wa_btn')}</span>
-                    </button>
+                    {client.phone?.trim() ? (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenWhatsApp(client)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                          isSent
+                            ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/40'
+                            : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                        }`}
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>{isSent ? (language === 'ar' ? 'إعادة الإرسال' : 'Renvoyer') : t('bulk_open_wa_btn')}</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#241E30] text-[#695F77] border border-[#2D253B] cursor-not-allowed opacity-50 flex items-center gap-1.5 shadow-none"
+                        title={language === 'ar' ? 'لا يوجد رقم هاتف' : 'Numéro non renseigné'}
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>{language === 'ar' ? 'بدون هاتف' : 'Sans tél'}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               );

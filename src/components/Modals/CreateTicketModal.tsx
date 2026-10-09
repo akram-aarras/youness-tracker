@@ -126,7 +126,7 @@ export default function CreateTicketModal({
               </select>
               {selectedClient && (
                 <p className="text-[11px] text-[#958B9F] mt-1">
-                  📍 {selectedClient.address || 'Tétouan'} | 📞 {selectedClient.phone}
+                  📍 {selectedClient.address || 'Tétouan'} | 📞 {selectedClient.phone || 'Non renseigné'}
                 </p>
               )}
             </div>

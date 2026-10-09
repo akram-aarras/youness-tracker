@@ -245,11 +245,11 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
 
           {/* Optional Notes */}
           {payment.notes && (
-            <div className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 italic">
+            <div className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 italic break-words overflow-hidden">
               <span className="font-semibold text-slate-700 not-italic">
                 {language === 'ar' ? 'ملاحظة: ' : 'Note : '}
               </span>
-              {payment.notes}
+              <span className="break-all">{payment.notes}</span>
             </div>
           )}
 

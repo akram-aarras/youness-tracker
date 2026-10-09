@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useStore, getTodayDateStr, addMonthsToDateStr, isValidMoroccanPhone } from '@/lib/store';
+import { useStore, getTodayDateStr, addMonthsToDateStr, isValidMoroccanPhone, cleanMoroccanPhoneNumber } from '@/lib/store';
 import {
   X,
   UserPlus,
@@ -10,6 +10,7 @@ import {
   MapPin,
   CreditCard,
   CheckCircle,
+  Loader2,
 } from 'lucide-react';
 
 interface Props {
@@ -91,7 +92,8 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
   const [pppoeUsername, setPppoeUsername] = useState('');
   const [pppoePassword, setPppoePassword] = useState('123456');
   const [sectorTower, setSectorTower] = useState('Tour Boujarah (Relais Centre)');
-  const [signalStrengthDbm, setSignalStrengthDbm] = useState<number>(-65);
+  const [signalStrengthDbm, setSignalStrengthDbm] = useState<string | number>(-65);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Subscription Setup
   const [monthlyFee, setMonthlyFee] = useState<number>(50);
@@ -119,46 +121,62 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim()) {
+    if (isSubmitting) return;
+    if (!name.trim()) {
+      setActiveTab('info');
+      return;
+    }
+    if (phone.trim() && !isValidMoroccanPhone(phone)) {
       setActiveTab('info');
       return;
     }
 
-    const trimmedName = name.trim();
-    const cleanUserSlug = trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/^_+|_+$/g, '').replace(/_+/g, '_');
-    const fallbackId = Math.floor(100 + Math.random() * 900);
-    const autoPppoeUser = cleanUserSlug ? `user_${cleanUserSlug}` : `client_${fallbackId}`;
-    const autoWifiSsid = cleanUserSlug ? `${trimmedName.split(' ')[0]}_WiFi` : `WiFi_${fallbackId}`;
+    setIsSubmitting(true);
+    try {
+      const trimmedName = name.trim();
+      const cleanUserSlug = trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/^_+|_+$/g, '').replace(/_+/g, '_');
+      const fallbackId = Math.floor(100 + Math.random() * 900);
+      const autoPppoeUser = cleanUserSlug ? `user_${cleanUserSlug}` : `client_${fallbackId}`;
+      const autoWifiSsid = cleanUserSlug ? `${trimmedName.split(' ')[0]}_WiFi` : `WiFi_${fallbackId}`;
 
-    addClient({
-      name: trimmedName,
-      phone: phone.trim(),
-      neighborhood: neighborhood.trim() || 'Wilaya',
-      address: address.trim() || 'Tétouan',
-      googleMapsUrl:
-        googleMapsUrl.trim() || 'https://maps.google.com/?q=35.5784,-5.3684',
-      monthlyFee: Number(monthlyFee) > 0 ? Number(monthlyFee) : 50,
-      subscriptionPlan: subscriptionPlan || 'باقة اقتصادية - 50 د.م./شهر (Pack Éco 50 MAD)',
-      installationDate: installationDate || getTodayDateStr(),
-      nextDueDate: nextDueDate || addMonthsToDateStr(getTodayDateStr(), 1),
-      initialPayment,
-      notes: notes.trim() || undefined,
-      hardware: {
-        antennaModel: antennaModel.trim() || 'Ubiquiti LiteBeam 5AC',
-        antennaMac: antennaMac.trim().toUpperCase() || 'N/A',
-        antennaIp: antennaIp.trim() || '192.168.10.150',
-        routerModel: routerModel.trim() || 'Standard Router',
-        wifiSsid: wifiSsid.trim() || autoWifiSsid,
-        wifiPassword: wifiPassword.trim() || undefined,
-        pppoeUsername: pppoeUsername.trim() || autoPppoeUser,
-        pppoePassword: pppoePassword.trim() || '123456',
-        signalStrengthDbm: Number(signalStrengthDbm) || -65,
-        sectorTower: sectorTower.trim() || 'Tour Boujarah (Relais Centre)',
-      },
-    });
+      const rawDbm = typeof signalStrengthDbm === 'number'
+        ? signalStrengthDbm
+        : parseInt(String(signalStrengthDbm).replace(/[^\d-]/g, ''), 10);
+      const parsedSignalDbm = isNaN(rawDbm) ? -65 : Math.max(-100, Math.min(-10, rawDbm));
 
-    if (onSuccess) onSuccess();
-    onClose();
+      addClient({
+        name: trimmedName,
+        phone: phone.trim() ? (cleanMoroccanPhoneNumber(phone) || phone.trim()) : '',
+        neighborhood: neighborhood.trim() || 'Wilaya',
+        address: address.trim() || 'Tétouan',
+        googleMapsUrl:
+          googleMapsUrl.trim() || 'https://maps.google.com/?q=35.5784,-5.3684',
+        monthlyFee: Number(monthlyFee) > 0 ? Number(monthlyFee) : 50,
+        subscriptionPlan: subscriptionPlan || 'باقة اقتصادية - 50 د.م./شهر (Pack Éco 50 MAD)',
+        installationDate: installationDate || getTodayDateStr(),
+        nextDueDate: nextDueDate || addMonthsToDateStr(getTodayDateStr(), 1),
+        initialPayment,
+        notes: notes.trim() || undefined,
+        hardware: {
+          antennaModel: antennaModel.trim() || 'Ubiquiti LiteBeam 5AC',
+          antennaMac: antennaMac.trim().toUpperCase() || 'N/A',
+          antennaIp: antennaIp.trim() || '192.168.10.150',
+          routerModel: routerModel.trim() || 'Standard Router',
+          wifiSsid: wifiSsid.trim() || autoWifiSsid,
+          wifiPassword: wifiPassword.trim() || undefined,
+          pppoeUsername: pppoeUsername.trim() || autoPppoeUser,
+          pppoePassword: pppoePassword.trim() || '123456',
+          signalStrengthDbm: parsedSignalDbm,
+          sectorTower: sectorTower.trim() || 'Tour Boujarah (Relais Centre)',
+        },
+      });
+
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -180,7 +198,8 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            disabled={isSubmitting}
+            className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -248,11 +267,10 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                    Phone Number (Morocco) <span className="text-rose-400">*</span>
+                    Phone Number (Morocco) <span className="text-slate-500 font-normal text-[11px]">(Optionnel / اختياري)</span>
                   </label>
                   <input
                     type="text"
-                    required
                     placeholder="06XXXXXXXX ou +2126XXXXXXXX"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -383,12 +401,22 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     Aligned Signal Level (dBm) <span className="text-slate-500 font-normal text-[11px]">(Optional, defaults to -65)</span>
                   </label>
                   <input
-                    type="number"
-                    max="-30"
-                    min="-90"
+                    type="text"
+                    inputMode="numeric"
                     placeholder="-65"
                     value={signalStrengthDbm}
-                    onChange={(e) => setSignalStrengthDbm(Number(e.target.value))}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '' || val === '-') {
+                        setSignalStrengthDbm(val);
+                      } else {
+                        const cleaned = val.replace(/[^\d-]/g, '');
+                        const sanitized = cleaned.startsWith('-')
+                          ? '-' + cleaned.slice(1).replace(/-/g, '')
+                          : cleaned.replace(/-/g, '');
+                        setSignalStrengthDbm(sanitized);
+                      }
+                    }}
                     className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-sm text-[#F4F0F8] placeholder-[#958B9F] font-mono focus:outline-none focus:border-amber-500/50 transition"
                   />
                   <div className="text-[11px] text-slate-400 mt-1">
@@ -619,16 +647,27 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
               <button
                 type="button"
                 onClick={() => setActiveTab('hardware')}
-                className="px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                disabled={isSubmitting}
+                className="px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:pointer-events-none rounded-xl transition cursor-pointer"
               >
                 ← Retour
               </button>
               <button
                 type="submit"
-                className="min-h-[46px] py-2.5 px-6 text-xs sm:text-sm font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl shadow-md shadow-orange-500/20 transition flex items-center gap-2 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                disabled={isSubmitting}
+                className="min-h-[46px] py-2.5 px-6 text-xs sm:text-sm font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl shadow-md shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none transition flex items-center gap-2 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
-                <CheckCircle className="w-4 h-4 text-white shrink-0" />
-                <span>حفظ وتأكيد التثبيت</span>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 text-white animate-spin shrink-0" />
+                    <span>جاري الحفظ...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 text-white shrink-0" />
+                    <span>حفظ وتأكيد التثبيت</span>
+                  </>
+                )}
               </button>
             </div>
           )}

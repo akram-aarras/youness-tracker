@@ -45,9 +45,11 @@ export default function ClientDetailModal({
   onSendWhatsApp,
   onCreateTicket,
 }: Props) {
-  const { payments, updateClient, deleteClient, archiveClient, t, language, localizePlanName, dir } = useStore();
+  const { currentUser, payments, updateClient, deleteClient, archiveClient, t, language, localizePlanName, dir } = useStore();
   const [showPassword, setShowPassword] = useState(false);
+  const [showWifiPassword, setShowWifiPassword] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const isAdmin = currentUser?.role === 'admin' || !currentUser;
 
   // Archive and Delete confirmation states
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
@@ -163,13 +165,22 @@ export default function ClientDetailModal({
         {/* Quick Action Strip */}
         <div className="px-4 sm:px-6 py-2.5 bg-slate-50/80 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-xs overflow-x-auto no-scrollbar shrink-0">
           <div className="flex items-center gap-2 shrink-0">
-            <a
-              href={`tel:${client.phone}`}
-              className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 flex items-center gap-1.5 transition font-medium shadow-2xs"
-            >
-              <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>{t('call')} ({client.phone})</span>
-            </a>
+            {client.phone ? (
+              <a
+                href={`tel:${client.phone}`}
+                className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 flex items-center gap-1.5 transition font-medium shadow-2xs"
+              >
+                <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>{t('call')} ({client.phone})</span>
+              </a>
+            ) : (
+              <div
+                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200/60 dark:border-slate-700 flex items-center gap-1.5 text-xs font-medium cursor-default"
+              >
+                <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>{language === 'ar' ? 'بدون هاتف' : 'Non renseigné'}</span>
+              </div>
+            )}
             <a
               href={client.googleMapsUrl || 'https://maps.google.com/?q=35.5784,-5.3684'}
               target="_blank"
@@ -182,13 +193,24 @@ export default function ClientDetailModal({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => onSendWhatsApp(client)}
-              className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 transition font-medium cursor-pointer shadow-2xs"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{t('action_send_whatsapp')}</span>
-            </button>
+            {client.phone ? (
+              <button
+                onClick={() => onSendWhatsApp(client)}
+                className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 transition font-medium cursor-pointer shadow-2xs"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{t('action_send_whatsapp')}</span>
+              </button>
+            ) : (
+              <button
+                disabled
+                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-200/50 dark:border-slate-800 flex items-center gap-1.5 text-xs font-medium cursor-not-allowed opacity-50"
+                title={language === 'ar' ? 'لا يوجد رقم هاتف' : 'Numéro non renseigné'}
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+                <span>{t('action_send_whatsapp')}</span>
+              </button>
+            )}
             <button
               onClick={() => onRecordPayment(client.id)}
               className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white flex items-center gap-1.5 transition font-semibold shadow-xs cursor-pointer"
@@ -485,6 +507,48 @@ export default function ClientDetailModal({
               </div>
 
               <div className="p-2.5 rounded-lg bg-[#0F0C14] border border-[#261E33] flex items-center justify-between">
+                <div className="min-w-0 pr-2">
+                  <span className="text-[#958B9F] block text-[10px] uppercase font-bold">
+                    {language === 'ar' ? 'كلمة سر الواي فاي' : 'Mot de passe Wi-Fi'}
+                  </span>
+                  <span className="font-mono font-semibold text-[#F4F0F8] break-all">
+                    {showWifiPassword
+                      ? client.hardware?.wifiPassword || 'N/A'
+                      : '••••••••••'}
+                  </span>
+                </div>
+                <div className="flex items-center shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowWifiPassword(!showWifiPassword)}
+                    className="p-1.5 text-[#958B9F] hover:text-[#F4F0F8] cursor-pointer"
+                  >
+                    {showWifiPassword ? (
+                      <EyeOff className="w-3.5 h-3.5" />
+                    ) : (
+                      <Eye className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      copyToClipboard(
+                        client.hardware?.wifiPassword || '',
+                        'wifi_pwd'
+                      )
+                    }
+                    className="p-1.5 text-[#958B9F] hover:text-[#F4F0F8] cursor-pointer"
+                  >
+                    {copiedField === 'wifi_pwd' ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-[#0F0C14] border border-[#261E33] flex items-center justify-between">
                 <div>
                   <span className="text-[#958B9F] block text-[10px] uppercase font-bold">
                     {t('pppoe_username_label')}
@@ -636,53 +700,55 @@ export default function ClientDetailModal({
             )}
           </div>
 
-          {/* Account Lifecycle & Administration (أرشفة المشترك وحذف الحساب) */}
-          <div className="p-4 rounded-xl bg-[#130F1A] border border-[#261E33] space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-bold uppercase tracking-wider text-[#958B9F] flex items-center gap-2">
-                <Shield className="w-4 h-4 text-amber-400" />
-                <span>{t('account_lifecycle_title')}</span>
+          {/* Account Lifecycle & Administration (Admin only) */}
+          {isAdmin && (
+            <div className="p-4 rounded-xl bg-[#130F1A] border border-[#261E33] space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-bold uppercase tracking-wider text-[#958B9F] flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-amber-400" />
+                  <span>{t('account_lifecycle_title')}</span>
+                </div>
+                {client.status === 'archived' && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#261E33] text-slate-300 border border-slate-700">
+                    {t('archived_subscriber_pill')}
+                  </span>
+                )}
               </div>
-              {client.status === 'archived' && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#261E33] text-slate-300 border border-slate-700">
-                  {t('archived_subscriber_pill')}
-                </span>
-              )}
-            </div>
 
-            <p className="text-xs text-[#958B9F]">
-              {t('account_lifecycle_desc')}
-            </p>
+              <p className="text-xs text-[#958B9F]">
+                {t('account_lifecycle_desc')}
+              </p>
 
-            <div className="flex flex-wrap items-center gap-2.5 pt-1">
-              {/* Archive Button */}
-              {client.status !== 'archived' ? (
+              <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                {/* Archive Button */}
+                {client.status !== 'archived' ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowArchiveConfirm(true)}
+                    className="min-h-[40px] px-3.5 py-2 rounded-xl bg-[#241E30] hover:bg-[#2C243B] text-amber-300 hover:text-amber-200 border border-amber-500/30 hover:border-amber-500/50 text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
+                  >
+                    <Archive className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{t('archive_client_btn')}</span>
+                  </button>
+                ) : (
+                  <span className="text-xs text-amber-400/80 font-medium flex items-center gap-1.5 py-1">
+                    <Check className="w-4 h-4 text-amber-400" />
+                    {t('archived_subscriber_notice')}
+                  </span>
+                )}
+
+                {/* Delete Button */}
                 <button
                   type="button"
-                  onClick={() => setShowArchiveConfirm(true)}
-                  className="min-h-[40px] px-3.5 py-2 rounded-xl bg-[#241E30] hover:bg-[#2C243B] text-amber-300 hover:text-amber-200 border border-amber-500/30 hover:border-amber-500/50 text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="min-h-[40px] px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 border border-rose-500/30 hover:border-rose-500/50 text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
                 >
-                  <Archive className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{t('archive_client_btn')}</span>
+                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  <span>{t('delete_client_btn')}</span>
                 </button>
-              ) : (
-                <span className="text-xs text-amber-400/80 font-medium flex items-center gap-1.5 py-1">
-                  <Check className="w-4 h-4 text-amber-400" />
-                  {t('archived_subscriber_notice')}
-                </span>
-              )}
-
-              {/* Delete Button */}
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="min-h-[40px] px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 border border-rose-500/30 hover:border-rose-500/50 text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                <span>{t('delete_client_btn')}</span>
-              </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Sticky Footer */}
