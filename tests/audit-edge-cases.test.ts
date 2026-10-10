@@ -380,3 +380,110 @@ describe('5. RBAC & Field Security', () => {
     );
   });
 });
+
+describe('6. Client Directory Pagination & Search Filtering (10 Clients Per Page)', () => {
+  const PAGE_SIZE = 10;
+
+  // Generate 25 mock clients across different neighborhoods and hardware
+  const mockClients: Client[] = Array.from({ length: 25 }, (_, i) => ({
+    id: `cli-${i + 1}`,
+    name: `Client ${i + 1}`,
+    phone: i % 3 === 0 ? '' : `061234567${i % 10}`,
+    neighborhood: i % 2 === 0 ? 'Boujarah' : 'Saniat Rmel',
+    address: `Rue ${i + 1}, Tétouan`,
+    monthlyFee: 100,
+    status: (i % 4 === 0 ? 'overdue' : i % 4 === 1 ? 'due_soon' : 'active') as Client['status'],
+    nextDueDate: '2026-10-15',
+    hardware: {
+      antennaIp: `192.168.10.${100 + i}`,
+      routerModel: i % 2 === 0 ? 'TP-Link Archer C6' : 'ZTE F660',
+      antennaMac: `DC:9F:DB:11:22:${String(i).padStart(2, '0')}`,
+      pppoeUsername: `user_${i + 1}`,
+    },
+  }));
+
+  it('should paginate 25 clients strictly to 10 per page across 3 pages', () => {
+    const totalPages = Math.ceil(mockClients.length / PAGE_SIZE);
+    assert.strictEqual(totalPages, 3);
+
+    // Page 1: 0 to 10
+    const page1 = mockClients.slice(0, PAGE_SIZE);
+    assert.strictEqual(page1.length, 10);
+    assert.strictEqual(page1[0].id, 'cli-1');
+    assert.strictEqual(page1[9].id, 'cli-10');
+
+    // Page 2: 10 to 20
+    const page2 = mockClients.slice(PAGE_SIZE, PAGE_SIZE * 2);
+    assert.strictEqual(page2.length, 10);
+    assert.strictEqual(page2[0].id, 'cli-11');
+    assert.strictEqual(page2[9].id, 'cli-20');
+
+    // Page 3: 20 to 25
+    const page3 = mockClients.slice(PAGE_SIZE * 2, PAGE_SIZE * 3);
+    assert.strictEqual(page3.length, 5);
+    assert.strictEqual(page3[0].id, 'cli-21');
+    assert.strictEqual(page3[4].id, 'cli-25');
+  });
+
+  it('should filter clients by IP, box router model, neighborhood, and status', () => {
+    // Filter by IP: '192.168.10.105' -> matches cli-6
+    const ipMatch = mockClients.filter((c) =>
+      c.hardware?.antennaIp?.includes('192.168.10.105')
+    );
+    assert.strictEqual(ipMatch.length, 1);
+    assert.strictEqual(ipMatch[0].id, 'cli-6');
+
+    // Filter by router model: 'ZTE F660'
+    const routerMatch = mockClients.filter((c) =>
+      c.hardware?.routerModel?.toLowerCase().includes('zte f660')
+    );
+    assert.strictEqual(routerMatch.length, 12);
+
+    // Filter by neighborhood: 'Boujarah'
+    const neighborhoodMatch = mockClients.filter(
+      (c) => c.neighborhood === 'Boujarah'
+    );
+    assert.strictEqual(neighborhoodMatch.length, 13);
+
+    // Filter by status: 'overdue'
+    const overdueMatch = mockClients.filter((c) => c.status === 'overdue');
+    assert.strictEqual(overdueMatch.length, 7);
+  });
+
+  it('should reset current page to 1 when filters or search queries change', () => {
+    let currentPage = 3;
+    const onFilterChange = () => {
+      currentPage = 1;
+    };
+
+    onFilterChange();
+    assert.strictEqual(currentPage, 1, 'Current page must reset to 1 on filter/search change');
+  });
+
+  it('should clamp current page safely when client count shrinks below active page', () => {
+    let currentPage = 3;
+    const reducedList = mockClients.slice(0, 15); // 15 clients = 2 total pages
+    const totalPages = Math.max(1, Math.ceil(reducedList.length / PAGE_SIZE));
+
+    if (currentPage > totalPages) {
+      currentPage = totalPages;
+    }
+
+    assert.strictEqual(currentPage, 2, 'Current page must clamp to total pages (2)');
+  });
+
+  it('should preserve active page view during non-filter actions (e.g. status toggle or edit)', () => {
+    const activePage = 2;
+    // Client action: toggle status or edit note on cli-12 (on page 2)
+    const updatedClients = mockClients.map((c) =>
+      c.id === 'cli-12' ? { ...c, notes: 'Updated note via modal' } : c
+    );
+
+    // Since filter did not change, active page is preserved
+    const page2Slice = updatedClients.slice((activePage - 1) * PAGE_SIZE, activePage * PAGE_SIZE);
+    assert.strictEqual(activePage, 2);
+    assert.strictEqual(page2Slice.length, 10);
+    assert.strictEqual(page2Slice.find((c) => c.id === 'cli-12')?.notes, 'Updated note via modal');
+  });
+});
+

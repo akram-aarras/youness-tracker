@@ -5,7 +5,7 @@ import Dialog from '@/components/ui/Dialog';
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { Client, SubscriptionStatus } from '@/lib/types';
-import { Search, UserPlus, Radio, Phone, CreditCard, MessageSquare, Wrench, AlertTriangle, Clock, CheckCircle, ChevronRight, ShieldAlert, Archive, Pencil, Trash2, CheckCircle2, AlertCircle, X, Loader2, Info } from 'lucide-react';
+import { Search, UserPlus, Radio, Phone, CreditCard, MessageSquare, Wrench, AlertTriangle, Clock, CheckCircle, ChevronRight, ChevronLeft, ShieldAlert, Archive, Pencil, Trash2, CheckCircle2, AlertCircle, X, Loader2, Info } from 'lucide-react';
 import { TETOUAN_NEIGHBORHOODS } from './Modals/RegisterClientModal';
 import EditClientModal from './Modals/EditClientModal';
 
@@ -32,6 +32,7 @@ export default function ClientDirectory({
     t,
     language,
     localizePlanName,
+    localizeStatus,
     getClientStatus,
     getDaysDiff,
   } = useStore();
@@ -40,6 +41,10 @@ export default function ClientDirectory({
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedNeighborhood, setSelectedNeighborhood] = useState('ALL');
   const [selectedStatusTab, setSelectedStatusTab] = useState<'ALL' | SubscriptionStatus>('ALL');
+
+  // Pagination state (10 clients per page)
+  const PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Edit & Delete modal states
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -109,30 +114,81 @@ export default function ClientDirectory({
     ];
   }, [clientNeighborhoods]);
 
+  // Automatically reset to Page 1 whenever search queries or filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, selectedNeighborhood, selectedStatusTab]);
+
   // Filtering (Memoized for high performance)
   const filteredClients = React.useMemo(() => {
     const term = debouncedSearch.toLowerCase().trim();
     return clients.filter((client) => {
-      // Search query
+      const effectiveStatus = getClientStatus(client);
+      const localizedStatus = localizeStatus ? localizeStatus(effectiveStatus, language).toLowerCase() : '';
+
+      // Search query: name, phone, IP, box router/antenna, neighborhood, address, PPPoE username, notes, status
       const matchSearch =
         !term ||
         client.name.toLowerCase().includes(term) ||
         Boolean(client.phone && client.phone.includes(term)) ||
         Boolean(client.hardware?.antennaMac?.toLowerCase().includes(term)) ||
-        Boolean(client.hardware?.pppoeUsername?.toLowerCase().includes(term));
+        Boolean(client.hardware?.antennaIp?.toLowerCase().includes(term)) ||
+        Boolean(client.hardware?.pppoeUsername?.toLowerCase().includes(term)) ||
+        Boolean(client.hardware?.routerModel?.toLowerCase().includes(term)) ||
+        Boolean(client.hardware?.antennaModel?.toLowerCase().includes(term)) ||
+        Boolean(client.neighborhood?.toLowerCase().includes(term)) ||
+        Boolean(client.address?.toLowerCase().includes(term)) ||
+        Boolean(client.notes?.toLowerCase().includes(term)) ||
+        effectiveStatus.toLowerCase().includes(term) ||
+        localizedStatus.includes(term);
 
       // Neighborhood filter
       const matchNeighborhood =
         selectedNeighborhood === 'ALL' || client.neighborhood === selectedNeighborhood;
 
       // Status filter
-      const effectiveStatus = getClientStatus(client);
       const matchStatus =
         selectedStatusTab === 'ALL' || effectiveStatus === selectedStatusTab;
 
       return matchSearch && matchNeighborhood && matchStatus;
     });
-  }, [clients, debouncedSearch, selectedNeighborhood, selectedStatusTab, getClientStatus]);
+  }, [clients, debouncedSearch, selectedNeighborhood, selectedStatusTab, getClientStatus, localizeStatus, language]);
+
+  // Total pages and safe boundary clamping
+  const totalPages = Math.max(1, Math.ceil(filteredClients.length / PAGE_SIZE));
+
+  React.useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const paginatedClients = React.useMemo(() => {
+    return filteredClients.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [filteredClients, startIndex]);
+
+  // Page numbers list with smart ellipsis
+  const pageNumbers = React.useMemo(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages: (number | 'ellipsis')[] = [];
+    pages.push(1);
+    if (currentPage > 3) {
+      pages.push('ellipsis');
+    }
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(totalPages - 1, currentPage + 1);
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    if (currentPage < totalPages - 2) {
+      pages.push('ellipsis');
+    }
+    pages.push(totalPages);
+    return pages;
+  }, [totalPages, currentPage]);
   // Signal level badge helper
   const getSignalColor = (dbm: number) => {
     if (dbm >= -62) return 'text-emerald-700 bg-emerald-50 border-emerald-200/60 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/20';
@@ -319,8 +375,9 @@ export default function ClientDirectory({
             {t('no_clients_match_filters')}
           </div>
         ) : (
-          <div className="overflow-x-auto w-full">
-            <table className="client-table w-full text-left rtl:text-right text-sm border-collapse min-w-[860px]">
+          <>
+            <div className="overflow-x-auto w-full">
+              <table className="client-table w-full text-left rtl:text-right text-sm border-collapse min-w-[860px]">
               <thead>
                 <tr className="bg-slate-50/80 dark:bg-slate-800/40 text-[var(--muted)] border-b border-[var(--border)] uppercase font-semibold tracking-wider text-[12px]">
                   <th className="py-3.5 px-4">{t('col_subscriber_location')}</th>
@@ -333,7 +390,7 @@ export default function ClientDirectory({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-[var(--surface)]">
-                {filteredClients.map((client) => {
+                {paginatedClients.map((client) => {
                   const status = getClientStatus(client);
                   const daysDiff = getDaysDiff(client.nextDueDate);
 
@@ -530,8 +587,81 @@ export default function ClientDirectory({
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+
+          {/* Pagination Controls Bar */}
+          <div className="px-4 py-3.5 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/20">
+            {/* Total / Showing Counter */}
+            <div className="text-xs sm:text-sm text-[var(--muted)] font-medium">
+              {t('pagination_showing', {
+                from: startIndex + 1,
+                to: Math.min(startIndex + PAGE_SIZE, filteredClients.length),
+                total: filteredClients.length,
+              })}
+            </div>
+
+            {/* Navigation buttons & page pills */}
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              {/* Previous Button */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-xs sm:text-sm font-medium text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                aria-label={t('pagination_previous')}
+              >
+                <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
+                <span>{t('pagination_previous')}</span>
+              </button>
+
+              {/* Page Number Pills */}
+              <div className="flex items-center gap-1">
+                {pageNumbers.map((page, idx) => {
+                  if (page === 'ellipsis') {
+                    return (
+                      <span
+                        key={`ellipsis-${idx}`}
+                        className="w-7 text-center text-[var(--muted)] text-xs select-none"
+                      >
+                        …
+                      </span>
+                    );
+                  }
+                  const isCurrent = page === currentPage;
+                  return (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCurrentPage(page as number)}
+                      className={`w-8 h-8 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center cursor-pointer ${
+                        isCurrent
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                          : 'border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] shadow-2xs'
+                      }`}
+                      aria-current={isCurrent ? 'page' : undefined}
+                      aria-label={`${t('pagination_page')} ${page}`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Next Button */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-xs sm:text-sm font-medium text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                aria-label={t('pagination_next')}
+              >
+                <span>{t('pagination_next')}</span>
+                <ChevronRight className="w-4 h-4 rtl:rotate-180" />
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
 
       {/* Edit Client Modal */}
       {editingClient && (

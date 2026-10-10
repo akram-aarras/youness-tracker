@@ -24,6 +24,8 @@ import {
   Sparkles,
   RefreshCw,
   Download,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import InvoiceReceiptModal from './Modals/InvoiceReceiptModal';
 import BulkUnpaidReminderModal from './Modals/BulkUnpaidReminderModal';
@@ -117,6 +119,21 @@ export default function AdminDashboard({
       // Sort most overdue first
       return getDaysDiff(a.nextDueDate) - getDaysDiff(b.nextDueDate);
     });
+
+  const URGENT_PAGE_SIZE = 10;
+  const [urgentPage, setUrgentPage] = React.useState(1);
+  const totalUrgentPages = Math.max(1, Math.ceil(urgentBillingClients.length / URGENT_PAGE_SIZE));
+
+  React.useEffect(() => {
+    if (urgentPage > totalUrgentPages) {
+      setUrgentPage(totalUrgentPages);
+    }
+  }, [urgentPage, totalUrgentPages]);
+
+  const startUrgentIdx = (urgentPage - 1) * URGENT_PAGE_SIZE;
+  const paginatedUrgentClients = React.useMemo(() => {
+    return urgentBillingClients.slice(startUrgentIdx, startUrgentIdx + URGENT_PAGE_SIZE);
+  }, [urgentBillingClients, startUrgentIdx]);
   // ─────────────────────────────────────────────────────────────
   // 4. HISTORICAL & FUTURE MONTHLY RECONCILIATION & ADVANCE LEDGER
   // (التدقيق المالي، الدفعات المسبقة، ورصد الاشتراكات)
@@ -321,6 +338,47 @@ export default function AdminDashboard({
 
     return list;
   }, [paidList, unpaidList, allEligibleList, historicalFilterTab, historicalSearchQuery]);
+
+  const RECON_PAGE_SIZE = 10;
+  const [reconPage, setReconPage] = React.useState(1);
+
+  React.useEffect(() => {
+    setReconPage(1);
+  }, [historicalFilterTab, historicalSearchQuery, selectedMonthStr]);
+
+  const totalReconPages = Math.max(1, Math.ceil(filteredReconciliationRows.length / RECON_PAGE_SIZE));
+
+  React.useEffect(() => {
+    if (reconPage > totalReconPages) {
+      setReconPage(totalReconPages);
+    }
+  }, [reconPage, totalReconPages]);
+
+  const startReconIdx = (reconPage - 1) * RECON_PAGE_SIZE;
+  const paginatedReconciliationRows = React.useMemo(() => {
+    return filteredReconciliationRows.slice(startReconIdx, startReconIdx + RECON_PAGE_SIZE);
+  }, [filteredReconciliationRows, startReconIdx]);
+
+  const reconPageNumbers = React.useMemo(() => {
+    if (totalReconPages <= 7) {
+      return Array.from({ length: totalReconPages }, (_, i) => i + 1);
+    }
+    const pages: (number | 'ellipsis')[] = [];
+    pages.push(1);
+    if (reconPage > 3) {
+      pages.push('ellipsis');
+    }
+    const start = Math.max(2, reconPage - 1);
+    const end = Math.min(totalReconPages - 1, reconPage + 1);
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    if (reconPage < totalReconPages - 2) {
+      pages.push('ellipsis');
+    }
+    pages.push(totalReconPages);
+    return pages;
+  }, [totalReconPages, reconPage]);
 
   const handleSendUnpaidWhatsApp = (client: Client) => {
     if (!client.phone || !client.phone.trim()) return;
@@ -599,7 +657,7 @@ export default function AdminDashboard({
                   </tr>
                 </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-[var(--surface)]">
-                {urgentBillingClients.map((client) => {
+                {paginatedUrgentClients.map((client) => {
                   const daysDiff = getDaysDiff(client.nextDueDate);
                   const isOverdue = daysDiff < 0;
 
@@ -725,6 +783,44 @@ export default function AdminDashboard({
                 })}
               </tbody>
             </table>
+
+            {/* Urgent Table Pagination Bar if > 10 */}
+            {urgentBillingClients.length > URGENT_PAGE_SIZE && (
+              <div className="px-4 py-3 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/20 text-xs sm:text-sm">
+                <span className="text-[var(--muted)] font-medium">
+                  {t('pagination_showing', {
+                    from: startUrgentIdx + 1,
+                    to: Math.min(startUrgentIdx + URGENT_PAGE_SIZE, urgentBillingClients.length),
+                    total: urgentBillingClients.length,
+                  })}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setUrgentPage((p) => Math.max(1, p - 1))}
+                    disabled={urgentPage === 1}
+                    className="px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer"
+                    aria-label={t('pagination_previous')}
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5 rtl:rotate-180" />
+                    <span>{t('pagination_previous')}</span>
+                  </button>
+                  <span className="font-semibold px-2 text-[var(--text)]">
+                    {urgentPage} / {totalUrgentPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setUrgentPage((p) => Math.min(totalUrgentPages, p + 1))}
+                    disabled={urgentPage === totalUrgentPages}
+                    className="px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer"
+                    aria-label={t('pagination_next')}
+                  >
+                    <span>{t('pagination_next')}</span>
+                    <ChevronRight className="w-3.5 h-3.5 rtl:rotate-180" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         )}
@@ -1121,7 +1217,7 @@ export default function AdminDashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)] bg-[var(--surface-muted)]">
-                  {filteredReconciliationRows.map((row) => {
+                  {paginatedReconciliationRows.map((row) => {
                     const { client, payment, isPaid } = row;
                     const coverageDetail = 'coverageDetail' in row ? row.coverageDetail : undefined;
                     const fee = client.monthlyFee || 50;
@@ -1306,6 +1402,74 @@ export default function AdminDashboard({
                   })}
                 </tbody>
               </table>
+
+              {/* Monthly Reconciliation Pagination Controls */}
+              {filteredReconciliationRows.length > 0 && (
+                <div className="px-4 py-3.5 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-3 bg-[var(--surface)]/50 text-xs sm:text-sm">
+                  <span className="text-[var(--muted)] font-medium">
+                    {t('pagination_showing', {
+                      from: startReconIdx + 1,
+                      to: Math.min(startReconIdx + RECON_PAGE_SIZE, filteredReconciliationRows.length),
+                      total: filteredReconciliationRows.length,
+                    })}
+                  </span>
+
+                  {totalReconPages > 1 && (
+                    <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setReconPage((p) => Math.max(1, p - 1))}
+                        disabled={reconPage === 1}
+                        className="px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer shadow-2xs font-medium"
+                        aria-label={t('pagination_previous')}
+                      >
+                        <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
+                        <span>{t('pagination_previous')}</span>
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        {reconPageNumbers.map((page, idx) => {
+                          if (page === 'ellipsis') {
+                            return (
+                              <span key={`recon-ell-${idx}`} className="w-7 text-center text-[var(--muted)] select-none">
+                                …
+                              </span>
+                            );
+                          }
+                          const isCurrent = page === reconPage;
+                          return (
+                            <button
+                              key={`recon-p-${page}`}
+                              type="button"
+                              onClick={() => setReconPage(page as number)}
+                              className={`w-8 h-8 rounded-xl font-semibold transition flex items-center justify-center cursor-pointer ${
+                                isCurrent
+                                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                                  : 'border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] shadow-2xs'
+                              }`}
+                              aria-current={isCurrent ? 'page' : undefined}
+                              aria-label={`${t('pagination_page')} ${page}`}
+                            >
+                              {page}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setReconPage((p) => Math.min(totalReconPages, p + 1))}
+                        disabled={reconPage === totalReconPages}
+                        className="px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer shadow-2xs font-medium"
+                        aria-label={t('pagination_next')}
+                      >
+                        <span>{t('pagination_next')}</span>
+                        <ChevronRight className="w-4 h-4 rtl:rotate-180" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

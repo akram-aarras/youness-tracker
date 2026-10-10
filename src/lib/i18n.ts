@@ -143,6 +143,10 @@ export interface Translations {
   dir_subtitle: string;
   no_clients_found: string;
   no_clients_match_filters: string;
+  pagination_previous: string;
+  pagination_next: string;
+  pagination_page: string;
+  pagination_showing: string;
 
   // Tickets
   tickets_title: string;
@@ -500,6 +504,10 @@ export const translations: Record<Language, Translations> = {
     dir_subtitle: "Find every subscriber and their network setup.",
     no_clients_found: 'No Subscribers Registered',
     no_clients_match_filters: 'No subscribers match the current filters.',
+    pagination_previous: 'Previous',
+    pagination_next: 'Next',
+    pagination_page: 'Page',
+    pagination_showing: 'Showing {from}–{to} of {total} subscribers',
 
     // Tickets
     tickets_title: "Field work",
@@ -856,6 +864,10 @@ export const translations: Record<Language, Translations> = {
     dir_subtitle: "Retrouvez chaque abonné et sa configuration réseau.",
     no_clients_found: 'Aucun Abonné Enregistré',
     no_clients_match_filters: 'Aucun abonné ne correspond aux filtres sélectionnés.',
+    pagination_previous: 'Précédent',
+    pagination_next: 'Suivant',
+    pagination_page: 'Page',
+    pagination_showing: 'Affichage {from}–{to} sur {total} abonnés',
 
     // Tickets
     tickets_title: "Interventions",
@@ -1212,6 +1224,10 @@ export const translations: Record<Language, Translations> = {
     dir_subtitle: "اعثر على كل مشترك وإعدادات شبكته.",
     no_clients_found: 'لا يوجد مشتركون مسجلون',
     no_clients_match_filters: 'لا يوجد مشتركون يطابقون خيارات البحث المحددة.',
+    pagination_previous: 'السابق',
+    pagination_next: 'التالي',
+    pagination_page: 'صفحة',
+    pagination_showing: 'عرض {from}–{to} من أصل {total} مشترك',
 
     // Tickets
     tickets_title: "التدخلات",
