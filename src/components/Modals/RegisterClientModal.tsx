@@ -70,7 +70,7 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
   const [formError, setFormError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'hardware' | 'billing'>('info');
 
-  // Client Info (Only Name and Phone are mandatory)
+  // Client Info (Only Name is mandatory, Phone is optional)
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [neighborhood, setNeighborhood] = useState('Wilaya');
@@ -116,8 +116,14 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-    if (!name.trim() || !phone.trim()) {
-      setFormError(text('Indiquez le nom et le téléphone de l’abonné.', 'Enter the subscriber’s name and phone number.', 'أدخل اسم المشترك ورقم الهاتف.'));
+    if (!name.trim()) {
+      setFormError(text('Indiquez le nom de l’abonné.', 'Enter the subscriber’s name.', 'أدخل اسم المشترك.'));
+      setActiveTab('info');
+      return;
+    }
+
+    if (phone.trim().length > 0 && !isValidMoroccanPhone(phone)) {
+      setFormError(text('Numéro de téléphone marocain invalide.', 'Invalid Moroccan phone number.', 'رقم هاتف مغربي غير صالح.'));
       setActiveTab('info');
       return;
     }
@@ -130,7 +136,7 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
 
     addClient({
       name: trimmedName,
-      phone: phone.trim(),
+      phone: phone.trim() ? phone.trim() : '',
       neighborhood: neighborhood.trim() || 'Wilaya',
       address: address.trim() || 'Tétouan',
       googleMapsUrl:
@@ -246,11 +252,10 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5" htmlFor="RegisterClientModal-field-1">
-                    {text("Téléphone","Phone number","رقم الهاتف")}<span className="text-[var(--error)]">*</span>
+                    {text("Téléphone","Phone number","رقم الهاتف")}<span className="ms-1 text-[var(--muted)] font-normal text-[12px]">{text("(Optionnel)","(Optional)","(اختياري)")}</span>
                   </label>
                   <input
                     type="text"
-                    required
                     placeholder="06XXXXXXXX ou +2126XXXXXXXX"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -573,7 +578,18 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                 {text("Annuler","Cancel","إلغاء")}</button>
               <button
                 type="button"
-                onClick={() => { if (name.trim() && phone.trim()) { setFormError(null); setActiveTab('billing'); } else setFormError(text('Indiquez le nom et le téléphone de l’abonné.', 'Enter the subscriber’s name and phone number.', 'أدخل اسم المشترك ورقم الهاتف.')); }}
+                onClick={() => {
+                  if (!name.trim()) {
+                    setFormError(text('Indiquez le nom de l’abonné.', 'Enter the subscriber’s name.', 'أدخل اسم المشترك.'));
+                    return;
+                  }
+                  if (phone.trim().length > 0 && !isValidMoroccanPhone(phone)) {
+                    setFormError(text('Numéro de téléphone marocain invalide.', 'Invalid Moroccan phone number.', 'رقم هاتف مغربي غير صالح.'));
+                    return;
+                  }
+                  setFormError(null);
+                  setActiveTab('billing');
+                }}
                 className="min-h-[46px] py-2.5 px-5 text-sm sm:text-sm font-semibold bg-[var(--surface)] hover:bg-slate-50 dark:hover:bg-slate-700 border border-[var(--border)] text-slate-800 dark:text-slate-200 rounded-xl transition flex items-center gap-2 cursor-pointer shadow-xs hover:shadow"
               >
                 <span>{text("Continuer vers la facturation","Continue to billing","المتابعة إلى الفوترة")}</span>

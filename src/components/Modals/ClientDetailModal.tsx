@@ -144,13 +144,15 @@ export default function ClientDetailModal({
         {/* Quick Action Strip */}
         <div className="px-4 sm:px-6 py-2.5 bg-slate-50/80 dark:bg-slate-800/40 border-b border-[var(--border)] flex items-center justify-between gap-2 text-sm overflow-x-auto no-scrollbar shrink-0">
           <div className="flex items-center gap-2 shrink-0">
-            <a
-              href={`tel:${client.phone}`}
-              className="px-3 py-1.5 rounded-xl bg-[var(--surface)] hover:bg-slate-50 dark:hover:bg-slate-700 text-[var(--text-secondary)] border border-[var(--border)] flex items-center gap-1.5 transition font-medium shadow-2xs"
-            >
-              <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>{t('call')} ({client.phone})</span>
-            </a>
+            {client.phone && client.phone.trim() ? (
+              <a
+                href={`tel:${client.phone}`}
+                className="px-3 py-1.5 rounded-xl bg-[var(--surface)] hover:bg-slate-50 dark:hover:bg-slate-700 text-[var(--text-secondary)] border border-[var(--border)] flex items-center gap-1.5 transition font-medium shadow-2xs"
+              >
+                <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>{t('call')} ({client.phone})</span>
+              </a>
+            ) : null}
             <a
               href={client.googleMapsUrl || 'https://maps.google.com/?q=35.5784,-5.3684'}
               target="_blank"
@@ -164,8 +166,17 @@ export default function ClientDetailModal({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => onSendWhatsApp(client)}
-              className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 transition font-medium cursor-pointer shadow-2xs"
+              onClick={() => {
+                if (client.phone && client.phone.trim()) {
+                  onSendWhatsApp(client);
+                }
+              }}
+              disabled={!client.phone || !client.phone.trim()}
+              className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition font-medium shadow-2xs ${
+                client.phone && client.phone.trim()
+                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 cursor-pointer'
+                  : 'bg-slate-100/50 text-slate-400 border-slate-200/40 opacity-40 cursor-not-allowed shadow-none'
+              }`}
             >
               <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
               <span>{t('action_send_whatsapp')}</span>

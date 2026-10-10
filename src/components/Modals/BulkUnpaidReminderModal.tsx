@@ -72,7 +72,7 @@ export default function BulkUnpaidReminderModal({
     const q = searchFilter.toLowerCase();
     return (
       item.client.name.toLowerCase().includes(q) ||
-      item.client.phone.includes(q) ||
+      Boolean(item.client.phone && item.client.phone.includes(q)) ||
       (item.client.neighborhood || '').toLowerCase().includes(q)
     );
   });
@@ -219,7 +219,7 @@ export default function BulkUnpaidReminderModal({
                         )}
                       </div>
                       <div className="text-sm text-[var(--muted)] flex items-center gap-2 mt-0.5">
-                        <span className="font-mono">{client.phone}</span>
+                        <span className="font-mono">{client.phone || '—'}</span>
                         <span>•</span>
                         <span className="text-[var(--warning)] font-semibold">{fee} {t('currency')}</span>
                         <span>•</span>
@@ -247,11 +247,18 @@ export default function BulkUnpaidReminderModal({
 
                     <button
                       type="button"
-                      onClick={() => handleOpenWhatsApp(client)}
-                      className={`px-3 py-1.5 rounded-xl text-sm font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                        isSent
-                          ? 'bg-emerald-600/30 text-[var(--success)] border border-emerald-500/40 hover:bg-emerald-600/40'
-                          : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                      disabled={!client.phone || !client.phone.trim()}
+                      onClick={() => {
+                        if (client.phone && client.phone.trim()) {
+                          handleOpenWhatsApp(client);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-sm font-bold transition flex items-center gap-1.5 shadow-xs ${
+                        !client.phone || !client.phone.trim()
+                          ? 'bg-slate-100/50 text-slate-400 border border-slate-200/40 opacity-40 cursor-not-allowed shadow-none'
+                          : isSent
+                          ? 'bg-emerald-600/30 text-[var(--success)] border border-emerald-500/40 hover:bg-emerald-600/40 cursor-pointer'
+                          : 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
                       }`}
                     >
                       <MessageSquare className="w-3.5 h-3.5" />

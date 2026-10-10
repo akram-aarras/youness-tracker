@@ -376,23 +376,8 @@ export function getSubscriptionStatus(
   return calculateClientStatus(client.nextDueDate, client.status, referenceDateInput);
 }
 
-export function cleanMoroccanPhoneNumber(phone: string): string {
-  if (!phone || typeof phone !== 'string') return '';
-  let cleaned = phone.replace(/[\s\-\(\)\+]/g, '');
-  if (!cleaned) return '';
-  if (cleaned.startsWith('0')) {
-    cleaned = '212' + cleaned.slice(1);
-  } else if (!cleaned.startsWith('212')) {
-    cleaned = '212' + cleaned;
-  }
-  return cleaned;
-}
-
-export function isValidMoroccanPhone(phone: string): boolean {
-  if (!phone || typeof phone !== 'string') return false;
-  const cleaned = phone.replace(/[\s\-\(\)\+]/g, '');
-  return /^(?:(?:0[567]\d{8})|(?:212[567]\d{8}))$/.test(cleaned);
-}
+import { cleanMoroccanPhoneNumber, isValidMoroccanPhone } from './operationalUtils';
+export { cleanMoroccanPhoneNumber, isValidMoroccanPhone };
 
 export function buildWhatsAppReminder(
   client: Client,
@@ -465,7 +450,9 @@ Moyens de paiement : Espèces ou Virement CIH / Attijariwafa.
 📍 _Service Client & Support Technique Youness WiFi_`;
   }
 
-  const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+  const url = cleanPhone
+    ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+    : `https://wa.me/?text=${encodeURIComponent(message)}`;
 
   return { url, text: message, cleanPhone };
 }

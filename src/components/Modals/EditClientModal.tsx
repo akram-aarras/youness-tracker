@@ -68,8 +68,8 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
   const [pppoePassword, setPppoePassword] = useState(client.hardware?.pppoePassword || '');
 
   // Validation
-  const isPhoneValid = isValidMoroccanPhone(phone);
   const isPhoneFilled = phone.trim().length > 0;
+  const isPhoneValid = !isPhoneFilled || isValidMoroccanPhone(phone);
   const isNameFilled = name.trim().length > 0;
   const canSubmit = isNameFilled && isPhoneValid && !isSubmitting;
 
@@ -81,7 +81,7 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
       return;
     }
 
-    if (!isPhoneValid) {
+    if (isPhoneFilled && !isPhoneValid) {
       setActiveTab('info');
       return;
     }
@@ -95,7 +95,7 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
 
       const updatedPayload: Partial<Client> = {
         name: name.trim(),
-        phone: phone.trim(),
+        phone: phone.trim() ? phone.trim() : '',
         neighborhood: selectedNeighborhood,
         address: address.trim() || undefined,
         googleMapsUrl: googleMapsUrl.trim() || undefined,
@@ -257,12 +257,11 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                 {/* Phone Number with Moroccan Validation */}
                 <div>
                   <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1.5" htmlFor="EditClientModal-field-1">
-                    {text("Numéro de téléphone portable (Maroc)", "Mobile phone number (Morocco)", "رقم الهاتف المحمول (المغرب)")} <span className="text-[var(--error)]">*</span>
+                    {text("Numéro de téléphone portable (Maroc)", "Mobile phone number (Morocco)", "رقم الهاتف المحمول (المغرب)")} <span className="ms-1 text-[var(--muted)] font-normal text-[12px]">{text("(Optionnel)", "(Optional)", "(اختياري)")}</span>
                   </label>
                   <div className="relative">
                     <input
                       type="tel"
-                      required
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="06XXXXXXXX / 07XXXXXXXX / +212..."

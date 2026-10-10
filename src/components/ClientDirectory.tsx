@@ -117,7 +117,7 @@ export default function ClientDirectory({
       const matchSearch =
         !term ||
         client.name.toLowerCase().includes(term) ||
-        client.phone.includes(term) ||
+        Boolean(client.phone && client.phone.includes(term)) ||
         Boolean(client.hardware?.antennaMac?.toLowerCase().includes(term)) ||
         Boolean(client.hardware?.pppoeUsername?.toLowerCase().includes(term));
 
@@ -354,12 +354,16 @@ export default function ClientDirectory({
                         </button>
                         <div className="text-[12px] text-[var(--muted)] flex items-center gap-2 mt-1 font-mono">
                           <Phone className="w-3 h-3 text-[var(--muted)]" />
-                          <a
-                            href={`tel:${client.phone}`}
-                            className="hover:text-emerald-600 dark:hover:text-emerald-400 transition"
-                          >
-                            {client.phone}
-                          </a>
+                          {client.phone && client.phone.trim() ? (
+                            <a
+                              href={`tel:${client.phone}`}
+                              className="hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+                            >
+                              {client.phone}
+                            </a>
+                          ) : (
+                            <span>—</span>
+                          )}
                         </div>
                       </td>
 
@@ -455,8 +459,17 @@ export default function ClientDirectory({
                           {/* WhatsApp */}
                           <button
                             type="button"
-                            onClick={() => onOpenWhatsAppModal(client)}
-                            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border border-slate-200/60 hover:border-emerald-200 dark:bg-slate-800 dark:hover:bg-emerald-950/40 dark:text-slate-300 dark:hover:text-emerald-300 dark:border-slate-700 transition flex items-center justify-center cursor-pointer shrink-0 touch-manipulation hover:scale-105 active:scale-95 shadow-2xs"
+                            disabled={!client.phone || !client.phone.trim()}
+                            onClick={() => {
+                              if (client.phone && client.phone.trim()) {
+                                onOpenWhatsAppModal(client);
+                              }
+                            }}
+                            className={`w-8 h-8 rounded-full transition flex items-center justify-center shrink-0 ${
+                              client.phone && client.phone.trim()
+                                ? 'bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border border-slate-200/60 hover:border-emerald-200 dark:bg-slate-800 dark:hover:bg-emerald-950/40 dark:text-slate-300 dark:hover:text-emerald-300 dark:border-slate-700 cursor-pointer touch-manipulation hover:scale-105 active:scale-95 shadow-2xs'
+                                : 'bg-slate-100/50 text-slate-300 border border-slate-200/40 dark:bg-slate-800/40 dark:text-slate-600 dark:border-slate-800 opacity-40 cursor-not-allowed shadow-none'
+                            }`}
                             title={t('action_send_whatsapp')}
                             aria-label={`${t('action_send_whatsapp')} - ${client.name}`}
                           >
@@ -556,7 +569,7 @@ export default function ClientDirectory({
               <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-[var(--border)] space-y-1.5 text-sm">
                 <div className="flex items-center justify-between text-[var(--muted)]">
                   <span>{t('client_contact')} :</span>
-                  <span className="font-mono font-semibold text-[var(--text)]">{deletingClient.phone}</span>
+                  <span className="font-mono font-semibold text-[var(--text)]">{deletingClient.phone || '—'}</span>
                 </div>
                 <div className="flex items-center justify-between text-[var(--muted)]">
                   <span>{t('col_neighborhood')} :</span>
