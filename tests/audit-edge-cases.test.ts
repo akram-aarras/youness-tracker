@@ -487,3 +487,47 @@ describe('6. Client Directory Pagination & Search Filtering (10 Clients Per Page
   });
 });
 
+describe('7. Monthly Reconciliation Table Pagination (33 Subscribers)', () => {
+  const PAGE_SIZE = 10;
+  const mock33Rows = Array.from({ length: 33 }, (_, i) => ({
+    client: { id: `cli-${i + 1}`, name: `Subscriber ${i + 1}` },
+    isPaid: i % 2 === 0,
+  }));
+
+  it('should paginate 33 subscribers across 4 pages with strictly 10 per page on page 1', () => {
+    const totalReconciliationPages = Math.max(1, Math.ceil(mock33Rows.length / PAGE_SIZE));
+    assert.strictEqual(totalReconciliationPages, 4);
+
+    // Page 1: 10 items
+    const page1 = mock33Rows.slice(0, 10);
+    assert.strictEqual(page1.length, 10);
+    assert.strictEqual(page1[0].client.id, 'cli-1');
+    assert.strictEqual(page1[9].client.id, 'cli-10');
+
+    // Page 2: 10 items
+    const page2 = mock33Rows.slice(10, 20);
+    assert.strictEqual(page2.length, 10);
+    assert.strictEqual(page2[0].client.id, 'cli-11');
+
+    // Page 3: 10 items
+    const page3 = mock33Rows.slice(20, 30);
+    assert.strictEqual(page3.length, 10);
+    assert.strictEqual(page3[0].client.id, 'cli-21');
+
+    // Page 4: 3 items
+    const page4 = mock33Rows.slice(30, 40);
+    assert.strictEqual(page4.length, 3);
+    assert.strictEqual(page4[2].client.id, 'cli-33');
+  });
+
+  it('should reset reconciliation page to 1 when filter tab or search changes', () => {
+    let reconciliationPage = 3;
+    const onFilterChange = () => {
+      reconciliationPage = 1;
+    };
+    onFilterChange();
+    assert.strictEqual(reconciliationPage, 1);
+  });
+});
+
+

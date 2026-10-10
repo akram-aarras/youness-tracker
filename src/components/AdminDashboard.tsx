@@ -339,46 +339,45 @@ export default function AdminDashboard({
     return list;
   }, [paidList, unpaidList, allEligibleList, historicalFilterTab, historicalSearchQuery]);
 
-  const RECON_PAGE_SIZE = 10;
-  const [reconPage, setReconPage] = React.useState(1);
+  const [reconciliationPage, setReconciliationPage] = React.useState(1);
 
   React.useEffect(() => {
-    setReconPage(1);
+    setReconciliationPage(1);
   }, [historicalFilterTab, historicalSearchQuery, selectedMonthStr]);
 
-  const totalReconPages = Math.max(1, Math.ceil(filteredReconciliationRows.length / RECON_PAGE_SIZE));
+  const totalReconciliationPages = Math.max(1, Math.ceil(filteredReconciliationRows.length / 10));
 
   React.useEffect(() => {
-    if (reconPage > totalReconPages) {
-      setReconPage(totalReconPages);
+    if (reconciliationPage > totalReconciliationPages) {
+      setReconciliationPage(totalReconciliationPages);
     }
-  }, [reconPage, totalReconPages]);
+  }, [reconciliationPage, totalReconciliationPages]);
 
-  const startReconIdx = (reconPage - 1) * RECON_PAGE_SIZE;
-  const paginatedReconciliationRows = React.useMemo(() => {
-    return filteredReconciliationRows.slice(startReconIdx, startReconIdx + RECON_PAGE_SIZE);
+  const startReconIdx = (reconciliationPage - 1) * 10;
+  const paginatedRows = React.useMemo(() => {
+    return filteredReconciliationRows.slice(startReconIdx, startReconIdx + 10);
   }, [filteredReconciliationRows, startReconIdx]);
 
-  const reconPageNumbers = React.useMemo(() => {
-    if (totalReconPages <= 7) {
-      return Array.from({ length: totalReconPages }, (_, i) => i + 1);
+  const reconciliationPageNumbers = React.useMemo(() => {
+    if (totalReconciliationPages <= 7) {
+      return Array.from({ length: totalReconciliationPages }, (_, i) => i + 1);
     }
     const pages: (number | 'ellipsis')[] = [];
     pages.push(1);
-    if (reconPage > 3) {
+    if (reconciliationPage > 3) {
       pages.push('ellipsis');
     }
-    const start = Math.max(2, reconPage - 1);
-    const end = Math.min(totalReconPages - 1, reconPage + 1);
+    const start = Math.max(2, reconciliationPage - 1);
+    const end = Math.min(totalReconciliationPages - 1, reconciliationPage + 1);
     for (let i = start; i <= end; i++) {
       pages.push(i);
     }
-    if (reconPage < totalReconPages - 2) {
+    if (reconciliationPage < totalReconciliationPages - 2) {
       pages.push('ellipsis');
     }
-    pages.push(totalReconPages);
+    pages.push(totalReconciliationPages);
     return pages;
-  }, [totalReconPages, reconPage]);
+  }, [totalReconciliationPages, reconciliationPage]);
 
   const handleSendUnpaidWhatsApp = (client: Client) => {
     if (!client.phone || !client.phone.trim()) return;
@@ -1201,9 +1200,9 @@ export default function AdminDashboard({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto w-full">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] overflow-hidden min-w-[720px]">
-              <table className="client-table w-full text-left rtl:text-right text-sm border-collapse">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] overflow-hidden">
+            <div className="overflow-x-auto w-full">
+              <table className="client-table w-full text-left rtl:text-right text-sm border-collapse min-w-[720px]">
                 <thead>
                   <tr className="bg-[var(--surface-muted)] text-[var(--muted)] border-b border-[var(--border)] uppercase font-semibold tracking-wider text-[12px]">
                     <th className="py-3 px-4">{t('col_subscriber_location')}</th>
@@ -1217,7 +1216,7 @@ export default function AdminDashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)] bg-[var(--surface-muted)]">
-                  {paginatedReconciliationRows.map((row) => {
+                  {paginatedRows.map((row) => {
                     const { client, payment, isPaid } = row;
                     const coverageDetail = 'coverageDetail' in row ? row.coverageDetail : undefined;
                     const fee = client.monthlyFee || 50;
@@ -1402,73 +1401,73 @@ export default function AdminDashboard({
                   })}
                 </tbody>
               </table>
-
-              {/* Monthly Reconciliation Pagination Controls */}
-              {filteredReconciliationRows.length > 0 && (
-                <div className="px-4 py-3.5 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-3 bg-[var(--surface)]/50 text-xs sm:text-sm">
-                  <span className="text-[var(--muted)] font-medium">
-                    {t('pagination_showing', {
-                      from: startReconIdx + 1,
-                      to: Math.min(startReconIdx + RECON_PAGE_SIZE, filteredReconciliationRows.length),
-                      total: filteredReconciliationRows.length,
-                    })}
-                  </span>
-
-                  <div className="flex items-center gap-1.5 flex-wrap justify-center">
-                    <button
-                      type="button"
-                      onClick={() => setReconPage((p) => Math.max(1, p - 1))}
-                      disabled={reconPage === 1}
-                      className="px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer shadow-2xs font-medium"
-                      aria-label={t('pagination_previous')}
-                    >
-                      <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
-                      <span>{t('pagination_previous')}</span>
-                    </button>
-
-                    <div className="flex items-center gap-1">
-                      {reconPageNumbers.map((page, idx) => {
-                        if (page === 'ellipsis') {
-                          return (
-                            <span key={`recon-ell-${idx}`} className="w-7 text-center text-[var(--muted)] select-none">
-                              …
-                            </span>
-                          );
-                        }
-                        const isCurrent = page === reconPage;
-                        return (
-                          <button
-                            key={`recon-p-${page}`}
-                            type="button"
-                            onClick={() => setReconPage(page as number)}
-                            className={`w-8 h-8 rounded-xl font-semibold transition flex items-center justify-center cursor-pointer ${
-                              isCurrent
-                                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
-                                : 'border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] shadow-2xs'
-                            }`}
-                            aria-current={isCurrent ? 'page' : undefined}
-                            aria-label={`${t('pagination_page')} ${page}`}
-                          >
-                            {page}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setReconPage((p) => Math.min(totalReconPages, p + 1))}
-                      disabled={reconPage === totalReconPages}
-                      className="px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer shadow-2xs font-medium"
-                      aria-label={t('pagination_next')}
-                    >
-                      <span>{t('pagination_next')}</span>
-                      <ChevronRight className="w-4 h-4 rtl:rotate-180" />
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
+
+            {/* Monthly Reconciliation Pagination Controls */}
+            {filteredReconciliationRows.length > 0 && (
+              <div className="px-4 py-3.5 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-3 bg-[var(--surface)]/50 text-xs sm:text-sm">
+                <span className="text-[var(--muted)] font-medium">
+                  {t('pagination_showing', {
+                    from: startReconIdx + 1,
+                    to: Math.min(startReconIdx + 10, filteredReconciliationRows.length),
+                    total: filteredReconciliationRows.length,
+                  })}
+                </span>
+
+                <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setReconciliationPage((p) => Math.max(1, p - 1))}
+                    disabled={reconciliationPage === 1}
+                    className="px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer shadow-2xs font-medium"
+                    aria-label={t('pagination_previous')}
+                  >
+                    <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
+                    <span>{t('pagination_previous')}</span>
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {reconciliationPageNumbers.map((page, idx) => {
+                      if (page === 'ellipsis') {
+                        return (
+                          <span key={`recon-ell-${idx}`} className="w-7 text-center text-[var(--muted)] select-none">
+                            …
+                          </span>
+                        );
+                      }
+                      const isCurrent = page === reconciliationPage;
+                      return (
+                        <button
+                          key={`recon-p-${page}`}
+                          type="button"
+                          onClick={() => setReconciliationPage(page as number)}
+                          className={`w-8 h-8 rounded-xl font-semibold transition flex items-center justify-center cursor-pointer ${
+                            isCurrent
+                              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                              : 'border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] shadow-2xs'
+                          }`}
+                          aria-current={isCurrent ? 'page' : undefined}
+                          aria-label={`${t('pagination_page')} ${page}`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setReconciliationPage((p) => Math.min(totalReconciliationPages, p + 1))}
+                    disabled={reconciliationPage === totalReconciliationPages}
+                    className="px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer shadow-2xs font-medium"
+                    aria-label={t('pagination_next')}
+                  >
+                    <span>{t('pagination_next')}</span>
+                    <ChevronRight className="w-4 h-4 rtl:rotate-180" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
