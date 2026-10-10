@@ -1,22 +1,11 @@
 'use client';
 
+import Dialog from '@/components/ui/Dialog';
+
 import React, { useState } from 'react';
 import { Client, PaymentLog } from '@/lib/types';
-import { useStore, buildHistoricalUnpaidReminderUrl, cleanMoroccanPhoneNumber, getTodayDateStr } from '@/lib/store';
-import {
-  X,
-  MessageSquare,
-  Copy,
-  Check,
-  ExternalLink,
-  Phone,
-  AlertTriangle,
-  CreditCard,
-  Send,
-  Users,
-  Coins,
-  ShieldAlert,
-} from 'lucide-react';
+import { useStore, buildHistoricalUnpaidReminderUrl, getTodayDateStr } from '@/lib/store';
+import { X, MessageSquare, Copy, Check, CreditCard, Users, Coins } from 'lucide-react';
 
 interface Props {
   monthStr: string;
@@ -35,7 +24,6 @@ interface Props {
 }
 
 export default function BulkUnpaidReminderModal({
-  monthStr,
   monthLabel,
   isFutureMonth = false,
   unpaidList,
@@ -43,7 +31,7 @@ export default function BulkUnpaidReminderModal({
   onClose,
   onRecordPayment,
 }: Props) {
-  const { t, language, dir } = useStore();
+  const { t, language } = useStore();
   const [sentMap, setSentMap] = useState<Record<string, boolean>>({});
   const [copiedAll, setCopiedAll] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
@@ -92,24 +80,24 @@ export default function BulkUnpaidReminderModal({
   const sentCount = Object.values(sentMap).filter(Boolean).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-3xl bg-[#191522] border border-[#2D253B]/70 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col">
+    <Dialog onClose={onClose} label="Bulk Unpaid Reminder">
+      <div className="relative w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-3xl bg-[var(--surface)] border border-[var(--border)]/70 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-[#2D253B]/70 bg-[#130F1A]/95 shrink-0">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-[var(--border)]/70 bg-[var(--surface-muted)]/95 shrink-0">
           <div className="flex items-center space-x-3 rtl:space-x-reverse">
-            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/25 shrink-0">
-              <MessageSquare className="w-5 h-5 text-amber-400" />
+            <div className="p-2.5 rounded-xl bg-amber-500/10 text-[var(--warning)] border border-amber-500/25 shrink-0">
+              <MessageSquare className="w-5 h-5 text-[var(--warning)]" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base sm:text-lg font-bold text-[#F4F0F8]">
+                <h3 className="text-base sm:text-lg font-bold text-[var(--text)]">
                   {t('bulk_remind_modal_title')}
                 </h3>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[#382647] text-[#F3E8FF] border border-[#523368]">
+                <span className="px-2.5 py-0.5 rounded-full text-sm font-mono font-bold bg-[var(--accent-soft)] text-[var(--primary)] border border-[var(--accent-border)]">
                   {monthLabel}
                 </span>
               </div>
-              <p className="text-xs text-[#958B9F] mt-0.5">
+              <p className="text-sm text-[var(--muted)] mt-0.5">
                 {t('bulk_remind_modal_sub')}
               </p>
             </div>
@@ -117,72 +105,72 @@ export default function BulkUnpaidReminderModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] transition cursor-pointer"
-          >
+            className="p-2 rounded-lg text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition cursor-pointer"
+           aria-label={language === "ar" ? "إغلاق" : language === "en" ? "Close" : "Fermer"}>
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Top Summary & Actions Strip */}
-        <div className="p-4 sm:p-5 bg-[#130F1A]/60 border-b border-[#261E33] grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
+        <div className="p-4 sm:p-5 bg-[var(--surface-muted)]/60 border-b border-[var(--border)] grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
           {/* Unpaid Count */}
-          <div className="p-3 rounded-xl bg-[#130F1A] border border-[#261E33] flex items-center justify-between">
+          <div className="p-3 rounded-xl bg-[var(--surface-muted)] border border-[var(--border)] flex items-center justify-between">
             <div>
-              <div className="text-[10px] uppercase font-bold text-[#958B9F]">
+              <div className="text-[12px] uppercase font-bold text-[var(--muted)]">
                 {language === 'ar' ? 'المشتركون غير المؤدون' : 'Abonnés Non Réglés'}
               </div>
-              <div className="text-lg font-black text-[#F4F0F8] font-mono mt-0.5">
+              <div className="text-lg font-black text-[var(--text)] font-mono mt-0.5">
                 {unpaidList.length}
               </div>
             </div>
-            <Users className="w-5 h-5 text-rose-400" />
+            <Users className="w-5 h-5 text-[var(--error)]" />
           </div>
 
           {/* Total Uncollected Amount */}
-          <div className="p-3 rounded-xl bg-[#130F1A] border border-[#261E33] flex items-center justify-between">
+          <div className="p-3 rounded-xl bg-[var(--surface-muted)] border border-[var(--border)] flex items-center justify-between">
             <div>
-              <div className="text-[10px] uppercase font-bold text-[#958B9F]">
+              <div className="text-[12px] uppercase font-bold text-[var(--muted)]">
                 {language === 'ar' ? 'إجمالي المتأخرات' : 'Total des Impayés'}
               </div>
-              <div className="text-lg font-black text-rose-400 font-mono mt-0.5">
+              <div className="text-lg font-black text-[var(--error)] font-mono mt-0.5">
                 {totalUnpaidAmount.toLocaleString()} {t('currency')}
               </div>
             </div>
-            <Coins className="w-5 h-5 text-amber-400" />
+            <Coins className="w-5 h-5 text-[var(--warning)]" />
           </div>
 
           {/* Sent Progress */}
-          <div className="p-3 rounded-xl bg-[#130F1A] border border-[#261E33] flex items-center justify-between">
+          <div className="p-3 rounded-xl bg-[var(--surface-muted)] border border-[var(--border)] flex items-center justify-between">
             <div>
-              <div className="text-[10px] uppercase font-bold text-[#958B9F]">
+              <div className="text-[12px] uppercase font-bold text-[var(--muted)]">
                 {language === 'ar' ? 'الرسائل المرسلة' : 'Messages Envoyés'}
               </div>
-              <div className="text-lg font-black text-emerald-400 font-mono mt-0.5">
+              <div className="text-lg font-black text-[var(--success)] font-mono mt-0.5">
                 {sentCount} / {unpaidList.length}
               </div>
             </div>
-            <div className="p-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <div className="p-1 rounded-lg bg-emerald-500/10 text-[var(--success)] border border-emerald-500/20">
               <Check className="w-4 h-4" />
             </div>
           </div>
         </div>
 
         {/* Search & Bulk Copy Toolbar */}
-        <div className="px-5 py-3 bg-[#191522] border-b border-[#261E33] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+        <div className="px-5 py-3 bg-[var(--surface)] border-b border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
           <input
             type="text"
             placeholder={language === 'ar' ? 'تصفية بالاسم أو الهاتف...' : 'Filtrer par nom ou téléphone...'}
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
-            className="bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3 py-1.5 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition w-full sm:w-64"
-          />
+            className="bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3 py-1.5 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500 transition w-full sm:w-64"
+           aria-label={language === 'ar' ? 'تصفية بالاسم أو الهاتف...' : 'Filtrer par nom ou téléphone...'}/>
 
           <button
             type="button"
             onClick={handleCopyReport}
-            className="px-3.5 py-1.5 rounded-xl bg-[#241E30] hover:bg-[#2C243B] text-[#E0D8EB] hover:text-white border border-[#3A2F4C] text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-          >
-            {copiedAll ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            className="px-3.5 py-1.5 rounded-xl bg-[var(--surface-muted)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-white border border-[var(--border)] text-sm font-semibold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+           aria-label="Copier">
+            {copiedAll ? <Check className="w-3.5 h-3.5 text-[var(--success)]" /> : <Copy className="w-3.5 h-3.5" />}
             <span>{copiedAll ? t('bulk_copied_toast') : t('bulk_copy_report_btn')}</span>
           </button>
         </div>
@@ -190,9 +178,9 @@ export default function BulkUnpaidReminderModal({
         {/* Subscriber List Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
           {filteredItems.length === 0 ? (
-            <div className="p-8 text-center bg-[#130F1A] rounded-2xl border border-[#261E33] space-y-2">
-              <Check className="w-8 h-8 text-emerald-400 mx-auto" />
-              <p className="text-sm font-semibold text-[#F4F0F8]">
+            <div className="p-8 text-center bg-[var(--surface-muted)] rounded-2xl border border-[var(--border)] space-y-2">
+              <Check className="w-8 h-8 text-[var(--success)] mx-auto" />
+              <p className="text-sm font-semibold text-[var(--text)]">
                 {language === 'ar' ? 'لا توجد نتائج مطابقة.' : 'Aucun abonné correspondant.'}
               </p>
             </div>
@@ -207,33 +195,33 @@ export default function BulkUnpaidReminderModal({
                   key={client.id}
                   className={`p-3.5 sm:p-4 rounded-xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                     isSent
-                      ? 'bg-[#130F1A]/80 border-emerald-500/30'
-                      : 'bg-[#130F1A] border-[#261E33] hover:border-[#3A2F4C]'
+                      ? 'bg-[var(--surface-muted)]/80 border-emerald-500/30'
+                      : 'bg-[var(--surface-muted)] border-[var(--border)] hover:border-[var(--border)]'
                   }`}
                 >
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-[#191522] border border-[#2D253B] flex items-center justify-center font-bold text-xs text-[#E0D8EB] shrink-0">
+                    <div className="w-8 h-8 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center font-bold text-sm text-[var(--text-secondary)] shrink-0">
                       {client.name.charAt(0)}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-[#F4F0F8] truncate">
+                        <span className="font-bold text-sm text-[var(--text)] truncate">
                           {client.name}
                         </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#191522] text-[#958B9F] font-mono border border-[#2D253B]">
+                        <span className="text-[12px] px-2 py-0.5 rounded-full bg-[var(--surface)] text-[var(--muted)] font-mono border border-[var(--border)]">
                           {client.neighborhood || 'Tétouan'}
                         </span>
                         {isSent && (
-                          <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-950/80 text-emerald-300 font-bold border border-emerald-800/60 flex items-center gap-1">
-                            <Check className="w-3 h-3 text-emerald-400" />
+                          <span className="text-[12px] px-2 py-0.2 rounded-full bg-emerald-500/10 text-[var(--success)] font-bold border border-emerald-800/60 flex items-center gap-1">
+                            <Check className="w-3 h-3 text-[var(--success)]" />
                             {t('bulk_sent_badge')}
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-[#958B9F] flex items-center gap-2 mt-0.5">
+                      <div className="text-sm text-[var(--muted)] flex items-center gap-2 mt-0.5">
                         <span className="font-mono">{client.phone}</span>
                         <span>•</span>
-                        <span className="text-amber-400 font-semibold">{fee} {t('currency')}</span>
+                        <span className="text-[var(--warning)] font-semibold">{fee} {t('currency')}</span>
                         <span>•</span>
                         <span>{language === 'ar' ? `الأجل: ${client.nextDueDate}` : `Échéance: ${client.nextDueDate}`}</span>
                       </div>
@@ -249,7 +237,7 @@ export default function BulkUnpaidReminderModal({
                           onRecordPayment(client.id);
                           onClose();
                         }}
-                        className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-semibold text-xs transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-semibold text-sm transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                         title={t('dash_record_payment')}
                       >
                         <CreditCard className="w-3.5 h-3.5" />
@@ -260,9 +248,9 @@ export default function BulkUnpaidReminderModal({
                     <button
                       type="button"
                       onClick={() => handleOpenWhatsApp(client)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                      className={`px-3 py-1.5 rounded-xl text-sm font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
                         isSent
-                          ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/40'
+                          ? 'bg-emerald-600/30 text-[var(--success)] border border-emerald-500/40 hover:bg-emerald-600/40'
                           : 'bg-emerald-600 hover:bg-emerald-500 text-white'
                       }`}
                     >
@@ -277,7 +265,7 @@ export default function BulkUnpaidReminderModal({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3.5 bg-[#130F1A] border-t border-[#2D253B]/70 flex items-center justify-between text-xs text-[#958B9F] shrink-0">
+        <div className="px-5 py-3.5 bg-[var(--surface-muted)] border-t border-[var(--border)]/70 flex items-center justify-between text-sm text-[var(--muted)] shrink-0">
           <span>
             {language === 'ar'
               ? `${unpaidList.length} مشتركين بحاجة إلى تسوية اشتراك ${monthLabel}`
@@ -286,12 +274,12 @@ export default function BulkUnpaidReminderModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-[#241E30] hover:bg-[#2C243B] text-[#F4F0F8] font-semibold transition cursor-pointer"
+            className="px-4 py-1.5 rounded-xl bg-[var(--surface-muted)] hover:bg-[var(--surface-hover)] text-[var(--text)] font-semibold transition cursor-pointer"
           >
             {t('close')}
           </button>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

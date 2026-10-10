@@ -1,50 +1,28 @@
 'use client';
 
+import Dialog from '@/components/ui/Dialog';
+
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { User, Role } from '@/lib/types';
-import {
-  ShieldCheck,
-  Wrench,
-  UserPlus,
-  Search,
-  CheckCircle2,
-  XCircle,
-  Trash2,
-  Copy,
-  Check,
-  Eye,
-  EyeOff,
-  Sparkles,
-  Phone,
-  Mail,
-  AlertTriangle,
-  Briefcase,
-  KeyRound,
-  ShieldAlert,
-  Edit2,
-  Compass,
-  Download,
-  Upload,
-  Database,
-  FileJson,
-} from 'lucide-react';
+import { ShieldCheck, Wrench, UserPlus, Search, CheckCircle2, XCircle, Trash2, Copy, Check, Eye, EyeOff, Sparkles, Phone, Mail, AlertTriangle, Briefcase, KeyRound, ShieldAlert, Edit2, Compass, Download, Upload, Database } from 'lucide-react';
 
 export default function UserManagement() {
   const {
     currentUser,
+    language,
     users,
     tickets,
     addUser,
     updateUser,
     resetUserPassword,
-    updateUserRole,
     updateUserStatus,
     deleteUser,
     exportDataAsJSON,
     importDataFromJSON,
   } = useStore();
 
+  const text = (fr: string, en: string, ar: string) => language === 'ar' ? ar : language === 'en' ? en : fr;
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [backupStatus, setBackupStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -63,7 +41,7 @@ export default function UserManagement() {
     name: '',
     email: '',
     phone: '',
-    password: 'Tech' + Math.floor(100 + Math.random() * 900) + '!',
+    password: '',
     role: 'technician' as Role,
     specialty: 'Antennes Ubiquiti & Alignement RF',
   });
@@ -292,45 +270,44 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="page-view team-view">
       {/* Top Banner & Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#191522] p-6 rounded-2xl border border-[#2D253B]/70 shadow-xl shadow-black/40">
+      <div className="page-heading flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[var(--surface)] p-6 rounded-2xl border border-[var(--border)]/70 shadow-xl shadow-black/40">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              <ShieldCheck className="w-5 h-5 text-amber-400" />
+            <span className="p-2 rounded-xl bg-amber-500/10 text-[var(--warning)] border border-amber-500/20">
+              <ShieldCheck className="w-5 h-5 text-[var(--warning)]" />
             </span>
-            <h1 className="text-xl font-black text-[#F4F0F8] tracking-tight">
-              Gestion de l&apos;Équipe & Contrôle d&apos;Accès (RBAC)
+            <h1 className="text-xl font-black text-[var(--text)] tracking-tight">
+              {text('Équipe & accès', 'Team & access', 'الفريق والصلاحيات')}
             </h1>
           </div>
-          <p className="text-xs text-[#958B9F] max-w-xl leading-relaxed">
-            Seul Youness (Administrateur NOC) peut créer, éditer et provisionner les comptes
-            du personnel. L&apos;inscription publique est verrouillée.
+          <p className="text-sm text-[var(--muted)] max-w-xl leading-relaxed">
+            {text('Gérez votre équipe, ses accès et ses interventions.', 'Manage your team, their access, and field work.', 'أدر فريقك وصلاحياته وتدخلاته.')}
           </p>
         </div>
 
         <button
           type="button"
-          onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center justify-center gap-2 px-5 py-3 min-h-[48px] rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-95 text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/15 transition cursor-pointer shrink-0 w-full sm:w-auto"
+          onClick={() => { setFormData(previous => ({ ...previous, password: handleGeneratePassword() })); setShowAddModal(true); }}
+          className="inline-flex items-center justify-center gap-2 px-5 py-3 min-h-[48px] rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-95 text-slate-950 text-sm font-bold shadow-lg shadow-amber-500/15 transition cursor-pointer shrink-0 w-full sm:w-auto"
         >
           <UserPlus className="w-4 h-4 text-slate-950" />
-          <span>Ajouter Staff / Technicien</span>
+          <span>{text('Ajouter un membre', 'Add team member', 'إضافة عضو')}</span>
         </button>
       </div>
 
       {/* Success Notification */}
       {successToast && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-between animate-in slide-in-from-top-2">
+        <div role="status" className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-[var(--success)] text-sm font-semibold flex items-center justify-between animate-in slide-in-from-top-2">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-[var(--success)]" />
             <span>{successToast}</span>
           </div>
           <button
             type="button"
             onClick={() => setSuccessToast(null)}
-            className="text-[#958B9F] hover:text-[#F4F0F8]"
+            className="text-[var(--muted)] hover:text-[var(--text)]"
           >
             ✕
           </button>
@@ -338,52 +315,52 @@ export default function UserManagement() {
       )}
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="p-4 rounded-2xl bg-[#191522] border border-[#2D253B]/70 shadow-xl shadow-black/40 flex items-center gap-3.5">
-          <div className="p-3 rounded-xl bg-[#130F1A] border border-[#261E33] text-[#E0D8EB]">
-            <Briefcase className="w-5 h-5 text-amber-400" />
+      <div className="team-metrics grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+        <div className="p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)]/70 shadow-xl shadow-black/40 flex items-center gap-3.5">
+          <div className="p-3 rounded-xl bg-[var(--surface-muted)] border border-[var(--border)] text-[var(--text-secondary)]">
+            <Briefcase className="w-5 h-5 text-[var(--warning)]" />
           </div>
           <div>
-            <div className="text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider">
+            <div className="text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider">
               Total Membres
             </div>
-            <div className="text-xl font-black text-[#F4F0F8] font-mono">{totalUsers}</div>
+            <div className="text-xl font-black text-[var(--text)] font-mono">{totalUsers}</div>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#191522] border border-[#2D253B]/70 shadow-xl shadow-black/40 flex items-center gap-3.5">
-          <div className="p-3 rounded-xl bg-[#382647]/50 border border-[#523368] text-[#F3E8FF]">
-            <ShieldCheck className="w-5 h-5 text-amber-400" />
+        <div className="p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)]/70 shadow-xl shadow-black/40 flex items-center gap-3.5">
+          <div className="p-3 rounded-xl bg-[var(--accent-soft)]/50 border border-[var(--accent-border)] text-[var(--primary)]">
+            <ShieldCheck className="w-5 h-5 text-[var(--warning)]" />
           </div>
           <div>
-            <div className="text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider">
+            <div className="text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider">
               Admins NOC
             </div>
-            <div className="text-xl font-black text-[#F3E8FF] font-mono">{adminCount}</div>
+            <div className="text-xl font-black text-[var(--primary)] font-mono">{adminCount}</div>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#191522] border border-[#2D253B]/70 shadow-xl shadow-black/40 flex items-center gap-3.5">
-          <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-400">
-            <Wrench className="w-5 h-5 text-emerald-400" />
+        <div className="p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)]/70 shadow-xl shadow-black/40 flex items-center gap-3.5">
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-800/40 text-[var(--success)]">
+            <Wrench className="w-5 h-5 text-[var(--success)]" />
           </div>
           <div>
-            <div className="text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider">
+            <div className="text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider">
               Techniciens & Leads
             </div>
-            <div className="text-xl font-black text-emerald-400 font-mono">{techCount}</div>
+            <div className="text-xl font-black text-[var(--success)] font-mono">{techCount}</div>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#191522] border border-[#2D253B]/70 shadow-xl shadow-black/40 flex items-center gap-3.5">
-          <div className="p-3 rounded-xl bg-[#130F1A] border border-[#261E33] text-emerald-400">
+        <div className="p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)]/70 shadow-xl shadow-black/40 flex items-center gap-3.5">
+          <div className="p-3 rounded-xl bg-[var(--surface-muted)] border border-[var(--border)] text-[var(--success)]">
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider">
+            <div className="text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider">
               Comptes Actifs
             </div>
-            <div className="text-xl font-black text-emerald-400 font-mono">
+            <div className="text-xl font-black text-[var(--success)] font-mono">
               {activeCount} / {totalUsers}
             </div>
           </div>
@@ -391,21 +368,21 @@ export default function UserManagement() {
       </div>
 
       {/* LocalStorage Data Safety & Backup Tool (تصدير واسترجاع البيانات) */}
-      <div className="bg-[#191522] border border-[#2D253B]/70 rounded-2xl p-5 sm:p-6 shadow-xl shadow-black/40 space-y-4">
+      <div className="bg-[var(--surface)] border border-[var(--border)]/70 rounded-2xl p-5 sm:p-6 shadow-xl shadow-black/40 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 shrink-0">
-              <Database className="w-5 h-5 text-amber-400" />
+            <div className="p-2.5 rounded-xl bg-amber-500/10 text-[var(--warning)] border border-amber-500/30 shrink-0">
+              <Database className="w-5 h-5 text-[var(--warning)]" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[#F4F0F8] flex items-center gap-2">
-                <span>تصدير واسترجاع قاعدة البيانات (Sauvegarde & Restauration)</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">
+              <h2 className="text-base font-bold text-[var(--text)] flex items-center gap-2">
+                <span>{text('Sauvegarde & restauration', 'Backup & restore', 'النسخ الاحتياطي والاسترجاع')}</span>
+                <span className="px-2 py-0.5 rounded-full text-[12px] font-bold bg-amber-500/10 text-[var(--warning)] border border-amber-500/20 font-mono">
                   JSON Safe
                 </span>
               </h2>
-              <p className="text-xs text-[#958B9F] mt-0.5">
-                قم بحفظ نسخة احتياطية من بيانات المشتركين وسجلات الأداء والتذاكر محلياً، أو استرجاعها في أي وقت دون فقدان السجلات.
+              <p className="text-sm text-[var(--muted)] mt-0.5">
+                {text('Gardez une copie de vos abonnés, paiements et tickets.', 'Keep a copy of your subscribers, payments, and tickets.', 'احتفظ بنسخة من المشتركين والمدفوعات والتذاكر.')}
               </p>
             </div>
           </div>
@@ -415,50 +392,50 @@ export default function UserManagement() {
             <button
               type="button"
               onClick={handleExportBackup}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl bg-[#241E30] hover:bg-[#2C243B] text-amber-300 hover:text-amber-200 border border-amber-500/30 hover:border-amber-500/50 text-xs font-bold transition cursor-pointer active:scale-95 shadow-sm"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl bg-[var(--surface-muted)] hover:bg-[var(--surface-hover)] text-[var(--warning)] hover:text-amber-200 border border-amber-500/30 hover:border-amber-500/50 text-sm font-bold transition cursor-pointer active:scale-95 shadow-sm"
             >
-              <Download className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>تصدير نسخة احتياطية (JSON Backup)</span>
+              <Download className="w-4 h-4 text-[var(--warning)] shrink-0" />
+              <span>{text('Exporter la sauvegarde', 'Export backup', 'تصدير النسخة الاحتياطية')}</span>
             </button>
 
             {/* Import Button */}
-            <label
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl bg-[#241E30] hover:bg-[#2C243B] text-[#E0D8EB] hover:text-[#F4F0F8] border border-[#3A2F4C] text-xs font-bold transition cursor-pointer active:scale-95 shadow-sm"
+            <button type="button" onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl bg-[var(--surface-muted)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text)] border border-[var(--border)] text-sm font-bold transition cursor-pointer active:scale-95 shadow-sm"
             >
-              <Upload className="w-4 h-4 text-[#958B9F] shrink-0" />
-              <span>استرجاع البيانات (Import Backup)</span>
+              <Upload className="w-4 h-4 text-[var(--muted)] shrink-0" />
+              <span>{text('Restaurer une sauvegarde', 'Restore backup', 'استرجاع نسخة احتياطية')}</span>
               <input
                 ref={fileInputRef}
                 type="file"
                 accept=".json,application/json"
                 onChange={handleImportBackup}
                 className="hidden"
-              />
-            </label>
+               aria-label="input"/>
+            </button>
           </div>
         </div>
 
         {/* Backup Feedback Toast */}
         {backupStatus && (
           <div
-            className={`p-3.5 rounded-xl border text-xs font-semibold flex items-center justify-between animate-in fade-in duration-150 ${
+            className={`p-3.5 rounded-xl border text-sm font-semibold flex items-center justify-between animate-in fade-in duration-150 ${
               backupStatus.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-[var(--success)]'
+                : 'bg-rose-500/10 border-rose-500/30 text-[var(--error)]'
             }`}
           >
             <div className="flex items-center gap-2">
               {backupStatus.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-[var(--success)] shrink-0" />
               ) : (
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-[var(--error)] shrink-0" />
               )}
               <span>{backupStatus.message}</span>
             </div>
             <button
               type="button"
               onClick={() => setBackupStatus(null)}
-              className="text-[#958B9F] hover:text-[#F4F0F8] px-1 cursor-pointer"
+              className="text-[var(--muted)] hover:text-[var(--text)] px-1 cursor-pointer"
             >
               ✕
             </button>
@@ -467,25 +444,25 @@ export default function UserManagement() {
       </div>
 
       {/* Search & Filters Controls */}
-      <div className="p-4 rounded-2xl bg-[#191522] border border-[#2D253B]/70 shadow-xl shadow-black/40 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      <div className="p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)]/70 shadow-xl shadow-black/40 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-[#958B9F] absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[var(--muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Rechercher par nom, email, téléphone ou spécialité..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl pl-9.5 pr-4 py-2 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
-          />
+            className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl pl-9.5 pr-4 py-2 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500/50 transition"
+           aria-label="Rechercher par nom, email, téléphone ou spécialité..."/>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           {/* Role Filter */}
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as any)}
-            className="w-full sm:w-auto bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3 py-2 text-xs text-[#E0D8EB] focus:outline-none focus:border-amber-500/50 transition cursor-pointer"
-          >
+            onChange={(e) => setRoleFilter(e.target.value as typeof roleFilter)}
+            className="w-full sm:w-auto bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3 py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-amber-500/50 transition cursor-pointer"
+           aria-label="role Filter">
             <option value="all">Tous les rôles</option>
             <option value="admin">Administrateurs NOC</option>
             <option value="technician">Techniciens Terrain</option>
@@ -495,9 +472,9 @@ export default function UserManagement() {
           {/* Status Filter */}
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="w-full sm:w-auto bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3 py-2 text-xs text-[#E0D8EB] focus:outline-none focus:border-amber-500/50 transition cursor-pointer"
-          >
+            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+            className="w-full sm:w-auto bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3 py-2 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-amber-500/50 transition cursor-pointer"
+           aria-label="status Filter">
             <option value="all">Tous les statuts</option>
             <option value="active">Actif</option>
             <option value="inactive">Désactivé</option>
@@ -508,10 +485,10 @@ export default function UserManagement() {
       {/* Team Members List */}
       <div className="space-y-3">
         {filteredUsers.length === 0 ? (
-          <div className="p-12 text-center rounded-2xl bg-[#191522] border border-[#2D253B]/70 space-y-3">
-            <Briefcase className="w-10 h-10 text-[#958B9F]/60 mx-auto" />
-            <h3 className="text-sm font-bold text-[#F4F0F8]">Aucun membre trouvé</h3>
-            <p className="text-xs text-[#958B9F]">
+          <div className="p-12 text-center rounded-2xl bg-[var(--surface)] border border-[var(--border)]/70 space-y-3">
+            <Briefcase className="w-10 h-10 text-[var(--muted)] mx-auto" />
+            <h3 className="text-sm font-bold text-[var(--text)]">Aucun membre trouvé</h3>
+            <p className="text-sm text-[var(--muted)]">
               Aucun compte ne correspond à vos critères de recherche.
             </p>
           </div>
@@ -524,23 +501,23 @@ export default function UserManagement() {
             return (
               <div
                 key={user.id}
-                className={`p-5 rounded-2xl bg-[#191522] border transition-all duration-200 shadow-lg shadow-black/30 ${
+                className={`p-5 rounded-2xl bg-[var(--surface)] border transition-all duration-200 shadow-lg shadow-black/30 ${
                   user.status === 'inactive'
-                    ? 'border-[#2D253B]/40 opacity-60 bg-[#130F1A]'
+                    ? 'border-[var(--border)]/40 opacity-60 bg-[var(--surface-muted)]'
                     : isMe
                     ? 'border-amber-500/40 shadow-amber-500/5'
-                    : 'border-[#2D253B]/70 hover:border-[#3A2F4C]'
+                    : 'border-[var(--border)]/70 hover:border-[var(--border)]'
                 }`}
               >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   {/* Left: User Avatar & Core Details */}
                   <div className="flex items-start sm:items-center gap-3.5 min-w-0">
                     <div className="relative shrink-0">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#241E30] to-[#130F1A] border border-[#3A2F4C] flex items-center justify-center text-xl shadow-md">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[var(--surface-muted)] to-[var(--surface-muted)] border border-[var(--border)] flex items-center justify-center text-xl shadow-md">
                         {user.avatar || (user.role === 'admin' ? '👨‍💼' : user.role === 'field_lead' ? '⚡' : '🔧')}
                       </div>
                       <span
-                        className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#191522] ${
+                        className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[var(--surface)] ${
                           user.status === 'active' ? 'bg-emerald-400' : 'bg-rose-500'
                         }`}
                         title={user.status === 'active' ? 'Compte Actif' : 'Compte Inactif'}
@@ -549,58 +526,58 @@ export default function UserManagement() {
 
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-black text-[#F4F0F8] truncate">
+                        <span className="text-sm font-black text-[var(--text)] truncate">
                           {user.name}
                         </span>
                         {isMe && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#382647] text-[#F3E8FF] border border-[#523368]">
+                          <span className="px-2 py-0.5 rounded-full text-[12px] font-bold bg-[var(--accent-soft)] text-[var(--primary)] border border-[var(--accent-border)]">
                             Vous (Session Actuelle)
                           </span>
                         )}
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
+                          className={`px-2 py-0.5 rounded-full text-[12px] font-bold flex items-center gap-1 ${
                             user.role === 'admin'
-                              ? 'bg-[#382647] text-[#F3E8FF] border border-[#523368]'
+                              ? 'bg-[var(--accent-soft)] text-[var(--primary)] border border-[var(--accent-border)]'
                               : user.role === 'field_lead'
-                              ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30'
-                              : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
+                              ? 'bg-amber-500/10 text-[var(--warning)] border border-amber-500/30'
+                              : 'bg-emerald-500/10 text-[var(--success)] border border-emerald-500/30'
                           }`}
                         >
                           {user.role === 'admin' ? (
                             <>
-                              <ShieldCheck className="w-3 h-3 text-amber-400" />
+                              <ShieldCheck className="w-3 h-3 text-[var(--warning)]" />
                               <span>Admin NOC (Youness)</span>
                             </>
                           ) : user.role === 'field_lead' ? (
                             <>
-                              <Compass className="w-3 h-3 text-amber-400" />
+                              <Compass className="w-3 h-3 text-[var(--warning)]" />
                               <span>Chef d&apos;Équipe (Field Lead)</span>
                             </>
                           ) : (
                             <>
-                              <Wrench className="w-3 h-3 text-emerald-400" />
+                              <Wrench className="w-3 h-3 text-[var(--success)]" />
                               <span>Technicien Terrain</span>
                             </>
                           )}
                         </span>
                         {user.status === 'inactive' && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                          <span className="px-2 py-0.5 rounded-full text-[12px] font-bold bg-rose-500/10 text-[var(--error)] border border-rose-500/30">
                             Compte Désactivé
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-4 text-xs text-[#958B9F] flex-wrap">
+                      <div className="flex items-center gap-4 text-sm text-[var(--muted)] flex-wrap">
                         <div className="flex items-center gap-1.5 font-mono">
-                          <Mail className="w-3.5 h-3.5 text-[#958B9F]/70" />
+                          <Mail className="w-3.5 h-3.5 text-[var(--muted)]" />
                           <span>{user.email}</span>
                         </div>
                         <div className="flex items-center gap-1.5 font-mono">
-                          <Phone className="w-3.5 h-3.5 text-[#958B9F]/70" />
+                          <Phone className="w-3.5 h-3.5 text-[var(--muted)]" />
                           <span>{user.phone}</span>
                         </div>
                         {user.specialty && (
-                          <div className="text-[11px] text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded-lg">
+                          <div className="text-[12px] text-[var(--success)] bg-emerald-500/10 border border-emerald-800/40 px-2 py-0.5 rounded-lg">
                             {user.specialty}
                           </div>
                         )}
@@ -609,14 +586,14 @@ export default function UserManagement() {
                   </div>
 
                   {/* Right: Assigned Tasks Counter & Action Buttons */}
-                  <div className="flex items-center gap-2 justify-end flex-wrap pt-2 lg:pt-0 border-t lg:border-t-0 border-[#261E33]">
+                  <div className="flex items-center gap-2 justify-end flex-wrap pt-2 lg:pt-0 border-t lg:border-t-0 border-[var(--border)]">
                     {/* Active Tickets Pill (for technicians) */}
                     {user.role !== 'admin' && (
-                      <div className="px-3 py-1 rounded-xl bg-[#130F1A] border border-[#261E33] text-[11px] flex items-center gap-2">
-                        <span className="text-[#958B9F]">Tâches:</span>
+                      <div className="px-3 py-1 rounded-xl bg-[var(--surface-muted)] border border-[var(--border)] text-[12px] flex items-center gap-2">
+                        <span className="text-[var(--muted)]">Tâches:</span>
                         <span
                           className={`font-bold font-mono ${
-                            assignedTickets > 0 ? 'text-amber-400' : 'text-[#958B9F]'
+                            assignedTickets > 0 ? 'text-[var(--warning)]' : 'text-[var(--muted)]'
                           }`}
                         >
                           {assignedTickets} active(s)
@@ -629,17 +606,17 @@ export default function UserManagement() {
                       type="button"
                       onClick={() => handleCopyCredentials(user)}
                       title="Copier les identifiants pour le technicien (WhatsApp / SMS)"
-                      className="p-2 rounded-xl bg-[#241E30] hover:bg-[#2C243B] text-[#E0D8EB] hover:text-[#F4F0F8] border border-[#3A2F4C] transition flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+                      className="p-2 rounded-xl bg-[var(--surface-muted)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text)] border border-[var(--border)] transition flex items-center gap-1.5 text-sm font-semibold cursor-pointer"
                     >
                       {copiedUserId === user.id ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          <span className="text-emerald-300 text-[11px]">Copié !</span>
+                          <Check className="w-3.5 h-3.5 text-[var(--success)]" />
+                          <span className="text-[var(--success)] text-[12px]">Copié !</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5 text-amber-400" />
-                          <span className="text-[11px]">Identifiants</span>
+                          <Copy className="w-3.5 h-3.5 text-[var(--warning)]" />
+                          <span className="text-[12px]">Identifiants</span>
                         </>
                       )}
                     </button>
@@ -649,7 +626,7 @@ export default function UserManagement() {
                       type="button"
                       onClick={() => handleOpenEdit(user)}
                       title="Modifier les informations"
-                      className="p-2 rounded-xl bg-[#241E30] hover:bg-[#2C243B] text-[#E0D8EB] hover:text-[#F4F0F8] border border-[#3A2F4C] text-xs font-semibold transition cursor-pointer"
+                      className="p-2 rounded-xl bg-[var(--surface-muted)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text)] border border-[var(--border)] text-sm font-semibold transition cursor-pointer"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
@@ -659,7 +636,7 @@ export default function UserManagement() {
                       type="button"
                       onClick={() => handleOpenResetPassword(user)}
                       title="Changer / Réinitialiser le mot de passe"
-                      className="p-2 rounded-xl bg-[#241E30] hover:bg-[#2C243B] text-amber-300 hover:text-amber-200 border border-[#3A2F4C] text-xs font-semibold transition cursor-pointer"
+                      className="p-2 rounded-xl bg-[var(--surface-muted)] hover:bg-[var(--surface-hover)] text-[var(--warning)] hover:text-amber-200 border border-[var(--border)] text-sm font-semibold transition cursor-pointer"
                     >
                       <KeyRound className="w-3.5 h-3.5" />
                     </button>
@@ -674,17 +651,17 @@ export default function UserManagement() {
                             user.status === 'active' ? 'inactive' : 'active'
                           )
                         }
-                        className={`p-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                        className={`p-2 rounded-xl border text-sm font-semibold transition cursor-pointer ${
                           user.status === 'active'
-                            ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30'
-                            : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                            ? 'bg-amber-500/10 hover:bg-amber-500/20 text-[var(--warning)] border-amber-500/30'
+                            : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-[var(--success)] border-emerald-500/30'
                         }`}
                         title={user.status === 'active' ? 'Désactiver le compte' : 'Activer le compte'}
                       >
                         {user.status === 'active' ? (
-                          <XCircle className="w-4 h-4 text-amber-400" />
+                          <XCircle className="w-4 h-4 text-[var(--warning)]" />
                         ) : (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <CheckCircle2 className="w-4 h-4 text-[var(--success)]" />
                         )}
                       </button>
                     )}
@@ -694,7 +671,7 @@ export default function UserManagement() {
                       <button
                         type="button"
                         onClick={() => setUserToDelete(user)}
-                        className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs transition cursor-pointer"
+                        className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-[var(--error)] border border-rose-500/30 text-sm transition cursor-pointer"
                         title="Supprimer ce compte"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -710,18 +687,18 @@ export default function UserManagement() {
 
       {/* ADD NEW MEMBER MODAL */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-[#191522] border border-[#2D253B]/70 rounded-none sm:rounded-2xl max-w-lg w-full h-full sm:h-auto max-h-[100dvh] sm:max-h-[90vh] flex flex-col shadow-2xl shadow-black/80 animate-in slide-in-from-bottom-4 overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-[#261E33] shrink-0 flex items-center justify-between">
+        <Dialog onClose={() => setShowAddModal(false)} label="User Management">
+          <div className="bg-[var(--surface)] border border-[var(--border)]/70 rounded-none sm:rounded-2xl max-w-lg w-full h-full sm:h-auto max-h-[100dvh] sm:max-h-[90vh] flex flex-col shadow-2xl shadow-black/80 animate-in slide-in-from-bottom-4 overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-[var(--border)] shrink-0 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="p-2.5 rounded-xl bg-[#382647] text-[#F3E8FF] border border-[#523368]">
-                  <UserPlus className="w-5 h-5 text-amber-400" />
+                <div className="p-2.5 rounded-xl bg-[var(--accent-soft)] text-[var(--primary)] border border-[var(--accent-border)]">
+                  <UserPlus className="w-5 h-5 text-[var(--warning)]" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[#F4F0F8]">
+                  <h3 className="text-base font-bold text-[var(--text)]">
                     Ajouter un Membre du Personnel
                   </h3>
-                  <p className="text-xs text-[#958B9F]">
+                  <p className="text-sm text-[var(--muted)]">
                     Créer un compte technicien terrain, chef d&apos;équipe ou administrateur
                   </p>
                 </div>
@@ -729,16 +706,16 @@ export default function UserManagement() {
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="text-[#958B9F] hover:text-[#F4F0F8] p-1.5 cursor-pointer rounded-lg hover:bg-[#241E30]"
+                className="text-[var(--muted)] hover:text-[var(--text)] p-1.5 cursor-pointer rounded-lg hover:bg-[var(--surface-muted)]"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col justify-between text-xs">
-              <div className="space-y-4">
+            <form onSubmit={handleCreateUser} className="flex-1 min-h-0 overflow-hidden flex flex-col text-sm">
+              <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
                 {formError && (
-                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-[var(--error)] text-sm flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
                     <span>{formError}</span>
                   </div>
@@ -746,8 +723,8 @@ export default function UserManagement() {
 
                 {/* Full Name */}
                 <div>
-                  <label className="block text-[#E0D8EB] font-semibold mb-1">
-                    Nom Complet <span className="text-rose-400">*</span>
+                  <label className="block text-[var(--text-secondary)] font-semibold mb-1" htmlFor="UserManagement-field-0">
+                    Nom Complet <span className="text-[var(--error)]">*</span>
                   </label>
                   <input
                     type="text"
@@ -755,15 +732,15 @@ export default function UserManagement() {
                     placeholder="Ex: Karim Alami"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
-                  />
+                    className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500/50 transition"
+                    id="UserManagement-field-0"/>
                 </div>
 
                 {/* Email & Phone */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[#E0D8EB] font-semibold mb-1">
-                      Adresse Email (Identifiant) <span className="text-rose-400">*</span>
+                    <label className="block text-[var(--text-secondary)] font-semibold mb-1" htmlFor="UserManagement-field-1">
+                      Adresse Email (Identifiant) <span className="text-[var(--error)]">*</span>
                     </label>
                     <input
                       type="email"
@@ -771,13 +748,13 @@ export default function UserManagement() {
                       placeholder="karim@atlasnet.ma"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
-                    />
+                      className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500/50 transition"
+                      id="UserManagement-field-1"/>
                   </div>
 
                   <div>
-                    <label className="block text-[#E0D8EB] font-semibold mb-1">
-                      Téléphone (WhatsApp Dispatch) <span className="text-rose-400">*</span>
+                    <label className="block text-[var(--text-secondary)] font-semibold mb-1" htmlFor="UserManagement-field-2">
+                      Téléphone (WhatsApp Dispatch) <span className="text-[var(--error)]">*</span>
                     </label>
                     <input
                       type="tel"
@@ -785,31 +762,31 @@ export default function UserManagement() {
                       placeholder="+212 612-345678"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500/50 transition"
-                    />
+                      className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500/50 transition"
+                      id="UserManagement-field-2"/>
                   </div>
                 </div>
 
                 {/* Role Selection */}
                 <div>
-                  <label className="block text-[#E0D8EB] font-semibold mb-1.5">
-                    Rôle & Niveau d&apos;Accès <span className="text-rose-400">*</span>
-                  </label>
+                  <p className="block text-[var(--text-secondary)] font-semibold mb-1.5" >
+                    Rôle & Niveau d&apos;Accès <span className="text-[var(--error)]">*</span>
+                  </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, role: 'technician' })}
                       className={`p-2.5 rounded-2xl border text-left transition cursor-pointer ${
                         formData.role === 'technician'
-                          ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 shadow-md shadow-black/40'
-                          : 'bg-[#130F1A] border-[#261E33] text-[#958B9F] hover:border-[#3A2F4C]'
+                          ? 'bg-emerald-500/15 border-emerald-500/40 text-[var(--success)] shadow-md shadow-black/40'
+                          : 'bg-[var(--surface-muted)] border-[var(--border)] text-[var(--muted)] hover:border-[var(--border)]'
                       }`}
                     >
-                      <div className="flex items-center gap-1.5 font-bold mb-1 text-[#F4F0F8]">
-                        <Wrench className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-xs">Technicien</span>
+                      <div className="flex items-center gap-1.5 font-bold mb-1 text-[var(--text)]">
+                        <Wrench className="w-3.5 h-3.5 text-[var(--success)]" />
+                        <span className="text-sm">Technicien</span>
                       </div>
-                      <p className="text-[10px] text-[#958B9F] leading-tight">
+                      <p className="text-[12px] text-[var(--muted)] leading-tight">
                         Accès strict à ses interventions sur mobile.
                       </p>
                     </button>
@@ -819,15 +796,15 @@ export default function UserManagement() {
                       onClick={() => setFormData({ ...formData, role: 'field_lead' })}
                       className={`p-2.5 rounded-2xl border text-left transition cursor-pointer ${
                         formData.role === 'field_lead'
-                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-md shadow-black/40'
-                          : 'bg-[#130F1A] border-[#261E33] text-[#958B9F] hover:border-[#3A2F4C]'
+                          ? 'bg-amber-500/15 border-amber-500/40 text-[var(--warning)] shadow-md shadow-black/40'
+                          : 'bg-[var(--surface-muted)] border-[var(--border)] text-[var(--muted)] hover:border-[var(--border)]'
                       }`}
                     >
-                      <div className="flex items-center gap-1.5 font-bold mb-1 text-[#F4F0F8]">
-                        <Compass className="w-3.5 h-3.5 text-amber-400" />
-                        <span className="text-xs">Field Lead</span>
+                      <div className="flex items-center gap-1.5 font-bold mb-1 text-[var(--text)]">
+                        <Compass className="w-3.5 h-3.5 text-[var(--warning)]" />
+                        <span className="text-sm">Field Lead</span>
                       </div>
-                      <p className="text-[10px] text-[#958B9F] leading-tight">
+                      <p className="text-[12px] text-[var(--muted)] leading-tight">
                         Chef d&apos;équipe terrain et dispatch tâches.
                       </p>
                     </button>
@@ -837,15 +814,15 @@ export default function UserManagement() {
                       onClick={() => setFormData({ ...formData, role: 'admin' })}
                       className={`p-2.5 rounded-2xl border text-left transition cursor-pointer ${
                         formData.role === 'admin'
-                          ? 'bg-[#382647] border-[#523368] text-[#F3E8FF] shadow-md shadow-black/40'
-                          : 'bg-[#130F1A] border-[#261E33] text-[#958B9F] hover:border-[#3A2F4C]'
+                          ? 'bg-[var(--accent-soft)] border-[var(--accent-border)] text-[var(--primary)] shadow-md shadow-black/40'
+                          : 'bg-[var(--surface-muted)] border-[var(--border)] text-[var(--muted)] hover:border-[var(--border)]'
                       }`}
                     >
-                      <div className="flex items-center gap-1.5 font-bold mb-1 text-[#F4F0F8]">
-                        <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                        <span className="text-xs">Admin NOC</span>
+                      <div className="flex items-center gap-1.5 font-bold mb-1 text-[var(--text)]">
+                        <ShieldCheck className="w-3.5 h-3.5 text-[var(--warning)]" />
+                        <span className="text-sm">Admin NOC</span>
                       </div>
-                      <p className="text-[10px] text-[#958B9F] leading-tight">
+                      <p className="text-[12px] text-[var(--muted)] leading-tight">
                         Accès total : abonnés, trésorerie et équipe.
                       </p>
                     </button>
@@ -855,14 +832,14 @@ export default function UserManagement() {
                 {/* Specialty (for technicians and field leads) */}
                 {formData.role !== 'admin' && (
                   <div>
-                    <label className="block text-[#E0D8EB] font-semibold mb-1">
+                    <label className="block text-[var(--text-secondary)] font-semibold mb-1" htmlFor="UserManagement-field-4">
                       Spécialité Technique
                     </label>
                     <select
                       value={formData.specialty}
                       onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
-                      className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-[#F4F0F8] focus:outline-none focus:border-amber-500/50 transition cursor-pointer"
-                    >
+                      className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-[var(--text)] focus:outline-none focus:border-amber-500/50 transition cursor-pointer"
+                      id="UserManagement-field-4" >
                       <option value="Antennes Ubiquiti & Alignement RF">
                         Antennes Ubiquiti & Alignement RF (-60 dBm)
                       </option>
@@ -882,13 +859,13 @@ export default function UserManagement() {
                 {/* Password with generator */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[#E0D8EB] font-semibold">
-                      Mot de Passe Initial <span className="text-rose-400">*</span>
+                    <label className="text-[var(--text-secondary)] font-semibold" htmlFor="UserManagement-field-5">
+                      Mot de Passe Initial <span className="text-[var(--error)]">*</span>
                     </label>
                     <button
                       type="button"
                       onClick={() => setFormData((prev) => ({ ...prev, password: handleGeneratePassword() }))}
-                      className="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+                      className="text-[12px] text-[var(--warning)] hover:text-amber-300 flex items-center gap-1 cursor-pointer"
                     >
                       <Sparkles className="w-3 h-3" />
                       <span>Générer un mot de passe fort</span>
@@ -900,34 +877,34 @@ export default function UserManagement() {
                       required
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl pl-3.5 pr-10 py-2.5 text-[#F4F0F8] font-mono focus:outline-none focus:border-amber-500/50 transition"
-                    />
+                      className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl pl-3.5 pr-10 py-2.5 text-[var(--text)] font-mono focus:outline-none focus:border-amber-500/50 transition"
+                      id="UserManagement-field-5"/>
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#958B9F] hover:text-[#F4F0F8] cursor-pointer"
-                    >
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--text)] cursor-pointer"
+                     aria-label="Afficher ou masquer le mot de passe">
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                  <p className="text-[10px] text-[#958B9F] mt-1">
+                  <p className="text-[12px] text-[var(--muted)] mt-1">
                     Le mot de passe pourra être transmis par WhatsApp ou SMS au collaborateur.
                   </p>
                 </div>
               </div>
 
               {/* Sticky Modal Actions */}
-              <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 mt-6 p-4 sm:p-5 bg-[#130F1A]/95 backdrop-blur-md border-t border-[#261E33] flex justify-end gap-2.5 shrink-0 z-10">
+              <div className="p-4 sm:p-5 bg-[var(--surface-muted)]/95 backdrop-blur-md border-t border-[var(--border)] flex justify-end gap-2.5 shrink-0 z-10">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] transition cursor-pointer text-xs"
+                  className="px-4 py-2.5 rounded-xl text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition cursor-pointer text-sm"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 min-h-[44px] rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/15 transition active:scale-95 cursor-pointer flex items-center gap-2 text-xs"
+                  className="px-5 py-2.5 min-h-[44px] rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/15 transition active:scale-95 cursor-pointer flex items-center gap-2 text-sm"
                 >
                   <UserPlus className="w-4 h-4" />
                   <span>Créer le Compte</span>
@@ -935,85 +912,85 @@ export default function UserManagement() {
               </div>
             </form>
           </div>
-        </div>
+        </Dialog>
       )}
 
       {/* EDIT STAFF MODAL */}
       {userToEdit && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-[#191522] border border-[#2D253B]/70 rounded-none sm:rounded-2xl max-w-lg w-full h-full sm:h-auto max-h-[100dvh] sm:max-h-[90vh] flex flex-col shadow-2xl shadow-black/80 animate-in slide-in-from-bottom-4 overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-[#261E33] shrink-0 flex items-center justify-between">
+        <Dialog onClose={() => setUserToEdit(null)} label="User Management">
+          <div className="bg-[var(--surface)] border border-[var(--border)]/70 rounded-none sm:rounded-2xl max-w-lg w-full h-full sm:h-auto max-h-[100dvh] sm:max-h-[90vh] flex flex-col shadow-2xl shadow-black/80 animate-in slide-in-from-bottom-4 overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-[var(--border)] shrink-0 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="p-2.5 rounded-xl bg-[#382647] text-[#F3E8FF] border border-[#523368]">
-                  <Edit2 className="w-5 h-5 text-amber-400" />
+                <div className="p-2.5 rounded-xl bg-[var(--accent-soft)] text-[var(--primary)] border border-[var(--accent-border)]">
+                  <Edit2 className="w-5 h-5 text-[var(--warning)]" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[#F4F0F8]">
+                  <h3 className="text-base font-bold text-[var(--text)]">
                     Modifier les Informations du Compte
                   </h3>
-                  <p className="text-xs text-[#958B9F]">{userToEdit.email}</p>
+                  <p className="text-sm text-[var(--muted)]">{userToEdit.email}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setUserToEdit(null)}
-                className="text-[#958B9F] hover:text-[#F4F0F8] p-1.5 cursor-pointer rounded-lg hover:bg-[#241E30]"
+                className="text-[var(--muted)] hover:text-[var(--text)] p-1.5 cursor-pointer rounded-lg hover:bg-[var(--surface-muted)]"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col justify-between text-xs">
-              <div className="space-y-4">
+            <form onSubmit={handleSaveEdit} className="flex-1 min-h-0 overflow-hidden flex flex-col text-sm">
+              <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
                 <div>
-                  <label className="block text-[#E0D8EB] font-semibold mb-1">
-                    Nom Complet <span className="text-rose-400">*</span>
+                  <label className="block text-[var(--text-secondary)] font-semibold mb-1" htmlFor="UserManagement-field-6">
+                    Nom Complet <span className="text-[var(--error)]">*</span>
                   </label>
                   <input
                     type="text"
                     required
                     value={editFormData.name}
                     onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-[#F4F0F8] focus:outline-none focus:border-amber-500/50 transition"
-                  />
+                    className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-[var(--text)] focus:outline-none focus:border-amber-500/50 transition"
+                    id="UserManagement-field-6"/>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[#E0D8EB] font-semibold mb-1">
-                      Adresse Email <span className="text-rose-400">*</span>
+                    <label className="block text-[var(--text-secondary)] font-semibold mb-1" htmlFor="UserManagement-field-7">
+                      Adresse Email <span className="text-[var(--error)]">*</span>
                     </label>
                     <input
                       type="email"
                       required
                       value={editFormData.email}
                       onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                      className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-[#F4F0F8] focus:outline-none focus:border-amber-500/50 transition"
-                    />
+                      className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-[var(--text)] focus:outline-none focus:border-amber-500/50 transition"
+                      id="UserManagement-field-7"/>
                   </div>
 
                   <div>
-                    <label className="block text-[#E0D8EB] font-semibold mb-1">
+                    <label className="block text-[var(--text-secondary)] font-semibold mb-1" htmlFor="UserManagement-field-8">
                       Téléphone (WhatsApp)
                     </label>
                     <input
                       type="tel"
                       value={editFormData.phone}
                       onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                      className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-[#F4F0F8] focus:outline-none focus:border-amber-500/50 transition"
-                    />
+                      className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-[var(--text)] focus:outline-none focus:border-amber-500/50 transition"
+                      id="UserManagement-field-8"/>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[#E0D8EB] font-semibold mb-1">
-                    Rôle & Niveau d&apos;Accès <span className="text-rose-400">*</span>
+                  <label className="block text-[var(--text-secondary)] font-semibold mb-1" htmlFor="UserManagement-field-9">
+                    Rôle & Niveau d&apos;Accès <span className="text-[var(--error)]">*</span>
                   </label>
                   <select
                     value={editFormData.role}
                     onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value as Role })}
-                    className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-[#F4F0F8] focus:outline-none focus:border-amber-500/50 transition cursor-pointer"
-                  >
+                    className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-[var(--text)] focus:outline-none focus:border-amber-500/50 transition cursor-pointer"
+                    id="UserManagement-field-9">
                     <option value="technician">Technicien Terrain (/technician)</option>
                     <option value="field_lead">Chef d&apos;Équipe / Field Lead (/technician)</option>
                     <option value="admin">Administrateur NOC (Accès Total /)</option>
@@ -1022,7 +999,7 @@ export default function UserManagement() {
 
                 {editFormData.role !== 'admin' && (
                   <div>
-                    <label className="block text-[#E0D8EB] font-semibold mb-1">
+                    <label className="block text-[var(--text-secondary)] font-semibold mb-1" htmlFor="UserManagement-field-10">
                       Spécialité Technique
                     </label>
                     <input
@@ -1030,24 +1007,24 @@ export default function UserManagement() {
                       value={editFormData.specialty}
                       onChange={(e) => setEditFormData({ ...editFormData, specialty: e.target.value })}
                       placeholder="Ex: Antennes Ubiquiti, Câblage Toiture..."
-                      className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl px-3.5 py-2.5 text-[#F4F0F8] focus:outline-none focus:border-amber-500/50 transition"
-                    />
+                      className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-[var(--text)] focus:outline-none focus:border-amber-500/50 transition"
+                      id="UserManagement-field-10"/>
                   </div>
                 )}
               </div>
 
               {/* Sticky Modal Actions */}
-              <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 mt-6 p-4 sm:p-5 bg-[#130F1A]/95 backdrop-blur-md border-t border-[#261E33] flex justify-end gap-2.5 shrink-0 z-10">
+              <div className="p-4 sm:p-5 bg-[var(--surface-muted)]/95 backdrop-blur-md border-t border-[var(--border)] flex justify-end gap-2.5 shrink-0 z-10">
                 <button
                   type="button"
                   onClick={() => setUserToEdit(null)}
-                  className="px-4 py-2.5 rounded-xl text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] transition cursor-pointer text-xs"
+                  className="px-4 py-2.5 rounded-xl text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition cursor-pointer text-sm"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 min-h-[44px] rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/15 transition cursor-pointer flex items-center gap-2 text-xs"
+                  className="px-5 py-2.5 min-h-[44px] rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/15 transition cursor-pointer flex items-center gap-2 text-sm"
                 >
                   <Check className="w-4 h-4" />
                   <span>Enregistrer les Modifications</span>
@@ -1055,41 +1032,41 @@ export default function UserManagement() {
               </div>
             </form>
           </div>
-        </div>
+        </Dialog>
       )}
 
       {/* RESET PASSWORD MODAL */}
       {userToResetPassword && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-[#191522] border border-[#2D253B]/70 rounded-none sm:rounded-2xl max-w-sm w-full h-auto max-h-[100dvh] sm:max-h-[90vh] flex flex-col shadow-2xl shadow-black/80 animate-in slide-in-from-bottom-4 overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-[#261E33] shrink-0 flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+        <Dialog onClose={() => setUserToResetPassword(null)} label="User Management">
+          <div className="bg-[var(--surface)] border border-[var(--border)]/70 rounded-none sm:rounded-2xl max-w-sm w-full h-auto max-h-[100dvh] sm:max-h-[90vh] flex flex-col shadow-2xl shadow-black/80 animate-in slide-in-from-bottom-4 overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-[var(--border)] shrink-0 flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-amber-500/10 text-[var(--warning)] border border-amber-500/20">
                 <KeyRound className="w-6 h-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-base font-bold text-[#F4F0F8]">Changer le Mot de Passe</h3>
-                <p className="text-xs text-[#958B9F] truncate">{userToResetPassword.name}</p>
+                <h3 className="text-base font-bold text-[var(--text)]">Changer le Mot de Passe</h3>
+                <p className="text-sm text-[var(--muted)] truncate">{userToResetPassword.name}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setUserToResetPassword(null)}
-                className="text-[#958B9F] hover:text-[#F4F0F8] p-1.5 cursor-pointer rounded-lg hover:bg-[#241E30]"
+                className="text-[var(--muted)] hover:text-[var(--text)] p-1.5 cursor-pointer rounded-lg hover:bg-[var(--surface-muted)]"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleConfirmResetPassword} className="p-4 sm:p-5 flex flex-col justify-between text-xs space-y-4">
+            <form onSubmit={handleConfirmResetPassword} className="p-4 sm:p-5 flex flex-col justify-between text-sm space-y-4">
               <div className="space-y-3.5">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[#E0D8EB] font-semibold">
-                      Nouveau Mot de Passe <span className="text-rose-400">*</span>
+                    <label className="text-[var(--text-secondary)] font-semibold" htmlFor="UserManagement-field-11">
+                      Nouveau Mot de Passe <span className="text-[var(--error)]">*</span>
                     </label>
                     <button
                       type="button"
                       onClick={() => setNewPasswordValue(handleGeneratePassword())}
-                      className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+                      className="text-[12px] text-[var(--warning)] hover:text-amber-300 flex items-center gap-1 cursor-pointer"
                     >
                       <Sparkles className="w-3 h-3" />
                       <span>Générer</span>
@@ -1101,33 +1078,33 @@ export default function UserManagement() {
                       required
                       value={newPasswordValue}
                       onChange={(e) => setNewPasswordValue(e.target.value)}
-                      className="w-full bg-[#130F1A] border border-[#2D253B]/70 rounded-xl pl-3.5 pr-10 py-2.5 text-[#F4F0F8] font-mono focus:outline-none focus:border-amber-500/50 transition"
-                    />
+                      className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl pl-3.5 pr-10 py-2.5 text-[var(--text)] font-mono focus:outline-none focus:border-amber-500/50 transition"
+                      id="UserManagement-field-11"/>
                     <button
                       type="button"
                       onClick={() => setShowResetPasswordInput(!showResetPasswordInput)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#958B9F] hover:text-[#F4F0F8] cursor-pointer"
-                    >
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--text)] cursor-pointer"
+                     aria-label="Afficher ou masquer le mot de passe">
                       {showResetPasswordInput ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                  <p className="text-[10px] text-[#958B9F] mt-1">
+                  <p className="text-[12px] text-[var(--muted)] mt-1">
                     Le nouveau mot de passe sera automatiquement copié dans le presse-papier pour WhatsApp.
                   </p>
                 </div>
               </div>
 
-              <div className="pt-3 flex justify-end gap-2 border-t border-[#261E33]">
+              <div className="pt-3 flex justify-end gap-2 border-t border-[var(--border)]">
                 <button
                   type="button"
                   onClick={() => setUserToResetPassword(null)}
-                  className="px-4 py-2.5 rounded-xl text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] transition cursor-pointer text-xs"
+                  className="px-4 py-2.5 rounded-xl text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition cursor-pointer text-sm"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 min-h-[44px] rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/15 transition cursor-pointer flex items-center gap-1.5 text-xs"
+                  className="px-5 py-2.5 min-h-[44px] rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/15 transition cursor-pointer flex items-center gap-1.5 text-sm"
                 >
                   <Check className="w-4 h-4" />
                   <span>Enregistrer & Copier</span>
@@ -1135,56 +1112,56 @@ export default function UserManagement() {
               </div>
             </form>
           </div>
-        </div>
+        </Dialog>
       )}
 
       {/* CONFIRM DELETE MODAL */}
       {userToDelete && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-[#191522] border border-[#2D253B]/70 rounded-none sm:rounded-2xl max-w-sm w-full h-auto max-h-[100dvh] sm:max-h-[90vh] flex flex-col shadow-2xl shadow-black/80 animate-in slide-in-from-bottom-4 overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-[#261E33] shrink-0 flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+        <Dialog onClose={() => setUserToDelete(null)} label="User Management">
+          <div className="bg-[var(--surface)] border border-[var(--border)]/70 rounded-none sm:rounded-2xl max-w-sm w-full h-auto max-h-[100dvh] sm:max-h-[90vh] flex flex-col shadow-2xl shadow-black/80 animate-in slide-in-from-bottom-4 overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-[var(--border)] shrink-0 flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-rose-500/10 text-[var(--error)] border border-rose-500/20">
                 <ShieldAlert className="w-6 h-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-base font-bold text-[#F4F0F8]">Supprimer ce Compte ?</h3>
-                <p className="text-xs text-[#958B9F] truncate">{userToDelete.name}</p>
+                <h3 className="text-base font-bold text-[var(--text)]">Supprimer ce Compte ?</h3>
+                <p className="text-sm text-[var(--muted)] truncate">{userToDelete.name}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setUserToDelete(null)}
-                className="text-[#958B9F] hover:text-[#F4F0F8] p-1.5 cursor-pointer rounded-lg hover:bg-[#241E30]"
+                className="text-[var(--muted)] hover:text-[var(--text)] p-1.5 cursor-pointer rounded-lg hover:bg-[var(--surface-muted)]"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-4 sm:p-5 flex flex-col justify-between text-xs space-y-4">
-              <p className="text-xs text-[#E0D8EB] leading-relaxed">
+            <div className="p-4 sm:p-5 flex flex-col justify-between text-sm space-y-4">
+              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
                 Êtes-vous sûr de vouloir supprimer définitivement le compte{' '}
-                <strong className="text-[#F4F0F8]">{userToDelete.email}</strong> ? Cette action
+                <strong className="text-[var(--text)]">{userToDelete.email}</strong> ? Cette action
                 est irréversible.
               </p>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#261E33]">
+              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--border)]">
                 <button
                   type="button"
                   onClick={() => setUserToDelete(null)}
-                  className="px-4 py-2.5 rounded-xl text-[#958B9F] hover:text-[#F4F0F8] hover:bg-[#241E30] transition cursor-pointer text-xs"
+                  className="px-4 py-2.5 rounded-xl text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition cursor-pointer text-sm"
                 >
                   Annuler
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmDelete}
-                  className="px-5 py-2.5 min-h-[44px] rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold shadow-lg shadow-rose-950 transition cursor-pointer text-xs"
+                  className="px-5 py-2.5 min-h-[44px] rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold shadow-lg shadow-rose-950 transition cursor-pointer text-sm"
                 >
                   Confirmer la suppression
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
     </div>
   );

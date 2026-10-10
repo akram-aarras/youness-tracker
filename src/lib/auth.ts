@@ -1,4 +1,4 @@
-import { Role, User } from './types';
+import { Role } from './types';
 
 export const SESSION_COOKIE_NAME = 'atlasnet_session';
 

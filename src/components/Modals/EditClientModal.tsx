@@ -1,32 +1,12 @@
 'use client';
 
+import Dialog from '@/components/ui/Dialog';
+
 import React, { useState } from 'react';
 import { useStore, isValidMoroccanPhone } from '@/lib/store';
 import { Client, SubscriptionStatus } from '@/lib/types';
-import {
-  X,
-  UserCheck,
-  Radio,
-  Wifi,
-  MapPin,
-  CreditCard,
-  CheckCircle,
-  AlertCircle,
-  Eye,
-  EyeOff,
-  Server,
-  Layers,
-  FileText,
-  Save,
-  Loader2,
-  Calendar,
-} from 'lucide-react';
-import {
-  TETOUAN_NEIGHBORHOODS,
-  ANTENNA_MODELS,
-  ROUTER_MODELS,
-  SECTOR_TOWERS,
-} from './RegisterClientModal';
+import { X, UserCheck, Radio, Wifi, MapPin, CreditCard, CheckCircle, AlertCircle, Eye, EyeOff, Server, Save, Loader2 } from 'lucide-react';
+import { TETOUAN_NEIGHBORHOODS, ANTENNA_MODELS, ROUTER_MODELS, SECTOR_TOWERS } from './RegisterClientModal';
 
 interface Props {
   client: Client;
@@ -35,7 +15,8 @@ interface Props {
 }
 
 export default function EditClientModal({ client, onClose, onSuccess }: Props) {
-  const { updateClient } = useStore();
+  const { updateClient, language } = useStore();
+  const text = (fr: string, en: string, ar: string) => language === 'ar' ? ar : language === 'en' ? en : fr;
 
   const [activeTab, setActiveTab] = useState<'info' | 'hardware' | 'billing'>('info');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -155,70 +136,65 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
 
   const getSignalBadge = (dbm: number) => {
     if (dbm >= -62) {
-      return { text: 'Signal Excellent (-62 dBm ou mieux)', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' };
+      return { text: text("Signal Excellent (-62 dBm ou mieux)", "Excellent signal (-62 dBm or better)", "إشارة ممتازة (-62 dBm أو أفضل)"), color: 'text-[var(--success)] bg-emerald-500/10 border-emerald-500/30' };
     }
     if (dbm >= -70) {
-      return { text: 'Signal Bon (-63 à -70 dBm)', color: 'text-blue-400 bg-blue-500/10 border-blue-500/30' };
+      return { text: text("Signal Bon (-63 à -70 dBm)", "Good signal (-63 to -70 dBm)", "إشارة جيدة (-63 إلى -70 dBm)"), color: 'text-[var(--info)] bg-blue-500/10 border-blue-500/30' };
     }
     if (dbm >= -78) {
-      return { text: 'Signal Moyen (-71 à -78 dBm)', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' };
+      return { text: text("Signal Moyen (-71 à -78 dBm)", "Fair signal (-71 to -78 dBm)", "إشارة متوسطة (-71 إلى -78 dBm)"), color: 'text-[var(--warning)] bg-amber-500/10 border-amber-500/30' };
     }
-    return { text: 'Signal Faible (<-78 dBm)', color: 'text-rose-400 bg-rose-500/10 border-rose-500/30' };
+    return { text: text("Signal Faible (<-78 dBm)", "Weak signal (<-78 dBm)", "إشارة ضعيفة (<-78 dBm)"), color: 'text-[var(--error)] bg-rose-500/10 border-rose-500/30' };
   };
 
   const signalBadge = getSignalBadge(signalStrengthDbm);
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="edit-client-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
-    >
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+    <Dialog onClose={onClose} label={text("Modifier un abonné", "Edit subscriber", "تعديل المشترك")}>
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-5 border-b border-[var(--border)] bg-white/95 dark:bg-slate-900/95 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/20 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 text-[var(--primary)] dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/20 flex items-center justify-center shrink-0">
               <UserCheck className="w-5 h-5" />
             </div>
             <div>
               <h2
                 id="edit-client-modal-title"
-                className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2"
+                className="text-base sm:text-lg font-bold text-[var(--text)] flex items-center gap-2"
               >
-                <span>Modifier les informations de l&apos;abonné</span>
+                <span>{text("Modifier les informations de l'abonné", "Edit subscriber details", "تعديل معلومات المشترك")}</span>
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
-                <span className="font-semibold text-slate-700 dark:text-slate-200">{client.name}</span>
+              <p className="text-sm text-[var(--muted)] flex items-center gap-2 mt-0.5">
+                <span className="font-semibold text-[var(--text-secondary)]">{client.name}</span>
                 <span>•</span>
-                <span className="font-mono text-[11px] text-orange-600 dark:text-orange-400 font-bold">{client.phone}</span>
+                <span className="font-mono text-[12px] text-[var(--primary)] dark:text-orange-400 font-bold">{client.phone}</span>
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition flex items-center justify-center cursor-pointer"
-            aria-label="Fermer"
+            className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[var(--muted)] hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition flex items-center justify-center cursor-pointer"
+            aria-label={text("Fermer", "Close", "إغلاق")}
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 px-4 pt-2 gap-1 overflow-x-auto shrink-0 scrollbar-none">
+        <div className="flex border-b border-[var(--border)] bg-slate-50 dark:bg-slate-800/40 px-4 pt-2 gap-1 overflow-x-auto shrink-0 scrollbar-none">
           <button
             type="button"
-            onClick={() => setActiveTab('info')}
-            className={`px-4 py-2.5 rounded-t-xl text-xs font-bold transition flex items-center gap-2 shrink-0 border-t border-x cursor-pointer ${
+            aria-pressed={activeTab === 'info'} onClick={() => setActiveTab('info')}
+            className={`px-4 py-2.5 rounded-t-xl text-sm font-bold transition flex items-center gap-2 shrink-0 border-t border-x cursor-pointer ${
               activeTab === 'info'
-                ? 'bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 border-slate-200 dark:border-slate-700 border-b-transparent shadow-xs'
-                : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-[var(--surface)] text-[var(--primary)] dark:text-orange-400 border-slate-200 dark:border-slate-700 border-b-transparent shadow-xs'
+                : 'text-[var(--muted)] hover:text-slate-800 dark:text-slate-400 dark:hover:text-white border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             <MapPin className="w-3.5 h-3.5" />
-            <span>1. Identité & Adresse</span>
+            <span>{text("1. Identité & Adresse", "1. Identity & address", "1. الهوية والعنوان")}</span>
             {!isPhoneValid && isPhoneFilled && (
               <span className="w-2 h-2 rounded-full bg-rose-500" />
             )}
@@ -226,28 +202,28 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
 
           <button
             type="button"
-            onClick={() => setActiveTab('billing')}
-            className={`px-4 py-2.5 rounded-t-xl text-xs font-bold transition flex items-center gap-2 shrink-0 border-t border-x cursor-pointer ${
+            aria-pressed={activeTab === 'billing'} onClick={() => setActiveTab('billing')}
+            className={`px-4 py-2.5 rounded-t-xl text-sm font-bold transition flex items-center gap-2 shrink-0 border-t border-x cursor-pointer ${
               activeTab === 'billing'
-                ? 'bg-[#191522] text-amber-400 border-[#2D253B] border-b-transparent shadow-sm'
-                : 'text-[#958B9F] hover:text-[#F4F0F8] border-transparent hover:bg-[#201A2B]/40'
+                ? 'bg-[var(--surface)] text-[var(--warning)] border-[var(--border)] border-b-transparent shadow-sm'
+                : 'text-[var(--muted)] hover:text-[var(--text)] border-transparent hover:bg-[var(--surface-hover)]'
             }`}
           >
             <CreditCard className="w-3.5 h-3.5" />
-            <span>2. Tarif & Abonnement</span>
+            <span>{text("2. Tarif & Abonnement", "2. Pricing & subscription", "2. التعرفة والاشتراك")}</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveTab('hardware')}
-            className={`px-4 py-2.5 rounded-t-xl text-xs font-bold transition flex items-center gap-2 shrink-0 border-t border-x cursor-pointer ${
+            aria-pressed={activeTab === 'hardware'} onClick={() => setActiveTab('hardware')}
+            className={`px-4 py-2.5 rounded-t-xl text-sm font-bold transition flex items-center gap-2 shrink-0 border-t border-x cursor-pointer ${
               activeTab === 'hardware'
-                ? 'bg-[#191522] text-amber-400 border-[#2D253B] border-b-transparent shadow-sm'
-                : 'text-[#958B9F] hover:text-[#F4F0F8] border-transparent hover:bg-[#201A2B]/40'
+                ? 'bg-[var(--surface)] text-[var(--warning)] border-[var(--border)] border-b-transparent shadow-sm'
+                : 'text-[var(--muted)] hover:text-[var(--text)] border-transparent hover:bg-[var(--surface-hover)]'
             }`}
           >
             <Radio className="w-3.5 h-3.5" />
-            <span>3. Matériel & Réseau</span>
+            <span>{text("3. Matériel & Réseau", "3. Hardware & network", "3. المعدات والشبكة")}</span>
           </button>
         </div>
 
@@ -259,8 +235,8 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
               <div className="space-y-4 animate-in fade-in duration-150">
                 {/* Full Name */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1.5">
-                    Nom complet de l&apos;abonné <span className="text-rose-400">*</span>
+                  <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1.5" htmlFor="EditClientModal-field-0">
+                    {text("Nom complet de l'abonné", "Subscriber full name", "الاسم الكامل للمشترك")} <span className="text-[var(--error)]">*</span>
                   </label>
                   <input
                     type="text"
@@ -268,20 +244,20 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="ex: Youness El Mansouri"
-                    className="w-full bg-[#130F1A] border border-[#2D253B] rounded-xl px-3.5 py-2.5 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition"
-                  />
+                    className="w-full bg-[var(--surface-muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500 transition"
+                    id="EditClientModal-field-0"/>
                   {!isNameFilled && (
-                    <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1">
+                    <p className="text-[12px] text-[var(--error)] mt-1 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
-                      Le nom de l&apos;abonné est obligatoire.
+                      {text("Le nom de l'abonné est obligatoire.", "Subscriber name is required.", "اسم المشترك مطلوب.")}
                     </p>
                   )}
                 </div>
 
                 {/* Phone Number with Moroccan Validation */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1.5">
-                    Numéro de téléphone portable (Maroc) <span className="text-rose-400">*</span>
+                  <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1.5" htmlFor="EditClientModal-field-1">
+                    {text("Numéro de téléphone portable (Maroc)", "Mobile phone number (Morocco)", "رقم الهاتف المحمول (المغرب)")} <span className="text-[var(--error)]">*</span>
                   </label>
                   <div className="relative">
                     <input
@@ -290,20 +266,20 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="06XXXXXXXX / 07XXXXXXXX / +212..."
-                      className={`w-full bg-[#130F1A] border rounded-xl px-3.5 py-2.5 text-xs font-mono text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none transition ${
+                      className={`w-full bg-[var(--surface-muted)] border rounded-xl px-3.5 py-2.5 text-sm font-mono text-[var(--text)] placeholder-[var(--muted)] focus:outline-none transition ${
                         isPhoneFilled
                           ? isPhoneValid
                             ? 'border-emerald-500/70 focus:border-emerald-500'
                             : 'border-rose-500/70 focus:border-rose-500'
-                          : 'border-[#2D253B] focus:border-amber-500'
+                          : 'border-[var(--border)] focus:border-amber-500'
                       }`}
-                    />
+                      id="EditClientModal-field-1"/>
                     {isPhoneFilled && (
                       <div className="absolute right-3 rtl:right-auto rtl:left-3 top-2.5">
                         {isPhoneValid ? (
-                          <CheckCircle className="w-4 h-4 text-emerald-400" />
+                          <CheckCircle className="w-4 h-4 text-[var(--success)]" />
                         ) : (
-                          <AlertCircle className="w-4 h-4 text-rose-400" />
+                          <AlertCircle className="w-4 h-4 text-[var(--error)]" />
                         )}
                       </div>
                     )}
@@ -312,19 +288,19 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                   {/* Real-time Phone Feedback */}
                   {isPhoneFilled ? (
                     isPhoneValid ? (
-                      <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1 font-medium">
+                      <p className="text-[12px] text-[var(--success)] mt-1 flex items-center gap-1 font-medium">
                         <CheckCircle className="w-3 h-3" />
-                        Format marocain valide (06/07/+212)
+                        {text("Format marocain valide (06/07/+212)", "Valid Moroccan format (06/07/+212)", "صيغة مغربية صحيحة (06/07/+212)")}
                       </p>
                     ) : (
-                      <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                      <p className="text-[12px] text-[var(--error)] mt-1 flex items-center gap-1 font-medium">
                         <AlertCircle className="w-3 h-3" />
-                        Format invalide : Veuillez saisir un numéro marocain valide (ex: 0612345678, 0712345678 ou +212612345678).
+                        {text("Format invalide : Veuillez saisir un numéro marocain valide (ex: 0612345678, 0712345678 ou +212612345678).", "Enter a valid Moroccan number (e.g. 0612345678, 0712345678 or +212612345678).", "أدخل رقماً مغربياً صحيحاً (مثال: 0612345678 أو 0712345678 أو +212612345678).")}
                       </p>
                     )
                   ) : (
-                    <p className="text-[10px] text-[#958B9F] mt-1">
-                      Formats supportés : 06XXXXXXXX, 07XXXXXXXX ou +212XXXXXXXX
+                    <p className="text-[12px] text-[var(--muted)] mt-1">
+                      {text("Formats supportés : 06XXXXXXXX, 07XXXXXXXX ou +212XXXXXXXX", "Supported formats: 06XXXXXXXX, 07XXXXXXXX or +212XXXXXXXX", "الصيغ المدعومة: 06XXXXXXXX أو 07XXXXXXXX أو +212XXXXXXXX")}
                     </p>
                   )}
                 </div>
@@ -333,15 +309,15 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider">
-                        Quartier (Tétouan)
+                      <label className="text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider" htmlFor="EditClientModal-field-2">
+                        {text("Quartier (Tétouan)", "Neighborhood (Tétouan)", "الحي (تطوان)")}
                       </label>
                       <button
                         type="button"
                         onClick={() => setIsCustomNeighborhood(!isCustomNeighborhood)}
-                        className="text-[10px] text-amber-400 hover:text-amber-300 underline cursor-pointer"
+                        className="text-[12px] text-[var(--warning)] hover:text-[var(--primary)] underline cursor-pointer"
                       >
-                        {isCustomNeighborhood ? 'Choisir dans la liste' : 'Autre quartier'}
+                        {isCustomNeighborhood ? text('Choisir dans la liste', 'Choose from list', 'اختر من القائمة') : text('Autre quartier', 'Other neighborhood', 'حي آخر')}
                       </button>
                     </div>
 
@@ -350,15 +326,15 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                         type="text"
                         value={customNeighborhood}
                         onChange={(e) => setCustomNeighborhood(e.target.value)}
-                        placeholder="Saisir un autre quartier..."
-                        className="w-full bg-[#130F1A] border border-[#2D253B] rounded-xl px-3.5 py-2.5 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition"
-                      />
+                        placeholder={text("Saisir un autre quartier...", "Enter another neighborhood...", "أدخل حياً آخر...")}
+                        className="w-full bg-[var(--surface-muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500 transition"
+                        id="EditClientModal-field-2"/>
                     ) : (
                       <select
                         value={neighborhood}
                         onChange={(e) => setNeighborhood(e.target.value)}
-                        className="w-full bg-[#130F1A] border border-[#2D253B] rounded-xl px-3.5 py-2.5 text-xs text-[#F4F0F8] focus:outline-none focus:border-amber-500 transition"
-                      >
+                        className="w-full bg-[var(--surface-muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] focus:outline-none focus:border-amber-500 transition"
+                       aria-label={text("Quartier", "Neighborhood", "الحي")}>
                         {TETOUAN_NEIGHBORHOODS.map((q) => (
                           <option key={q} value={q}>
                             📍 {q}
@@ -369,45 +345,45 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1.5">
-                      Adresse détaillée / Immeuble
+                    <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1.5" htmlFor="EditClientModal-field-3">
+                      {text("Adresse détaillée / Immeuble", "Full address / building", "العنوان الكامل / العمارة")}
                     </label>
                     <input
                       type="text"
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       placeholder="ex: Rue 14, Imm B, Apt 3"
-                      className="w-full bg-[#130F1A] border border-[#2D253B] rounded-xl px-3.5 py-2.5 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition"
-                    />
+                      className="w-full bg-[var(--surface-muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500 transition"
+                      id="EditClientModal-field-3"/>
                   </div>
                 </div>
 
                 {/* GPS & Google Maps */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1.5">
-                      Lien Google Maps
+                    <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1.5" htmlFor="EditClientModal-field-4">
+                      {text("Lien Google Maps", "Google Maps link", "رابط خرائط Google")}
                     </label>
                     <input
                       type="url"
                       value={googleMapsUrl}
                       onChange={(e) => setGoogleMapsUrl(e.target.value)}
                       placeholder="https://maps.google.com/?q=..."
-                      className="w-full bg-[#130F1A] border border-[#2D253B] rounded-xl px-3.5 py-2.5 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition font-mono"
-                    />
+                      className="w-full bg-[var(--surface-muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500 transition font-mono"
+                      id="EditClientModal-field-4"/>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1.5">
-                      Coordonnées GPS (Lat, Long)
+                    <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1.5" htmlFor="EditClientModal-field-5">
+                      {text("Coordonnées GPS (Lat, Long)", "GPS coordinates (lat, long)", "إحداثيات GPS (خط العرض، خط الطول)")}
                     </label>
                     <input
                       type="text"
                       value={gpsCoordinates}
                       onChange={(e) => setGpsCoordinates(e.target.value)}
                       placeholder="ex: 35.5784,-5.3684"
-                      className="w-full bg-[#130F1A] border border-[#2D253B] rounded-xl px-3.5 py-2.5 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition font-mono"
-                    />
+                      className="w-full bg-[var(--surface-muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500 transition font-mono"
+                      id="EditClientModal-field-5"/>
                   </div>
                 </div>
               </div>
@@ -417,13 +393,13 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
             {activeTab === 'billing' && (
               <div className="space-y-4 animate-in fade-in duration-150">
                 {/* Monthly fee & Presets */}
-                <div className="p-4 rounded-xl bg-[#130F1A] border border-[#261E33] space-y-3">
+                <div className="p-4 rounded-xl bg-[var(--surface-muted)] border border-[var(--border)] space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider">
-                      Tarif mensuel de l&apos;abonnement (MAD / DH) <span className="text-rose-400">*</span>
+                    <label className="text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider" htmlFor="EditClientModal-field-6">
+                      {text("Tarif mensuel de l'abonnement (MAD / DH)", "Monthly subscription fee (MAD / DH)", "تعرفة الاشتراك الشهرية (MAD / DH)")} <span className="text-[var(--error)]">*</span>
                     </label>
-                    <span className="text-xs font-mono font-bold text-amber-400">
-                      {monthlyFee} DH / mois
+                    <span className="text-sm font-mono font-bold text-[var(--warning)]">
+                      {monthlyFee} {text("DH / mois", "DH / month", "DH / شهر")}
                     </span>
                   </div>
 
@@ -436,9 +412,9 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                         required
                         value={monthlyFee}
                         onChange={(e) => setMonthlyFee(Number(e.target.value) || 0)}
-                        className="w-full bg-[#0F0C14] border border-[#2D253B] rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-[#F4F0F8] focus:outline-none focus:border-amber-500 transition"
-                      />
-                      <span className="absolute right-3 rtl:right-auto rtl:left-3 top-2.5 text-xs text-[#958B9F] font-bold">
+                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm font-mono font-bold text-[var(--text)] focus:outline-none focus:border-amber-500 transition"
+                        id="EditClientModal-field-6"/>
+                      <span className="absolute right-3 rtl:right-auto rtl:left-3 top-2.5 text-sm text-[var(--muted)] font-bold">
                         MAD
                       </span>
                     </div>
@@ -446,7 +422,7 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
 
                   {/* Preset Buttons */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-[10px] text-[#958B9F] mr-1">Raccourcis :</span>
+                    <span className="text-[12px] text-[var(--muted)] mr-1">{text("Raccourcis :", "Presets:", "تعرفات سريعة:")}</span>
                     {[50, 100, 150, 200, 300].map((preset) => (
                       <button
                         key={preset}
@@ -458,10 +434,10 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                           else if (preset === 150) setSubscriptionPlan('باقة متقدمة - 150 د.م./شهر (Pack Avancé 150 MAD)');
                           else if (preset >= 200) setSubscriptionPlan(`باقة احترافية - ${preset} د.م./شهر (Pack Pro ${preset} MAD)`);
                         }}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition cursor-pointer border ${
+                        className={`px-2.5 py-1 rounded-lg text-[12px] font-mono font-bold transition cursor-pointer border ${
                           monthlyFee === preset
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm'
-                            : 'bg-[#191522] text-[#958B9F] border-[#2D253B] hover:text-[#F4F0F8] hover:bg-[#241E30]'
+                            ? 'bg-amber-500/20 text-[var(--warning)] border-amber-500/50 shadow-sm'
+                            : 'bg-[var(--surface)] text-[var(--muted)] border-[var(--border)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]'
                         }`}
                       >
                         {preset} DH
@@ -472,74 +448,74 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
 
                 {/* Subscription Plan Name */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1.5">
-                    Nom du forfait d&apos;abonnement
+                  <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1.5" htmlFor="EditClientModal-field-7">
+                    {text("Nom du forfait d'abonnement", "Subscription plan name", "اسم باقة الاشتراك")}
                   </label>
                   <input
                     type="text"
                     value={subscriptionPlan}
                     onChange={(e) => setSubscriptionPlan(e.target.value)}
                     placeholder="ex: Pack Standard 100 MAD"
-                    className="w-full bg-[#130F1A] border border-[#2D253B] rounded-xl px-3.5 py-2.5 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition"
-                  />
+                    className="w-full bg-[var(--surface-muted)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500 transition"
+                    id="EditClientModal-field-7"/>
                 </div>
 
                 {/* Status & Dates */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1.5">
-                      Statut du compte
+                    <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1.5" htmlFor="EditClientModal-field-8">
+                      {text("Statut du compte", "Account status", "حالة الحساب")}
                     </label>
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value as SubscriptionStatus)}
-                      className="w-full bg-[#130F1A] border border-[#2D253B] rounded-xl px-3 py-2.5 text-xs text-[#F4F0F8] focus:outline-none focus:border-amber-500 transition"
-                    >
-                      <option value="active">🟢 Actif (Payé)</option>
-                      <option value="due_soon">🟡 Échéance Proche</option>
-                      <option value="overdue">🔴 En Retard</option>
-                      <option value="suspended">⛔ Suspendu</option>
-                      <option value="archived">📦 Archivé</option>
+                      className="w-full bg-[var(--surface-muted)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--text)] focus:outline-none focus:border-amber-500 transition"
+                      id="EditClientModal-field-8">
+                      <option value="active">{text("🟢 Actif (Payé)", "🟢 Active (paid)", "🟢 نشط (مؤدى)")}</option>
+                      <option value="due_soon">{text("🟡 Échéance Proche", "🟡 Due soon", "🟡 اقترب موعد الأداء")}</option>
+                      <option value="overdue">{text("🔴 En Retard", "🔴 Overdue", "🔴 متأخر عن الأداء")}</option>
+                      <option value="suspended">{text("⛔ Suspendu", "⛔ Suspended", "⛔ معلق")}</option>
+                      <option value="archived">{text("📦 Archivé", "📦 Archived", "📦 مؤرشف")}</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1.5">
-                      Date d&apos;échéance (YYYY-MM-DD)
+                    <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1.5" htmlFor="EditClientModal-field-9">
+                      {text("Date d'échéance (YYYY-MM-DD)", "Due date (YYYY-MM-DD)", "تاريخ الاستحقاق (YYYY-MM-DD)")}
                     </label>
                     <input
                       type="date"
                       value={nextDueDate}
                       onChange={(e) => setNextDueDate(e.target.value)}
-                      className="w-full bg-[#130F1A] border border-[#2D253B] rounded-xl px-3 py-2.5 text-xs font-mono text-[#F4F0F8] focus:outline-none focus:border-amber-500 transition"
-                    />
+                      className="w-full bg-[var(--surface-muted)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm font-mono text-[var(--text)] focus:outline-none focus:border-amber-500 transition"
+                      id="EditClientModal-field-9"/>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1.5">
-                      Date d&apos;installation
+                    <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1.5" htmlFor="EditClientModal-field-10">
+                      {text("Date d'installation", "Installation date", "تاريخ التركيب")}
                     </label>
                     <input
                       type="date"
                       value={installationDate}
                       onChange={(e) => setInstallationDate(e.target.value)}
-                      className="w-full bg-[#130F1A] border border-[#2D253B] rounded-xl px-3 py-2.5 text-xs font-mono text-[#F4F0F8] focus:outline-none focus:border-amber-500 transition"
-                    />
+                      className="w-full bg-[var(--surface-muted)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm font-mono text-[var(--text)] focus:outline-none focus:border-amber-500 transition"
+                      id="EditClientModal-field-10"/>
                   </div>
                 </div>
 
                 {/* Notes */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1.5">
-                    Notes et observations du technicien
+                  <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1.5" htmlFor="EditClientModal-field-11">
+                    {text("Notes et observations du technicien", "Technician notes", "ملاحظات التقني")}
                   </label>
                   <textarea
                     rows={2}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Remarques sur le câblage, contact d'urgence, arrangements spéciaux..."
-                    className="w-full bg-[#130F1A] border border-[#2D253B] rounded-xl p-3 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition resize-none"
-                  />
+                    placeholder={text("Remarques sur le câblage, contact d'urgence, arrangements spéciaux...", "Cabling notes, emergency contact, special arrangements...", "ملاحظات الأسلاك، جهة اتصال للطوارئ، ترتيبات خاصة...")}
+                    className="w-full bg-[var(--surface-muted)] border border-[var(--border)] rounded-xl p-3 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500 transition resize-none"
+                    id="EditClientModal-field-11"/>
                 </div>
               </div>
             )}
@@ -548,22 +524,22 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
             {activeTab === 'hardware' && (
               <div className="space-y-4 animate-in fade-in duration-150">
                 {/* CPE Antenna Section */}
-                <div className="p-4 rounded-xl bg-[#130F1A] border border-[#261E33] space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
+                <div className="p-4 rounded-xl bg-[var(--surface-muted)] border border-[var(--border)] space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-bold text-[var(--warning)]">
                     <Radio className="w-4 h-4" />
-                    <span>Antenne Récepteur CPE (Toiture)</span>
+                    <span>{text("Antenne Récepteur CPE (Toiture)", "CPE receiver antenna (rooftop)", "هوائي استقبال CPE (السطح)")}</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1">
-                        Modèle de l&apos;antenne
+                      <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1" htmlFor="EditClientModal-field-12">
+                        {text("Modèle de l'antenne", "Antenna model", "طراز الهوائي")}
                       </label>
                       <select
                         value={antennaModel}
                         onChange={(e) => setAntennaModel(e.target.value)}
-                        className="w-full bg-[#0F0C14] border border-[#2D253B] rounded-xl px-3 py-2 text-xs text-[#F4F0F8] focus:outline-none focus:border-amber-500 transition"
-                      >
+                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:border-amber-500 transition"
+                        id="EditClientModal-field-12">
                         {ANTENNA_MODELS.map((m) => (
                           <option key={m} value={m}>
                             {m}
@@ -573,42 +549,42 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1">
-                        Adresse MAC Antenne
+                      <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1" htmlFor="EditClientModal-field-13">
+                        {text("Adresse MAC Antenne", "Antenna MAC address", "عنوان MAC للهوائي")}
                       </label>
                       <input
                         type="text"
                         value={antennaMac}
                         onChange={(e) => setAntennaMac(e.target.value.toUpperCase())}
                         placeholder="DC:9F:DB:XX:XX:XX"
-                        className="w-full bg-[#0F0C14] border border-[#2D253B] rounded-xl px-3 py-2 text-xs font-mono text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition"
-                      />
+                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm font-mono text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500 transition"
+                        id="EditClientModal-field-13"/>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1">
-                        Adresse IP Antenne
+                      <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1" htmlFor="EditClientModal-field-14">
+                        {text("Adresse IP Antenne", "Antenna IP address", "عنوان IP للهوائي")}
                       </label>
                       <input
                         type="text"
                         value={antennaIp}
                         onChange={(e) => setAntennaIp(e.target.value)}
                         placeholder="192.168.10.150"
-                        className="w-full bg-[#0F0C14] border border-[#2D253B] rounded-xl px-3 py-2 text-xs font-mono text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition"
-                      />
+                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm font-mono text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500 transition"
+                        id="EditClientModal-field-14"/>
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1">
-                        Pylône Relais / Secteur
+                      <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1" htmlFor="EditClientModal-field-15">
+                        {text("Pylône Relais / Secteur", "Relay tower / sector", "برج الإرسال / القطاع")}
                       </label>
                       <select
                         value={sectorTower}
                         onChange={(e) => setSectorTower(e.target.value)}
-                        className="w-full bg-[#0F0C14] border border-[#2D253B] rounded-xl px-3 py-2 text-xs text-[#F4F0F8] focus:outline-none focus:border-amber-500 transition"
-                      >
+                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:border-amber-500 transition"
+                        id="EditClientModal-field-15">
                         {SECTOR_TOWERS.map((st) => (
                           <option key={st} value={st}>
                             {st}
@@ -621,10 +597,10 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                   {/* Signal Strength Meter */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-[10px] font-semibold text-[#958B9F] uppercase tracking-wider">
-                        Puissance du signal radio (dBm)
+                      <label className="text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider" htmlFor="EditClientModal-field-16">
+                        {text("Puissance du signal radio (dBm)", "Radio signal strength (dBm)", "قوة الإشارة اللاسلكية (dBm)")}
                       </label>
-                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${signalBadge.color}`}>
+                      <span className={`text-[12px] font-mono font-bold px-2 py-0.5 rounded border ${signalBadge.color}`}>
                         {signalStrengthDbm} dBm • {signalBadge.text}
                       </span>
                     </div>
@@ -635,27 +611,27 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                       value={signalStrengthDbm}
                       onChange={(e) => setSignalStrengthDbm(Number(e.target.value))}
                       className="w-full accent-amber-500 cursor-pointer"
-                    />
+                      id="EditClientModal-field-16"/>
                   </div>
                 </div>
 
                 {/* Router Section */}
-                <div className="p-4 rounded-xl bg-[#130F1A] border border-[#261E33] space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-bold text-sky-400">
+                <div className="p-4 rounded-xl bg-[var(--surface-muted)] border border-[var(--border)] space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-bold text-[var(--info)]">
                     <Wifi className="w-4 h-4" />
-                    <span>Routeur & Paramètres Wi-Fi</span>
+                    <span>{text("Routeur & Paramètres Wi-Fi", "Router & Wi-Fi settings", "الموجه وإعدادات Wi-Fi")}</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-[10px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1">
-                        Modèle de routeur
+                      <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1" htmlFor="EditClientModal-field-17">
+                        {text("Modèle de routeur", "Router model", "طراز الموجه")}
                       </label>
                       <select
                         value={routerModel}
                         onChange={(e) => setRouterModel(e.target.value)}
-                        className="w-full bg-[#0F0C14] border border-[#2D253B] rounded-xl px-3 py-2 text-xs text-[#F4F0F8] focus:outline-none focus:border-amber-500 transition"
-                      >
+                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:border-amber-500 transition"
+                        id="EditClientModal-field-17">
                         {ROUTER_MODELS.map((rm) => (
                           <option key={rm} value={rm}>
                             {rm}
@@ -665,35 +641,35 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1">
-                        Nom du Wi-Fi (SSID)
+                      <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1" htmlFor="EditClientModal-field-18">
+                        {text("Nom du Wi-Fi (SSID)", "Wi-Fi name (SSID)", "اسم Wi-Fi (SSID)")}
                       </label>
                       <input
                         type="text"
                         value={wifiSsid}
                         onChange={(e) => setWifiSsid(e.target.value)}
                         placeholder="ex: YounessNet_Salon"
-                        className="w-full bg-[#0F0C14] border border-[#2D253B] rounded-xl px-3 py-2 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition font-mono"
-                      />
+                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500 transition font-mono"
+                        id="EditClientModal-field-18"/>
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1">
-                        Mot de passe Wi-Fi
+                      <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1" htmlFor="EditClientModal-field-19">
+                        {text("Mot de passe Wi-Fi", "Wi-Fi password", "كلمة مرور Wi-Fi")}
                       </label>
                       <div className="relative">
                         <input
                           type={showWifiPassword ? 'text' : 'password'}
                           value={wifiPassword}
                           onChange={(e) => setWifiPassword(e.target.value)}
-                          placeholder="Mot de passe WPA2"
-                          className="w-full bg-[#0F0C14] border border-[#2D253B] rounded-xl px-3 py-2 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition font-mono pr-8 rtl:pr-3 rtl:pl-8"
-                        />
+                          placeholder={text("Mot de passe WPA2", "WPA2 password", "كلمة مرور WPA2")}
+                          className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500 transition font-mono pr-8 rtl:pr-3 rtl:pl-8"
+                          id="EditClientModal-field-19"/>
                         <button
                           type="button"
                           onClick={() => setShowWifiPassword(!showWifiPassword)}
-                          className="absolute right-2 rtl:right-auto rtl:left-2 top-2 text-[#958B9F] hover:text-[#F4F0F8] cursor-pointer"
-                        >
+                          className="absolute right-2 rtl:right-auto rtl:left-2 top-2 text-[var(--muted)] hover:text-[var(--text)] cursor-pointer"
+                         aria-label={text("Afficher ou masquer le mot de passe", "Show or hide password", "إظهار أو إخفاء كلمة المرور")}>
                           {showWifiPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
                       </div>
@@ -702,43 +678,43 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                 </div>
 
                 {/* PPPoE Authentication */}
-                <div className="p-4 rounded-xl bg-[#130F1A] border border-[#261E33] space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                <div className="p-4 rounded-xl bg-[var(--surface-muted)] border border-[var(--border)] space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-bold text-[var(--success)]">
                     <Server className="w-4 h-4" />
-                    <span>Compte & Authentification PPPoE</span>
+                    <span>{text("Compte & Authentification PPPoE", "PPPoE account & authentication", "حساب ومصادقة PPPoE")}</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1">
-                        Identifiant PPPoE (Username)
+                      <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1" htmlFor="EditClientModal-field-20">
+                        {text("Identifiant PPPoE (Username)", "PPPoE username", "اسم المستخدم PPPoE")}
                       </label>
                       <input
                         type="text"
                         value={pppoeUsername}
                         onChange={(e) => setPppoeUsername(e.target.value)}
                         placeholder="user_client_101"
-                        className="w-full bg-[#0F0C14] border border-[#2D253B] rounded-xl px-3 py-2 text-xs text-amber-300 placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition font-mono font-bold"
-                      />
+                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm text-[var(--warning)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500 transition font-mono font-bold"
+                        id="EditClientModal-field-20"/>
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-semibold text-[#958B9F] uppercase tracking-wider mb-1">
-                        Mot de passe PPPoE
+                      <label className="block text-[12px] font-semibold text-[var(--muted)] uppercase tracking-wider mb-1" htmlFor="EditClientModal-field-21">
+                        {text("Mot de passe PPPoE", "PPPoE password", "كلمة مرور PPPoE")}
                       </label>
                       <div className="relative">
                         <input
                           type={showPppoePassword ? 'text' : 'password'}
                           value={pppoePassword}
                           onChange={(e) => setPppoePassword(e.target.value)}
-                          placeholder="Secret PPPoE"
-                          className="w-full bg-[#0F0C14] border border-[#2D253B] rounded-xl px-3 py-2 text-xs text-[#F4F0F8] placeholder-[#958B9F] focus:outline-none focus:border-amber-500 transition font-mono pr-8 rtl:pr-3 rtl:pl-8"
-                        />
+                          placeholder={text("Secret PPPoE", "PPPoE secret", "كلمة مرور PPPoE")}
+                          className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500 transition font-mono pr-8 rtl:pr-3 rtl:pl-8"
+                          id="EditClientModal-field-21"/>
                         <button
                           type="button"
                           onClick={() => setShowPppoePassword(!showPppoePassword)}
-                          className="absolute right-2 rtl:right-auto rtl:left-2 top-2 text-[#958B9F] hover:text-[#F4F0F8] cursor-pointer"
-                        >
+                          className="absolute right-2 rtl:right-auto rtl:left-2 top-2 text-[var(--muted)] hover:text-[var(--text)] cursor-pointer"
+                         aria-label={text("Afficher ou masquer le mot de passe", "Show or hide password", "إظهار أو إخفاء كلمة المرور")}>
                           {showPppoePassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
                       </div>
@@ -750,10 +726,10 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
           </div>
 
           {/* Modal Footer */}
-          <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 flex flex-col-reverse sm:flex-row items-center justify-between gap-3 shrink-0">
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="p-4 sm:p-5 border-t border-[var(--border)] bg-white/95 dark:bg-slate-900/95 flex flex-col-reverse sm:flex-row items-center justify-between gap-3 shrink-0">
+            <div className="text-[12px] text-[var(--muted)]">
               {!isPhoneValid && isPhoneFilled && (
-                <span className="text-rose-500 font-medium">⚠️ Corrigez le numéro de téléphone</span>
+                <span className="text-rose-500 font-medium">{text("⚠️ Corrigez le numéro de téléphone", "⚠️ Correct the phone number", "⚠️ صحح رقم الهاتف")}</span>
               )}
             </div>
 
@@ -762,25 +738,25 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition cursor-pointer border border-slate-200 dark:border-slate-700 flex items-center justify-center"
+                className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 rounded-xl bg-[var(--surface)] hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-semibold transition cursor-pointer border border-slate-200 dark:border-slate-700 flex items-center justify-center"
               >
-                Annuler
+                {text("Annuler", "Cancel", "إلغاء")}
               </button>
 
               <button
                 type="submit"
                 disabled={!canSubmit}
-                className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99]"
+                className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99]"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>Enregistrement...</span>
+                    <span>{text("Enregistrement...", "Saving...", "جارٍ الحفظ...")}</span>
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4 text-white" />
-                    <span>Enregistrer les modifications</span>
+                    <span>{text("Enregistrer les modifications", "Save changes", "حفظ التعديلات")}</span>
                   </>
                 )}
               </button>
@@ -788,6 +764,6 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
           </div>
         </form>
       </div>
-    </div>
+    </Dialog>
   );
 }
