@@ -174,7 +174,9 @@ interface StoreContextType {
   resetDemoData: () => void;
   getWhatsAppReminderUrl: (
     client: Client,
-    extra?: { amount?: number; reason?: string }
+    extra?: { amount?: number; reason?: string },
+    billingMonth?: string,
+    forceTemplate?: 'standard' | 'overdue'
   ) => {
     url: string;
     text: string;
@@ -190,7 +192,8 @@ interface StoreContextType {
   };
   getHistoricalUnpaidReminderUrl: (
     client: Client,
-    monthLabel: string
+    monthLabel: string,
+    isFuture?: boolean
   ) => {
     url: string;
     text: string;
@@ -384,152 +387,30 @@ export function getSubscriptionStatus(
 ): Client['status'] {
   return calculateClientStatus(client.nextDueDate, client.status, referenceDateInput);
 }
-import { cleanMoroccanPhoneNumber, isValidMoroccanPhone } from './operationalUtils';
-export { cleanMoroccanPhoneNumber, isValidMoroccanPhone };
-
-export function buildWhatsAppReminder(
-  client: Client,
-  extra?: { amount?: number; reason?: string }
-) {
-  const daysDiff = getDaysDiffFromToday(client.nextDueDate);
-  const cleanPhone = cleanMoroccanPhoneNumber(client.phone);
-  const baseFee = client.monthlyFee || 100;
-  const extraAmount = Number(extra?.amount) || 0;
-  const extraReason = extra?.reason?.trim() || '';
-  const hasExtra = extraAmount > 0;
-  const totalAmount = baseFee + extraAmount;
-
-  let statusPhraseFr = `arrive à échéance le ${client.nextDueDate}`;
-  let statusPhraseDar = `9riba tsali f ${client.nextDueDate}`;
-
-  if (daysDiff < 0) {
-    const overdueDays = Math.abs(daysDiff);
-    statusPhraseFr = `est arrivé à échéance depuis ${overdueDays} jour(s) (le ${client.nextDueDate})`;
-    statusPhraseDar = `fatet l'échéance dyalo b ${overdueDays} ayam (le ${client.nextDueDate})`;
-  } else if (daysDiff === 0) {
-    statusPhraseFr = `arrive à échéance AUJOURD'HUI (${client.nextDueDate})`;
-    statusPhraseDar = `wslat l'échéance dyalo lyouma (${client.nextDueDate})`;
-  }
-
-  let message = '';
-  if (hasExtra) {
-    message = `📡 *Youness WiFi - Rappel de Facturation & Détail*
-
-Salam M. / Mme *${client.name}*,
-
-🔹 *Français :*
-Nous vous rappelons que votre abonnement Wi-Fi (*${client.subscriptionPlan || 'Abonnement Standard'}*) ${statusPhraseFr}.
-
-📋 *Détail de la facture :*
-• Abonnement de base : *${baseFee} MAD*
-• Frais supplémentaires : *+${extraAmount} MAD* (${extraReason || 'Ajustement'})
-━━━━━━━━━━━━━━━━━
-💰 *TOTAL À RÉGLER : ${totalAmount} MAD*
-
-Merci de bien vouloir régulariser votre mensualité pour maintenir votre connexion internet active et sans interruption.
-Moyens de paiement : Espèces ou Virement CIH / Attijariwafa.
-
-🔹 *الدارجة المغربية :*
-سلام سي/لالة *${client.name}*، تفكير ودي بخصوص واجب اشتراك الويفي لي ${statusPhraseDar}.
-
-📋 *تفاصيل الفاتورة الواجب أداؤها :*
-• الواجب الشهري : *${baseFee} درهم*
-• مصاريف إضافية : *+${extraAmount} درهم* (${extraReason || 'مصاريف إضافية'})
-━━━━━━━━━━━━━━━━━
-💰 *المجموع الواجب أداؤه : ${totalAmount} درهم*
-
-شكراً ليك باش تسوي الواجب ف أقرب وقت باش تبقى الكونيكسيون خدامة مزيان وبلا انقطاع.
-
-📍 _Service Client & Support Technique Youness WiFi_`;
-  } else {
-    message = `📡 *Youness WiFi - Rappel de Facturation*
-
-Salam M. / Mme *${client.name}*,
-
-🔹 *Français :*
-Nous vous rappelons que votre abonnement Wi-Fi (*${client.subscriptionPlan || 'Abonnement Standard'}*) d'un montant de *${baseFee} MAD* ${statusPhraseFr}.
-Merci de bien vouloir régulariser votre mensualité pour maintenir votre connexion internet active et sans interruption.
-Moyens de paiement : Espèces ou Virement CIH / Attijariwafa.
-
-🔹 *الدارجة المغربية :*
-سلام سي/لالة *${client.name}*، تفكير ودي بخصوص واجب اشتراك الويفي (*${baseFee} درهم*) لي ${statusPhraseDar}.
-شكراً ليك باش تسوي الواجب ف أقرب وقت باش تبقى الكونيكسيون خدامة مزيان وبلا انقطاع.
-
-📍 _Service Client & Support Technique Youness WiFi_`;
-  }
-
-  const url = cleanPhone
-    ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
-    : `https://wa.me/?text=${encodeURIComponent(message)}`;
-
-  return { url, text: message, cleanPhone };
-}
-
-export function buildWhatsAppReceipt(
-  payment: PaymentLog,
-  client?: Client
-) {
-  const phone = client?.phone || '';
-  const cleanPhone = phone ? cleanMoroccanPhoneNumber(phone) : '';
-  const baseFee = payment.baseFee || (payment.amount - (payment.extraAmount || 0));
-  const hasExtra = (payment.extraAmount || 0) > 0;
-
-  const receiptNumber = getReceiptNumberOrFallback(payment);
-
-  const extraLineFr = hasExtra
-    ? `• Frais supplémentaires : *+${payment.extraAmount} MAD* (${payment.extraReason || 'Ajustement'})\n`
-    : '';
-  const extraLineDar = hasExtra
-    ? `• مصاريف إضافية : *+${payment.extraAmount} درهم* (${payment.extraReason || 'مصاريف إضافية'})\n`
-    : '';
-
-  const message = `🧾 *Youness WiFi - Reçu de Paiement #${receiptNumber}*
-
-Salam M. / Mme *${payment.clientName}*,
-
-Nous confirmons la bonne réception de votre paiement.
-
-🔹 *Français :*
-📋 *Détail du règlement :*
-• Abonnement de base : *${baseFee} MAD*
-${extraLineFr}━━━━━━━━━━━━━━━━━
-💰 *TOTAL RÉGLÉ : ${payment.amount} MAD*
-📅 Date : ${payment.paymentDate}
-💳 Mode : ${payment.method.toUpperCase().replace('_', ' ')}
-🔄 Valide jusqu'au : *${payment.newDueDate}*
-
-🔹 *الدارجة المغربية :*
-📋 *تفاصيل الأداء :*
-• الواجب الشهري : *${baseFee} درهم*
-${extraLineDar}━━━━━━━━━━━━━━━━━
-💰 *المجموع المؤدى : ${payment.amount} درهم*
-📅 التاريخ : ${payment.paymentDate}
-🔄 تاريخ التجديد القادم : *${payment.newDueDate}*
-
-شكراً على وفائكم. اشتراككم مفعل بنجاح وبلا انقطاع!
-📍 _Youness WiFi Telecom - Tétouan_`;
-
-  const url = cleanPhone
-    ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
-    : `https://wa.me/?text=${encodeURIComponent(message)}`;
-
-  return { url, text: message, cleanPhone };
-}
-
-export const MOROCCAN_ARABIC_MONTHS = [
-  'يناير',
-  'فبراير',
-  'مارس',
-  'أبريل',
-  'ماي',
-  'يونيو',
-  'يوليوز',
-  'غشت',
-  'شتنبر',
-  'أكتوبر',
-  'نونبر',
-  'دجنبر',
-];
+import {
+  cleanMoroccanPhoneNumber,
+  isValidMoroccanPhone,
+  MOROCCAN_ARABIC_MONTHS,
+  formatArabicMonthName,
+  buildWhatsAppDueReminderMessage,
+  buildWhatsAppOverdueNoticeMessage,
+  buildWhatsAppReceiptMessage,
+  buildWhatsAppReminder,
+  buildWhatsAppReceipt,
+  buildHistoricalUnpaidReminderUrl,
+} from './operationalUtils';
+export {
+  cleanMoroccanPhoneNumber,
+  isValidMoroccanPhone,
+  MOROCCAN_ARABIC_MONTHS,
+  formatArabicMonthName,
+  buildWhatsAppDueReminderMessage,
+  buildWhatsAppOverdueNoticeMessage,
+  buildWhatsAppReceiptMessage,
+  buildWhatsAppReminder,
+  buildWhatsAppReceipt,
+  buildHistoricalUnpaidReminderUrl,
+};
 
 export function formatBillingMonthLabel(monthStr: string, lang: 'ar' | 'fr' | 'en' = 'ar'): string {
   if (!monthStr || !monthStr.includes('-')) return monthStr;
@@ -620,22 +501,6 @@ export function getHistoricalMonthList(
   }
 
   return result;
-}
-
-export function buildHistoricalUnpaidReminderUrl(
-  client: Client,
-  monthLabel: string,
-  isFuture: boolean = false
-) {
-  const cleanPhone = cleanMoroccanPhoneNumber(client.phone);
-  const fee = client.monthlyFee || 50;
-  const message = isFuture
-    ? `السلام عليكم أخي ${client.name}، نود تذكيركم بموعد تجديد اشتراك الإنترنت لشهر ${monthLabel} المقبل (الواجب: ${fee} درهم). يمكنكم الأداء المسبق لتفادي أي انقطاع وشكراً - Youness WiFi`
-    : `السلام عليكم أخي ${client.name}، نذكركم بأن اشتراك الإنترنت لشهر ${monthLabel} لم يتم تسديده بعد (المبلغ: ${fee} درهم). المرجو تسوية الواجب وشكراً - Youness WiFi`;
-  const url = cleanPhone
-    ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
-    : `https://wa.me/?text=${encodeURIComponent(message)}`;
-  return { url, text: message, cleanPhone };
 }
 
 export function generateBilanCSV(

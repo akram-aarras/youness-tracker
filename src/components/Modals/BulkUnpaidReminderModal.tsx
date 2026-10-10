@@ -44,21 +44,38 @@ export default function BulkUnpaidReminderModal({
   };
 
   const handleCopyReport = async () => {
-    const lines = [
-      `📊 *Youness WiFi - Rapport des Impayés (${monthLabel})*`,
-      `📅 Date d'évaluation : ${getTodayDateStr()}`,
-      `👥 Total abonnés non réglés : ${unpaidList.length}`,
-      `💰 Montant total à recouvrer : ${totalUnpaidAmount.toLocaleString()} DH`,
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-      ...unpaidList.map((item, idx) => {
-        const c = item.client;
-        const fee = c.monthlyFee || 50;
-        const phoneLabel = c.phone?.trim() ? `📞 ${c.phone}` : '📞 Non renseigné';
-        return `${idx + 1}. *${c.name}* (${c.neighborhood || 'Tétouan'}) - ${fee} DH - ${phoneLabel} - Échéance: ${c.nextDueDate}`;
-      }),
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-      `📍 Youness WiFi Operations - Tétouan`,
-    ];
+    const isAr = language === 'ar';
+    const lines = isAr
+      ? [
+          `📊 *شبكة يونس للإنترنت - تقرير الاشتراكات غير المؤداة (${monthLabel})*`,
+          `📅 تاريخ المعاينة: ${getTodayDateStr()}`,
+          `👥 إجمالي المشتركين غير المسددين: ${unpaidList.length}`,
+          `💰 المبلغ الإجمالي المستحق: ${totalUnpaidAmount.toLocaleString()} درهم`,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          ...unpaidList.map((item, idx) => {
+            const c = item.client;
+            const fee = c.monthlyFee || 200;
+            const phoneLabel = c.phone?.trim() ? `📞 ${c.phone}` : '📞 غير متوفر';
+            return `${idx + 1}. *${c.name}* (${c.neighborhood || 'تطوان'}) - ${fee} درهم - ${phoneLabel} - الأجل: ${c.nextDueDate}`;
+          }),
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          `📍 إدارة شبكة يونس للإنترنت`,
+        ]
+      : [
+          `📊 *Youness WiFi - Rapport des Impayés (${monthLabel})*`,
+          `📅 Date d'évaluation : ${getTodayDateStr()}`,
+          `👥 Total abonnés non réglés : ${unpaidList.length}`,
+          `💰 Montant total à recouvrer : ${totalUnpaidAmount.toLocaleString()} DH`,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          ...unpaidList.map((item, idx) => {
+            const c = item.client;
+            const fee = c.monthlyFee || 200;
+            const phoneLabel = c.phone?.trim() ? `📞 ${c.phone}` : '📞 Non renseigné';
+            return `${idx + 1}. *${c.name}* (${c.neighborhood || 'Tétouan'}) - ${fee} DH - ${phoneLabel} - Échéance: ${c.nextDueDate}`;
+          }),
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          `📍 Youness WiFi Operations - Tétouan`,
+        ];
 
     try {
       await navigator.clipboard.writeText(lines.join('\n'));

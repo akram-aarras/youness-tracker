@@ -43,6 +43,10 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
   const [extraReason, setExtraReason] = useState<string>('Late payment fee');
   const [customReason, setCustomReason] = useState<string>('');
 
+  const daysDiff = getDaysDiffFromToday(client.nextDueDate);
+  const defaultTemplate = daysDiff < 0 ? 'overdue' : 'standard';
+  const [templateType, setTemplateType] = useState<'standard' | 'overdue'>(defaultTemplate);
+
   const baseFee = client.monthlyFee || 100;
   const effectiveReason =
     extraReason === 'Custom adjustment'
@@ -55,10 +59,10 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
     client,
     includeExtra && effectiveExtra > 0
       ? { amount: effectiveExtra, reason: effectiveReason }
-      : undefined
+      : undefined,
+    undefined,
+    templateType
   );
-
-  const daysDiff = getDaysDiffFromToday(client.nextDueDate);
 
   const handleCopy = async () => {
     try {
@@ -81,13 +85,15 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-bold text-[var(--text)] flex items-center gap-2">
-                <span>WhatsApp Billing Reminder</span>
+                <span>{language === 'ar' ? 'تذكير واتساب بالاشتراك' : 'WhatsApp Billing Reminder'}</span>
                 <span className="text-[12px] sm:text-sm font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-[var(--success)] border border-emerald-800/60">
-                  Bilingual
+                  {language === 'ar' ? 'باللغة العربية' : 'Arabe Standard'}
                 </span>
               </h3>
               <p className="text-[12px] sm:text-sm text-[var(--muted)]">
-                Itemized invoice calculation & direct WhatsApp dispatch
+                {language === 'ar'
+                  ? 'إشعار واتساب مخصص باللغة العربية مع إمكانية التعديل والإرسال المباشر'
+                  : 'Itemized invoice calculation & direct Arabic WhatsApp dispatch'}
               </p>
             </div>
           </div>
@@ -220,12 +226,43 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
             )}
           </div>
 
+          {/* Template Selection Tabs */}
+          <div className="space-y-1.5">
+            <label className="text-[12px] uppercase font-bold text-[var(--muted)]">
+              {language === 'ar' ? 'نموذج الرسالة المعتمد' : 'Modèle de message WhatsApp'}
+            </label>
+            <div className="grid grid-cols-2 gap-2 p-1 bg-[var(--surface-muted)] rounded-xl border border-[var(--border)] text-sm">
+              <button
+                type="button"
+                onClick={() => setTemplateType('standard')}
+                className={`py-2 px-3 rounded-lg font-semibold transition cursor-pointer flex items-center justify-center gap-2 ${
+                  templateType === 'standard'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
+                }`}
+              >
+                <span>{language === 'ar' ? 'تذكير بالموعد الشهري (A)' : 'Échéance mensuelle (A)'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTemplateType('overdue')}
+                className={`py-2 px-3 rounded-lg font-semibold transition cursor-pointer flex items-center justify-center gap-2 ${
+                  templateType === 'overdue'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
+                }`}
+              >
+                <span>{language === 'ar' ? 'تذكير بالمتأخرات (B)' : 'Avis de retard (B)'}</span>
+              </button>
+            </div>
+          </div>
+
           {/* Message Preview Box */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm text-[var(--muted)]">
               <span className="font-semibold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1.5">
                 <Calculator className="w-3.5 h-3.5 text-[var(--success)]" />
-                Live Pre-Filled WhatsApp Message:
+                {language === 'ar' ? 'معاينة نص الرسالة (واتساب):' : 'Aperçu du message WhatsApp :'}
               </span>
               <button
                 type="button"
@@ -245,7 +282,7 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
                 )}
               </button>
             </div>
-            <div className="p-4 rounded-xl bg-[var(--background)] border border-[var(--border)] text-sm sm:text-sm text-[var(--text)] whitespace-pre-line leading-relaxed font-sans shadow-inner selection:bg-emerald-500/30 selection:text-emerald-200">
+            <div className="p-4 rounded-xl bg-[var(--background)] border border-[var(--border)] text-sm sm:text-sm text-[var(--text)] whitespace-pre-line leading-relaxed font-sans shadow-inner selection:bg-emerald-500/30 selection:text-emerald-200" dir="rtl">
               {text}
             </div>
           </div>
@@ -255,13 +292,23 @@ export default function WhatsAppPreviewModal({ client, onClose }: Props) {
             <p>
               {cleanPhone ? (
                 <>
-                  Clicking <strong className="text-[var(--text)]">&quot;Launch WhatsApp&quot;</strong> will open
-                  the official WhatsApp chat with <strong>+{cleanPhone}</strong> and pre-load this
-                  exact bilingual message in the chat input.
+                  {language === 'ar' ? (
+                    <>
+                      الضغط على <strong className="text-[var(--text)]">&quot;Envoyer WhatsApp&quot;</strong> سيفتح محادثة واتساب الرسمية مع الرقم <strong>+{cleanPhone}</strong> بنص الرسالة العربية المجهز مباشرة.
+                    </>
+                  ) : (
+                    <>
+                      Clicking <strong className="text-[var(--text)]">&quot;Envoyer WhatsApp&quot;</strong> will open
+                      the official WhatsApp chat with <strong>+{cleanPhone}</strong> and pre-load this
+                      Arabic message in the chat input.
+                    </>
+                  )}
                 </>
               ) : (
                 <>
-                  Cet abonné n&apos;a pas de numéro de téléphone enregistré. Vous pouvez copier le message ci-dessus pour le transmettre manuellement.
+                  {language === 'ar'
+                    ? 'هذا المشترك لا يتوفر على رقم هاتف مسجل. يمكنك نسخ نص الرسالة أعلاه لمشاركتها يدوياً.'
+                    : "Cet abonné n'a pas de numéro de téléphone enregistré. Vous pouvez copier le message ci-dessus pour le transmettre manuellement."}
                 </>
               )}
             </p>

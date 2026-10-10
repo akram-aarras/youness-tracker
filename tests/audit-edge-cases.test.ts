@@ -124,20 +124,28 @@ describe('1. Moroccan Phone Sanitization & WhatsApp Links', () => {
     // Verify encodeURIComponent did not leave unencoded spaces, newlines, or raw Arabic characters in the URL string
     assert.ok(!textParam.includes(' '), 'URL text param should not contain unencoded spaces');
     assert.ok(!textParam.includes('\n'), 'URL text param should not contain unencoded line breaks');
-    assert.ok(!textParam.includes('سلام'), 'URL text param should encode Arabic unicode characters');
+    assert.ok(!textParam.includes('السلام'), 'URL text param should encode Arabic unicode characters');
 
     // Verify roundtrip decode matches original text
     const decoded = decodeURIComponent(textParam);
     assert.strictEqual(decoded, reminder.text);
-    assert.ok(decoded.includes('محمد بنسعيد'));
-    assert.ok(decoded.includes('الدارجة المغربية'));
-    assert.ok(decoded.includes('Youness WiFi'));
+    assert.ok(decoded.includes('السلام عليكم سي محمد بنسعيد'));
+    assert.ok(decoded.includes('نذكركم بأن موعد أداء اشتراك الإنترنت لشهر'));
+    assert.ok(decoded.includes('▫️ الواجب الشهري: 100 درهم'));
+    assert.ok(decoded.includes('إدارة شبكة يونس للإنترنت'));
 
     // Test reminder with extra fee
     const reminderWithExtra = buildWhatsAppReminder(sampleClient, { amount: 30, reason: 'Frais de retard' });
     const decodedExtra = decodeURIComponent(reminderWithExtra.url.replace('https://wa.me/212612345678?text=', ''));
-    assert.ok(decodedExtra.includes('TOTAL À RÉGLER : 130 MAD'));
-    assert.ok(decodedExtra.includes('Frais de retard'));
+    assert.ok(decodedExtra.includes('▫️ الواجب الشهري: 130 درهم'));
+    assert.ok(decodedExtra.includes('إدارة شبكة يونس للإنترنت'));
+
+    // Test overdue reminder (Template B)
+    const overdueClient: Client = { ...sampleClient, nextDueDate: '2026-09-01', status: 'overdue' };
+    const overdueReminder = buildWhatsAppReminder(overdueClient);
+    assert.ok(overdueReminder.text.includes('نود إخباركم بأن اشتراك الإنترنت الخاص بكم متأخر عن موعده المحدد'));
+    assert.ok(overdueReminder.text.includes('▫️ المبلغ المستحق: 100 درهم'));
+    assert.ok(overdueReminder.text.includes('شبكة يونس للإنترنت'));
   });
 
   it('should construct wa.me receipt URL with 212XXXXXXXXX and encoded text', () => {
@@ -148,20 +156,31 @@ describe('1. Moroccan Phone Sanitization & WhatsApp Links', () => {
     const textParam = receipt.url.replace('https://wa.me/212612345678?text=', '');
     const decoded = decodeURIComponent(textParam);
     assert.strictEqual(decoded, receipt.text);
-    assert.ok(decoded.includes('REC-202610-001'));
-    assert.ok(decoded.includes('120 MAD'));
-    assert.ok(decoded.includes('Remplacement connecteur & câble RJ45 <Cat6>'));
+    assert.ok(decoded.includes('السلام عليكم سي محمد بنسعيد'));
+    assert.ok(decoded.includes('تم تسجيل أداء اشتراك الإنترنت الخاص بكم لشهر'));
+    assert.ok(decoded.includes('▫️ المبلغ المؤدى: 120 درهم'));
+    assert.ok(decoded.includes('شبكة يونس للإنترنت'));
   });
 
   it('should construct historical unpaid reminder URL with 212XXXXXXXXX and encoded text', () => {
-    const histReminder = buildHistoricalUnpaidReminderUrl(sampleClient, 'أكتوبر 2026', false);
+    // Historical past/overdue month -> Template B
+    const histReminder = buildHistoricalUnpaidReminderUrl(sampleClient, 'شتنبر 2026', false);
     assert.strictEqual(histReminder.cleanPhone, '212612345678');
     assert.ok(histReminder.url.startsWith('https://wa.me/212612345678?text='));
 
     const textParam = histReminder.url.replace('https://wa.me/212612345678?text=', '');
     const decoded = decodeURIComponent(textParam);
     assert.strictEqual(decoded, histReminder.text);
-    assert.ok(decoded.includes('السلام عليكم أخي محمد بنسعيد'));
+    assert.ok(decoded.includes('السلام عليكم سي محمد بنسعيد'));
+    assert.ok(decoded.includes('نود إخباركم بأن اشتراك الإنترنت الخاص بكم متأخر عن موعده المحدد'));
+    assert.ok(decoded.includes('▫️ المبلغ المستحق: 100 درهم'));
+    assert.ok(decoded.includes('شبكة يونس للإنترنت'));
+
+    // Future upcoming month -> Template A
+    const futureReminder = buildHistoricalUnpaidReminderUrl(sampleClient, 'نونبر 2026', true);
+    assert.ok(futureReminder.text.includes('نذكركم بأن موعد أداء اشتراك الإنترنت لشهر نونبر 2026 قد حان'));
+    assert.ok(futureReminder.text.includes('▫️ الواجب الشهري: 100 درهم'));
+    assert.ok(futureReminder.text.includes('إدارة شبكة يونس للإنترنت'));
   });
 });
 
