@@ -48,6 +48,10 @@ import {
   mapRowToClient,
   mapRowToPayment,
   mapRowToTicket,
+  fetchUsersFromSupabase,
+  type ClientRow,
+  type PaymentRow,
+  type TicketRow,
 } from './supabase';
 
 function setClientSessionCookie(user: User) {
@@ -106,7 +110,7 @@ interface StoreContextType {
     phone: string;
     specialty?: string;
     password?: string;
-  }) => User;
+  }) => Promise<{ success: boolean; user?: User; error?: string }>;
   updateUser: (userId: string, updates: Partial<User>) => void;
   resetUserPassword: (userId: string, newPassword: string) => void;
   updateUserRole: (userId: string, newRole: Role) => void;
@@ -337,15 +341,15 @@ export function generateReceiptNumber(
 }
 
 export function getReceiptNumberOrFallback(
-  payment?: Partial<PaymentLog> | Record<string, any> | null
+  payment?: (Partial<PaymentLog> & { receipt_number?: string; payment_date?: string }) | null
 ): string {
   if (!payment) return generateReceiptNumber(1);
-  const existingNum = payment.receiptNumber || (payment as any).receipt_number;
+  const existingNum = payment.receiptNumber || payment.receipt_number;
   if (typeof existingNum === 'string' && existingNum.trim().length > 0) {
     return existingNum.trim();
   }
 
-  const paymentDate = payment.paymentDate || (payment as any).payment_date || '';
+  const paymentDate = payment.paymentDate || payment.payment_date || '';
   const dateStr = paymentDate
     ? String(paymentDate).replace(/[^0-9]/g, '').slice(0, 8)
     : getTodayDateStr().replace(/[^0-9]/g, '').slice(0, 8);
@@ -380,34 +384,8 @@ export function getSubscriptionStatus(
 ): Client['status'] {
   return calculateClientStatus(client.nextDueDate, client.status, referenceDateInput);
 }
-
-export function cleanMoroccanPhoneNumber(phone?: string | null): string {
-  if (!phone || typeof phone !== 'string' || !phone.trim()) return '';
-  // Strip all non-digit characters (spaces, dashes, parentheses, dots, slashes, plus)
-  let digits = phone.replace(/\D/g, '');
-  if (!digits) return '';
-
-  // Handle international dial prefixes: '00212' or '212'
-  if (digits.startsWith('00212')) {
-    digits = digits.slice(5);
-  } else if (digits.startsWith('212')) {
-    digits = digits.slice(3);
-  }
-
-  // Strip domestic leading zeros (e.g. '06...', '07...', '05...', or '+212 06...')
-  while (digits.startsWith('0')) {
-    digits = digits.slice(1);
-  }
-
-  return digits ? `212${digits}` : '';
-}
-
-export function isValidMoroccanPhone(phone?: string | null): boolean {
-  if (!phone || typeof phone !== 'string' || !phone.trim()) return true;
-  const cleaned = cleanMoroccanPhoneNumber(phone);
-  // Valid Moroccan phone numbers: 212 followed by 5 (landline), 6, or 7 (mobile), and 8 more digits (total 11 digits)
-  return /^212[567]\d{8}$/.test(cleaned);
-}
+import { cleanMoroccanPhoneNumber, isValidMoroccanPhone } from './operationalUtils';
+export { cleanMoroccanPhoneNumber, isValidMoroccanPhone };
 
 export function buildWhatsAppReminder(
   client: Client,
@@ -870,10 +848,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!isSupabaseConfigured || !supabase) return;
     try {
       setIsSyncing(true);
-      const [clientsRes, paymentsRes, ticketsRes] = await Promise.allSettled([
+      const [clientsRes, paymentsRes, ticketsRes, usersRes] = await Promise.allSettled([
         fetchClientsFromSupabase(),
         fetchPaymentsFromSupabase(),
         fetchTicketsFromSupabase(),
+        fetchUsersFromSupabase(),
       ]);
 
       if (clientsRes.status === 'fulfilled' && Array.isArray(clientsRes.value)) {
@@ -896,6 +875,42 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem('youness_wisp_tickets', JSON.stringify(ticketsRes.value));
         } catch {}
       }
+
+      if (usersRes.status === 'fulfilled' && Array.isArray(usersRes.value) && usersRes.value.length > 0) {
+        const fetchedUsers = usersRes.value;
+        setUsers((prev) => {
+          const fetchedMap = new Map(fetchedUsers.map((u) => [u.email.toLowerCase(), u]));
+          const merged = fetchedUsers.concat(
+            prev.filter((u) => !fetchedMap.has(u.email.toLowerCase()))
+          );
+          try {
+            localStorage.setItem('youness_wisp_users', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+
+        setTechnicians((prev) => {
+          const techUsers = fetchedUsers.filter((u) => u.role === 'technician' || u.role === 'field_lead');
+          const existingTechMap = new Map(prev.map((t) => [t.id, t]));
+          techUsers.forEach((u) => {
+            const techId = u.technicianId || u.id;
+            if (!existingTechMap.has(techId)) {
+              existingTechMap.set(techId, {
+                id: techId,
+                name: u.name,
+                phone: u.phone,
+                specialty: u.specialty || (u.role === 'field_lead' ? "Chef d'Équipe Terrain" : 'Technicien Réseau & Câblage'),
+                status: 'active',
+              });
+            }
+          });
+          const updated = Array.from(existingTechMap.values());
+          try {
+            localStorage.setItem('youness_wisp_technicians', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+      }
     } catch (err) {
       console.warn('[Sync] Could not refresh from Supabase:', err);
     } finally {
@@ -906,55 +921,60 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // 1. Load from localStorage on client mount (Safe, non-destructive parsing)
   // 2. Fetch fresh records from Supabase on startup
   useEffect(() => {
-    try {
-      // Check saved language
-      const savedLang = localStorage.getItem('atlasnet_language') as Language | null;
-      if (savedLang && (savedLang === 'en' || savedLang === 'fr' || savedLang === 'ar')) {
-        setLanguageState(savedLang);
-        if (typeof document !== 'undefined') {
-          document.documentElement.dir = savedLang === 'ar' ? 'rtl' : 'ltr';
-          document.documentElement.lang = savedLang;
+    // Restore external storage after mount; cancel the callback on unmount so
+    // Strict Mode cannot hydrate twice or enable persistence before restoration.
+    const hydrationTimer = window.setTimeout(() => {
+      try {
+        // Check saved language
+        const savedLang = localStorage.getItem('atlasnet_language') as Language | null;
+        if (savedLang && (savedLang === 'en' || savedLang === 'fr' || savedLang === 'ar')) {
+          setLanguageState(savedLang);
+          if (typeof document !== 'undefined') {
+            document.documentElement.dir = savedLang === 'ar' ? 'rtl' : 'ltr';
+            document.documentElement.lang = savedLang;
+          }
         }
+
+        // Safe JSON parse helper that protects subscriber records
+        const safeParse = <T,>(key: string, fallback: T): T => {
+          try {
+            const item = localStorage.getItem(key);
+            if (!item) return fallback;
+            return JSON.parse(item) as T;
+          } catch (e) {
+            console.warn(`Safe parse fallback for key: ${key}`, e);
+            return fallback;
+          }
+        };
+
+        const storedUser = safeParse<User | null>('youness_wisp_user', null);
+        const storedUsers = safeParse<User[]>('youness_wisp_users', INITIAL_USERS);
+        const storedTechnicians = safeParse<Technician[]>('youness_wisp_technicians', INITIAL_TECHNICIANS);
+        const storedClients = safeParse<Client[]>('youness_wisp_clients', []);
+        const storedTickets = safeParse<Ticket[]>('youness_wisp_tickets', []);
+        const storedPayments = safeParse<PaymentLog[]>('youness_wisp_payments', []);
+
+        setUsers(storedUsers && storedUsers.length > 0 ? storedUsers : INITIAL_USERS);
+        setTechnicians(storedTechnicians && storedTechnicians.length > 0 ? storedTechnicians : INITIAL_TECHNICIANS);
+        if (storedUser) {
+          setCurrentUser(storedUser);
+          setClientSessionCookie(storedUser);
+        } else {
+          setCurrentUser(null);
+        }
+        setClients(storedClients || []);
+        setTickets(storedTickets || []);
+        setPayments(storedPayments || []);
+      } catch (err) {
+        console.error('Error loading state from localStorage:', err);
+      } finally {
+        setIsHydrated(true);
       }
 
-      // Safe JSON parse helper that protects subscriber records
-      const safeParse = <T,>(key: string, fallback: T): T => {
-        try {
-          const item = localStorage.getItem(key);
-          if (!item) return fallback;
-          return JSON.parse(item) as T;
-        } catch (e) {
-          console.warn(`Safe parse fallback for key: ${key}`, e);
-          return fallback;
-        }
-      };
-
-      const storedUser = safeParse<User | null>('youness_wisp_user', null);
-      const storedUsers = safeParse<User[]>('youness_wisp_users', INITIAL_USERS);
-      const storedTechnicians = safeParse<Technician[]>('youness_wisp_technicians', INITIAL_TECHNICIANS);
-      const storedClients = safeParse<Client[]>('youness_wisp_clients', []);
-      const storedTickets = safeParse<Ticket[]>('youness_wisp_tickets', []);
-      const storedPayments = safeParse<PaymentLog[]>('youness_wisp_payments', []);
-
-      setUsers(storedUsers && storedUsers.length > 0 ? storedUsers : INITIAL_USERS);
-      setTechnicians(storedTechnicians && storedTechnicians.length > 0 ? storedTechnicians : INITIAL_TECHNICIANS);
-      if (storedUser) {
-        setCurrentUser(storedUser);
-        setClientSessionCookie(storedUser);
-      } else {
-        setCurrentUser(null);
-      }
-      setClients(storedClients || []);
-      setTickets(storedTickets || []);
-      setPayments(storedPayments || []);
-    } catch (err) {
-      console.error('Error loading state from localStorage:', err);
-    } finally {
-      setIsHydrated(true);
-    }
-
-    // Hydrate directly from Supabase on application load
-    refreshFromSupabase();
+      // Hydrate directly from Supabase on application load
+      refreshFromSupabase();
+    }, 0);
+    return () => window.clearTimeout(hydrationTimer);
   }, [refreshFromSupabase]);
 
   // Multi-Device Synchronization: Re-sync when user opens or returns to tab on phone or PC
@@ -982,17 +1002,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     const channel = supabase
       .channel('public:all')
-      .on(
+      .on<Record<string, unknown>>(
         'postgres_changes',
         { event: '*', schema: 'public' },
-        (payload: any) => {
+        (payload) => {
           const { eventType, new: newRow, old: oldRow, table } = payload;
 
           // 1. CLIENTS TABLE
           if (table === 'clients') {
             if (eventType === 'INSERT') {
               if (newRow && newRow.id) {
-                const clientObj = mapRowToClient(newRow);
+                const clientObj = mapRowToClient(newRow as ClientRow);
                 setClients((prev) => {
                   const filtered = prev.filter((c) => c.id !== clientObj.id);
                   const updated = [clientObj, ...filtered];
@@ -1004,7 +1024,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               }
             } else if (eventType === 'UPDATE') {
               if (newRow && newRow.id) {
-                const clientObj = mapRowToClient(newRow);
+                const clientObj = mapRowToClient(newRow as ClientRow);
                 setClients((prev) => {
                   const updated = prev.map((c) => (c.id === clientObj.id ? clientObj : c));
                   try {
@@ -1047,7 +1067,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           if (table === 'payment_logs' || table === 'payments') {
             if (eventType === 'INSERT') {
               if (newRow && newRow.id) {
-                const paymentObj = mapRowToPayment(newRow);
+                const paymentObj = mapRowToPayment(newRow as PaymentRow);
                 setPayments((prev) => {
                   const filtered = prev.filter((p) => p.id !== paymentObj.id);
                   const updated = [paymentObj, ...filtered];
@@ -1059,7 +1079,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               }
             } else if (eventType === 'UPDATE') {
               if (newRow && newRow.id) {
-                const paymentObj = mapRowToPayment(newRow);
+                const paymentObj = mapRowToPayment(newRow as PaymentRow);
                 setPayments((prev) => {
                   const updated = prev.map((p) => (p.id === paymentObj.id ? paymentObj : p));
                   try {
@@ -1088,7 +1108,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           if (table === 'tickets') {
             if (eventType === 'INSERT') {
               if (newRow && newRow.id) {
-                const ticketObj = mapRowToTicket(newRow);
+                const ticketObj = mapRowToTicket(newRow as TicketRow);
                 setTickets((prev) => {
                   const filtered = prev.filter((t) => t.id !== ticketObj.id);
                   const updated = [ticketObj, ...filtered];
@@ -1100,7 +1120,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               }
             } else if (eventType === 'UPDATE') {
               if (newRow && newRow.id) {
-                const ticketObj = mapRowToTicket(newRow);
+                const ticketObj = mapRowToTicket(newRow as TicketRow);
                 setTickets((prev) => {
                   const updated = prev.map((t) => (t.id === ticketObj.id ? ticketObj : t));
                   try {
@@ -1215,7 +1235,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(null);
     localStorage.removeItem('youness_wisp_user');
     if (typeof window !== 'undefined') {
-      window.location.href = '/login';
+      window.location.assign(new URL('/login', window.location.origin).href);
     }
   };
 
@@ -1325,48 +1345,66 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addUser = (userData: {
+  const addUser = async (userData: {
     name: string;
     email: string;
     role: Role;
     phone: string;
     specialty?: string;
     password?: string;
-  }): User => {
-    const id = `user-${userData.role === 'admin' ? 'admin' : 'tech'}-${Date.now().toString().slice(-4)}`;
-    const username = userData.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const avatar = userData.role === 'admin' ? '👨‍💼' : '🔧';
+  }): Promise<{ success: boolean; user?: User; error?: string }> => {
+    try {
+      const res = await fetch('/api/team/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
 
-    let technicianId: string | undefined = undefined;
-    if (userData.role === 'technician' || userData.role === 'field_lead') {
-      technicianId = `tech-${technicians.length + 1}`;
-      const newTech: Technician = {
-        id: technicianId,
-        name: userData.name.trim(),
-        phone: userData.phone.trim(),
-        specialty: userData.specialty?.trim() || (userData.role === 'field_lead' ? 'Chef d\'Équipe Terrain' : 'Technicien Réseau & Câblage'),
-        status: 'active',
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return {
+          success: false,
+          error: data.error || 'Erreur lors de la création du compte.',
+        };
+      }
+
+      const createdUser: User = data.user;
+
+      if ((createdUser.role === 'technician' || createdUser.role === 'field_lead') && createdUser.technicianId) {
+        const newTech: Technician = {
+          id: createdUser.technicianId,
+          name: createdUser.name,
+          phone: createdUser.phone || '',
+          specialty: createdUser.specialty || (createdUser.role === 'field_lead' ? "Chef d'Équipe Terrain" : 'Technicien Réseau & Câblage'),
+          status: 'active',
+        };
+        setTechnicians((prev) => {
+          const filtered = prev.filter((t) => t.id !== createdUser.technicianId);
+          const updated = [...filtered, newTech];
+          try {
+            localStorage.setItem('youness_wisp_technicians', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+      }
+
+      setUsers((prev) => {
+        const filtered = prev.filter((u) => u.id !== createdUser.id && u.email !== createdUser.email);
+        const updated = [...filtered, createdUser];
+        try {
+          localStorage.setItem('youness_wisp_users', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+
+      return { success: true, user: createdUser };
+    } catch (err) {
+      console.error('addUser error:', err);
+      return {
+        success: false,
+        error: 'Erreur réseau lors de la communication avec le serveur.',
       };
-      setTechnicians((prev) => [...prev, newTech]);
     }
-
-    const newUser: User = {
-      id,
-      email: userData.email.toLowerCase().trim(),
-      username,
-      name: userData.name.trim(),
-      role: userData.role,
-      technicianId,
-      phone: userData.phone.trim(),
-      avatar,
-      status: 'active',
-      password: userData.password || 'Tech123!',
-      specialty: userData.specialty?.trim(),
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-
-    setUsers((prev) => [...prev, newUser]);
-    return newUser;
   };
 
   const updateUserRole = (userId: string, newRole: Role) => {
@@ -1834,7 +1872,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetDemoData = () => {
-    const currentLang = language;
     localStorage.removeItem('youness_wisp_clients');
     localStorage.removeItem('youness_wisp_tickets');
     localStorage.removeItem('youness_wisp_payments');

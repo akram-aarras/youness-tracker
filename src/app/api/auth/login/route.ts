@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { INITIAL_USERS } from '@/lib/mockData';
 import { encodeSession, SESSION_COOKIE_NAME, SessionPayload } from '@/lib/auth';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
-import { User } from '@/lib/types';
+import { User, Role } from '@/lib/types';
 
 export async function POST(request: Request) {
   try {
@@ -18,36 +18,90 @@ export async function POST(request: Request) {
     }
 
     let authenticatedUser: User | null = null;
+    let authErrorMessage: string | null = null;
 
     // 1. If Supabase is configured, authenticate via Supabase Auth
     if (isSupabaseConfigured && supabase) {
       try {
+        let emailToUse = query;
+        // If identifier is a username without @, attempt to lookup the user's email
+        if (!query.includes('@')) {
+          const { data: userByUsername } = await supabase
+            .from('user_profiles')
+            .select('email')
+            .eq('username', query)
+            .maybeSingle();
+
+          if (userByUsername?.email) {
+            emailToUse = userByUsername.email;
+          }
+        }
+
         const { data: authData, error: authError } =
           await supabase.auth.signInWithPassword({
-            email: query,
+            email: emailToUse,
             password: password || 'Admin123!',
           });
 
-        if (!authError && authData.user) {
+        if (authError) {
+          if (authError.message?.toLowerCase().includes('email not confirmed')) {
+            return NextResponse.json(
+              { error: 'Adresse email non confirmée. Veuillez contacter l’administrateur.' },
+              { status: 401 }
+            );
+          }
+          if (authError.status === 429 || authError.message?.toLowerCase().includes('rate limit')) {
+            return NextResponse.json(
+              { error: 'Trop de tentatives de connexion. Veuillez patienter avant de réessayer.' },
+              { status: 429 }
+            );
+          }
+          authErrorMessage = authError.message;
+        } else if (authData.user) {
+          const meta = authData.user.user_metadata || {};
           // Fetch user profile from user_profiles table
           const { data: profile } = await supabase
             .from('user_profiles')
             .select('*')
             .eq('id', authData.user.id)
-            .single();
+            .maybeSingle();
 
           if (profile) {
+            if (profile.status === 'inactive') {
+              return NextResponse.json(
+                { error: 'Compte désactivé. Veuillez contacter le superviseur NOC Youness.' },
+                { status: 403 }
+              );
+            }
+
+            const effectiveRole = (meta.role === 'field_lead' ? 'field_lead' : profile.role) as Role;
+
             authenticatedUser = {
               id: profile.id,
               email: profile.email,
-              username: profile.username,
-              name: profile.name,
-              role: profile.role,
-              technicianId: profile.technician_id,
-              phone: profile.phone || '',
-              avatar: profile.avatar || '👤',
+              username: profile.username || meta.username || profile.email.split('@')[0],
+              name: profile.name || meta.name || 'Membre de l’équipe',
+              role: effectiveRole,
+              technicianId: profile.technician_id || meta.technician_id,
+              phone: profile.phone || meta.phone || '',
+              avatar: profile.avatar || meta.avatar || (effectiveRole === 'admin' ? '👨‍💼' : '🔧'),
               status: profile.status || 'active',
-              specialty: profile.specialty,
+              specialty: profile.specialty || meta.specialty,
+            };
+          } else {
+            // Profile row missing: fallback to user_metadata on the auth user
+            const effectiveRole = (meta.role || meta.dbRole || 'technician') as Role;
+            authenticatedUser = {
+              id: authData.user.id,
+              email: authData.user.email || emailToUse,
+              username: meta.username || (authData.user.email ? authData.user.email.split('@')[0] : emailToUse),
+              name: meta.name || 'Membre de l’équipe',
+              role: effectiveRole,
+              technicianId: meta.technician_id,
+              phone: meta.phone || '',
+              avatar: meta.avatar || (effectiveRole === 'admin' ? '👨‍💼' : '🔧'),
+              status: 'active',
+              specialty: meta.specialty,
             };
           }
         }
@@ -69,6 +123,12 @@ export async function POST(request: Request) {
       );
 
       if (!found) {
+        if (authErrorMessage && !authErrorMessage.toLowerCase().includes('invalid login credentials')) {
+          return NextResponse.json(
+            { error: authErrorMessage },
+            { status: 401 }
+          );
+        }
         return NextResponse.json(
           { error: 'Identifiant ou mot de passe incorrect. Vérifiez vos identifiants.' },
           { status: 401 }

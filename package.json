@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test tests/audit-edge-cases.test.ts"
+    "test": "node --experimental-strip-types --test tests/audit-edge-cases.test.ts",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "node scripts/qa/workflows.mjs && node scripts/qa/keyboard-auth.mjs",
+    "test:responsive": "node scripts/qa/responsive.mjs",
+    "test:forms": "node scripts/qa/forms.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",
@@ -22,8 +26,10 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "axe-core": "4.14.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
+    "playwright-core": "1.64.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

@@ -5,10 +5,10 @@ import { decodeSession, SESSION_COOKIE_NAME } from './lib/auth';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Allow public assets, internal Next.js paths, and authentication API routes
+  // 1. Allow public assets, internal Next.js paths, and API routes
   if (
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/') ||
     pathname === '/favicon.ico' ||
     pathname.includes('.')
   ) {

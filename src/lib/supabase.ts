@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Client, PaymentLog, Ticket, SubscriptionStatus, TicketCategory, TicketPriority, TicketStatus, PaymentMethod } from './types';
+import { Client, PaymentLog, Ticket, SubscriptionStatus, TicketCategory, TicketPriority, TicketStatus, PaymentMethod, User, Role } from './types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -20,11 +20,35 @@ export const supabase = isSupabaseConfigured
     })
   : null;
 
+// Nullable database fields and numeric Postgres values at the mapping boundary.
+type NullableFields<T> = { [K in keyof T]?: T[K] | null };
+export type ClientRow = { id: string } & NullableFields<{
+  name: string; phone: string; neighborhood: string; address: string;
+  gps_coordinates: string; google_maps_url: string; status: SubscriptionStatus;
+  monthly_fee: number | string; subscription_plan: string; next_due_date: string;
+  last_payment_date: string; installation_date: string; hardware: Client['hardware'];
+  notes: string; updated_at: string;
+}>;
+export type PaymentRow = { id: string } & NullableFields<{
+  receipt_number: string; client_id: string; client_name: string; amount: number | string;
+  base_fee: number | string; extra_amount: number | string; extra_reason: string;
+  method: PaymentMethod; payment_date: string; billing_month: string;
+  previous_due_date: string; new_due_date: string; recorded_by: string; notes: string;
+}>;
+export type TicketRow = { id: string } & NullableFields<{
+  ticket_number: string; client_id: string; client_name: string; client_phone: string;
+  client_neighborhood: string; client_address: string; google_maps_url: string;
+  category: TicketCategory; priority: TicketPriority; status: TicketStatus;
+  assigned_to_technician_id: string; assigned_technician_name: string;
+  description: string; resolution_note: string; created_at: string;
+  updated_at: string; resolved_at: string;
+}>;
+
 // ============================================================================
 // Bidirectional Mappers (Snake_Case Postgres <-> CamelCase App State)
 // ============================================================================
 
-export function mapRowToClient(row: Record<string, any>): Client {
+export function mapRowToClient(row: ClientRow): Client {
   return {
     id: row.id,
     name: row.name || '',
@@ -44,8 +68,8 @@ export function mapRowToClient(row: Record<string, any>): Client {
   };
 }
 
-export function mapClientToRow(client: Partial<Client>): Record<string, any> {
-  const row: Record<string, any> = {};
+export function mapClientToRow(client: Partial<Client>): Partial<ClientRow> {
+  const row: Partial<ClientRow> = {};
   if (client.id !== undefined) row.id = client.id;
   if (client.name !== undefined) row.name = client.name;
   if (client.phone !== undefined) row.phone = client.phone;
@@ -65,7 +89,7 @@ export function mapClientToRow(client: Partial<Client>): Record<string, any> {
   return row;
 }
 
-function fallbackReceiptNumber(rowOrPayment: Record<string, any>): string {
+function fallbackReceiptNumber(rowOrPayment: { id?: string; payment_date?: string | null; paymentDate?: string }): string {
   const dateStr = String(rowOrPayment.payment_date || rowOrPayment.paymentDate || '')
     .replace(/[^0-9]/g, '')
     .slice(0, 8);
@@ -75,7 +99,7 @@ function fallbackReceiptNumber(rowOrPayment: Record<string, any>): string {
   return `REC-${yyyymmdd}-${suffix}`;
 }
 
-export function mapRowToPayment(row: Record<string, any>): PaymentLog {
+export function mapRowToPayment(row: PaymentRow): PaymentLog {
   const paymentDate = row.payment_date ? String(row.payment_date).split('T')[0] : '';
   const receiptNumber = (row.receipt_number && String(row.receipt_number).trim())
     ? String(row.receipt_number).trim()
@@ -99,7 +123,7 @@ export function mapRowToPayment(row: Record<string, any>): PaymentLog {
   };
 }
 
-export function mapPaymentToRow(payment: PaymentLog): Record<string, any> {
+export function mapPaymentToRow(payment: PaymentLog): PaymentRow {
   const receiptNumber = (payment.receiptNumber && payment.receiptNumber.trim())
     ? payment.receiptNumber.trim()
     : fallbackReceiptNumber(payment);
@@ -122,7 +146,7 @@ export function mapPaymentToRow(payment: PaymentLog): Record<string, any> {
   };
 }
 
-export function mapRowToTicket(row: Record<string, any>): Ticket {
+export function mapRowToTicket(row: TicketRow): Ticket {
   return {
     id: row.id,
     ticketNumber: row.ticket_number || '',
@@ -145,8 +169,8 @@ export function mapRowToTicket(row: Record<string, any>): Ticket {
   };
 }
 
-export function mapTicketToRow(ticket: Partial<Ticket>): Record<string, any> {
-  const row: Record<string, any> = {};
+export function mapTicketToRow(ticket: Partial<Ticket>): Partial<TicketRow> {
+  const row: Partial<TicketRow> = {};
   if (ticket.id !== undefined) row.id = ticket.id;
   if (ticket.ticketNumber !== undefined) row.ticket_number = ticket.ticketNumber;
   if (ticket.clientId !== undefined) row.client_id = ticket.clientId || null;
@@ -234,6 +258,37 @@ export async function fetchTicketsFromSupabase(): Promise<Ticket[] | null> {
     return (data || []).map(mapRowToTicket);
   } catch (err) {
     console.warn('[Supabase] fetchTickets exception:', err);
+    return null;
+  }
+}
+
+export async function fetchUsersFromSupabase(): Promise<User[] | null> {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.warn('[Supabase] fetchUsers failed:', error.message);
+      return null;
+    }
+    return (data || []).map((row) => ({
+      id: row.id,
+      email: row.email,
+      username: row.username,
+      name: row.name,
+      role: row.role as any,
+      technicianId: row.technician_id,
+      phone: row.phone || '',
+      avatar: row.avatar || '👤',
+      status: row.status || 'active',
+      specialty: row.specialty,
+      createdAt: row.created_at ? String(row.created_at).split('T')[0] : undefined,
+    }));
+  } catch (err) {
+    console.warn('[Supabase] fetchUsers exception:', err);
     return null;
   }
 }
@@ -339,7 +394,7 @@ export async function updateClientDueDateInSupabase(
 ): Promise<boolean> {
   if (!supabase) return false;
   try {
-    const updates: Record<string, any> = {
+    const updates: Partial<ClientRow> = {
       next_due_date: nextDueDate,
       last_payment_date: lastPaymentDate,
       status,

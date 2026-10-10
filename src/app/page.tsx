@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
+import Toast from '@/components/ui/Toast';
 import { useStore } from '@/lib/store';
 import { Client } from '@/lib/types';
 import LoginScreen from '@/components/LoginScreen';
@@ -11,17 +13,22 @@ import TicketBoard from '@/components/TicketBoard';
 import TechnicianView from '@/components/TechnicianView';
 import UserManagement from '@/components/UserManagement';
 
-// Modals
-import RegisterClientModal from '@/components/Modals/RegisterClientModal';
-import RecordPaymentModal from '@/components/Modals/RecordPaymentModal';
-import CreateTicketModal from '@/components/Modals/CreateTicketModal';
-import ClientDetailModal from '@/components/Modals/ClientDetailModal';
-import WhatsAppPreviewModal from '@/components/Modals/WhatsAppPreviewModal';
+// Keep lazy modal loading inside a local Suspense boundary. Suspending the
+// workspace would hide the trigger and lose keyboard focus before Dialog opens.
+const RegisterClientModal = dynamic(() => import('@/components/Modals/RegisterClientModal'), { loading: () => null });
+const RecordPaymentModal = dynamic(() => import('@/components/Modals/RecordPaymentModal'), { loading: () => null });
+const CreateTicketModal = dynamic(() => import('@/components/Modals/CreateTicketModal'), { loading: () => null });
+const ClientDetailModal = dynamic(() => import('@/components/Modals/ClientDetailModal'), { loading: () => null });
+const WhatsAppPreviewModal = dynamic(() => import('@/components/Modals/WhatsAppPreviewModal'), { loading: () => null });
 
 export default function HomePage() {
-  const { currentUser, isHydrated, clients } = useStore();
+  const { currentUser, isHydrated, clients, language } = useStore();
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'tickets' | 'team'>('dashboard');
+
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const closeFeedback = React.useCallback(() => setFeedback(null), []);
+  const text = (fr: string, en: string, ar: string) => language === 'ar' ? ar : language === 'en' ? en : fr;
 
   // Modal States
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -34,10 +41,7 @@ export default function HomePage() {
   // Prevent flash during hydration
   if (!isHydrated) {
     return (
-      <div className="min-h-screen bg-[#F4F5F7] dark:bg-[#0F0C14] flex items-center justify-center text-xs text-slate-500 dark:text-[#958B9F] font-mono">
-        <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping mr-2" />
-        Authenticating Secure NOC Gateway...
-      </div>
+      <div className="loading-screen" role="status"><div className="loading-bar" />Youness WiFi</div>
     );
   }
 
@@ -53,14 +57,14 @@ export default function HomePage() {
 
   // Owner / Admin NOC View
   return (
-    <div className="min-h-screen bg-[#F4F5F7] dark:bg-[#0F0C14] text-slate-900 dark:text-[#F4F0F8] flex flex-col relative overflow-x-hidden transition-colors">
+    <div className="app-shell">
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenPaymentModal={() => setPaymentModalClientId('')}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main id="main-content" tabIndex={-1} className="app-content">
         {activeTab === 'dashboard' && (
           <AdminDashboard
             onOpenRegisterModal={() => setShowRegisterModal(true)}
@@ -101,9 +105,10 @@ export default function HomePage() {
         {activeTab === 'team' && <UserManagement />}
       </main>
 
+      {feedback && <Toast message={feedback} onClose={closeFeedback} />}
       {/* MODALS */}
       {showRegisterModal && (
-        <RegisterClientModal
+        <RegisterClientModal onSuccess={() => setFeedback(text('Abonné enregistré.', 'Subscriber saved.', 'تم تسجيل المشترك.'))}
           onClose={() => setShowRegisterModal(false)}
         />
       )}
@@ -120,7 +125,7 @@ export default function HomePage() {
       )}
 
       {ticketModalClientId !== null && (
-        <CreateTicketModal
+        <CreateTicketModal onSuccess={() => setFeedback(text('Ticket créé et assigné.', 'Ticket created and assigned.', 'تم إنشاء التذكرة وتعيين التقني.'))}
           initialClientId={ticketModalClientId || undefined}
           onClose={() => setTicketModalClientId(null)}
         />

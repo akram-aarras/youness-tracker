@@ -1,16 +1,11 @@
 'use client';
 
+import Dialog from '@/components/ui/Dialog';
+
 import React from 'react';
 import { Client, PaymentLog } from '@/lib/types';
 import { useStore, getReceiptNumberOrFallback } from '@/lib/store';
-import {
-  X,
-  Printer,
-  Share2,
-  CheckCircle,
-  Phone,
-  MapPin,
-} from 'lucide-react';
+import { X, Printer, Share2, CheckCircle, Phone, MapPin } from 'lucide-react';
 
 interface Props {
   payment: PaymentLog;
@@ -19,7 +14,7 @@ interface Props {
 }
 
 export default function InvoiceReceiptModal({ payment, client, onClose }: Props) {
-  const { clients, getWhatsAppReceiptUrl, language, t, localizePlanName, localizePaymentMethod, dir } = useStore();
+  const { clients, getWhatsAppReceiptUrl, language, t, localizePlanName, localizePaymentMethod } = useStore();
 
   // Resolve client from store if not provided directly
   const resolvedClient = client || clients.find((c) => c.id === payment.clientId);
@@ -54,41 +49,17 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
   const billingMonth = payment.billingMonth || payment.paymentDate?.substring(0, 7) || payment.paymentDate;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="receipt-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150 print:p-0 print:block print:static"
-    >
+    <Dialog onClose={onClose} label="Invoice Receipt">
       {/* Strict 1-Page Media Print Isolation CSS */}
       <style jsx global>{`
         @media print {
-          @page {
-            size: portrait;
-            margin: 8mm;
-          }
-          body {
-            visibility: hidden !important;
-            background: white !important;
-          }
-          #receipt-print-section,
-          #receipt-print-section * {
-            visibility: visible !important;
-          }
-          #receipt-print-section {
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-            color: #0f172a !important;
-            page-break-after: avoid !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-          }
+          @page { size: A4 portrait; margin: 10mm; }
+          html, body { margin:0 !important; padding:0 !important; min-height:0 !important; height:auto !important; background:white !important; }
+          body *:not(:has(#receipt-print-section)):not(#receipt-print-section):not(#receipt-print-section *) { display:none !important; }
+          body *:has(#receipt-print-section) { display:block !important; position:static !important; min-height:0 !important; height:auto !important; max-height:none !important; width:100% !important; max-width:none !important; margin:0 !important; padding:0 !important; border:0 !important; background:white !important; box-shadow:none !important; overflow:visible !important; }
+          dialog::backdrop { display:none !important; backdrop-filter:none !important; }
+          #receipt-print-section { position:static !important; width:100% !important; margin:0 !important; padding:0 !important; background:white !important; color:#192336 !important; break-inside:avoid !important; }
+          #receipt-print-section [class~="print:hidden"] { display:none !important; }
         }
       `}</style>
 
@@ -120,14 +91,14 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
                 <span className="text-xl font-black tracking-tight text-slate-900">
                   YOUNESS<span className="text-amber-500">WIFI</span>
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-mono">
+                <span className="text-[12px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-mono">
                   {language === 'ar' ? 'موزع تطوان WISP' : 'WISP TÉTOUAN'}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 mt-1">
+              <p className="text-[12px] text-slate-500 mt-1">
                 {language === 'ar' ? 'الولاية / بوجراح، تطوان' : 'Wilaya / Boujarah, Tétouan'}
               </p>
-              <p className="text-[11px] text-slate-500 font-mono">
+              <p className="text-[12px] text-slate-500 font-mono">
                 {language === 'ar' ? 'مكتب الدعم: +212 661-000111' : 'Support : +212 661-000111'}
               </p>
             </div>
@@ -135,34 +106,34 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
             <div className="text-right rtl:text-left pr-6 sm:pr-0 rtl:pr-0 rtl:pl-6 sm:rtl:pl-0 print:pr-0 print:rtl:pl-0">
               <div
                 id="receipt-modal-title"
-                className="text-[10px] uppercase font-bold text-slate-400 tracking-wider"
+                className="text-[12px] uppercase font-bold text-slate-400 tracking-wider"
               >
                 {language === 'ar' ? 'وصل أداء رقم' : 'Reçu de Paiement N°'}
               </div>
-              <div className="font-mono font-bold text-xs sm:text-sm text-slate-900 mt-0.5">
+              <div className="font-mono font-bold text-sm sm:text-sm text-slate-900 mt-0.5">
                 {receiptNumber}
               </div>
-              <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+              <div className="text-[12px] text-slate-500 font-mono mt-0.5">
                 {payment.paymentDate}
               </div>
             </div>
           </div>
 
           {/* 2. Subscriber Box (Compact 2-column grid) */}
-          <div className="grid grid-cols-2 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+          <div className="grid grid-cols-2 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
             <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+              <span className="text-[12px] uppercase font-bold text-slate-400 block mb-0.5">
                 {language === 'ar' ? 'المشترك' : 'Abonné / Client'}
               </span>
               <div className="font-bold text-slate-900 truncate">{payment.clientName}</div>
-              <div className="text-[11px] text-slate-600 font-mono flex items-center gap-1 mt-0.5">
+              <div className="text-[12px] text-slate-600 font-mono flex items-center gap-1 mt-0.5">
                 <Phone className="w-3 h-3 text-emerald-600 shrink-0" />
                 <span className="truncate">{clientPhone}</span>
               </div>
             </div>
 
             <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+              <span className="text-[12px] uppercase font-bold text-slate-400 block mb-0.5">
                 {language === 'ar' ? 'المنطقة والمعرف' : 'Zone & Identifiant'}
               </span>
               <div className="text-slate-800 font-medium truncate flex items-center gap-1">
@@ -170,7 +141,7 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
                 <span className="truncate">{clientNeighborhood}</span>
               </div>
               <div className="mt-0.5">
-                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-semibold inline-block truncate max-w-full">
+                <span className="font-mono text-[12px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-semibold inline-block truncate max-w-full">
                   PPPoE : {pppoeUsername}
                 </span>
               </div>
@@ -178,7 +149,7 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
           </div>
 
           {/* 3. Payment & Validity Summary */}
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-slate-500">
                 {language === 'ar' ? 'الاشتراك / الباقة:' : 'Forfait / Plan :'}
@@ -188,7 +159,7 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-[11px]">
+            <div className="flex items-center justify-between text-[12px]">
               <span className="text-slate-500">
                 {language === 'ar' ? 'الفترة المغطاة:' : 'Période couverte :'}
               </span>
@@ -197,7 +168,7 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-[11px]">
+            <div className="flex items-center justify-between text-[12px]">
               <span className="text-slate-500">
                 {language === 'ar' ? 'الشهر / الطريقة:' : 'Mois / Mode :'}
               </span>
@@ -207,7 +178,7 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
             </div>
 
             {hasExtra && (
-              <div className="border-t border-slate-200 pt-1.5 space-y-1 text-[11px]">
+              <div className="border-t border-slate-200 pt-1.5 space-y-1 text-[12px]">
                 <div className="flex items-center justify-between text-slate-600">
                   <span>{language === 'ar' ? 'الواجب الأساسي:' : 'Abonnement de base :'}</span>
                   <span className="font-mono">{Number(baseFee).toFixed(2)} DH</span>
@@ -222,7 +193,7 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
             {/* Total Amount Paid & Status */}
             <div className="border-t border-slate-200 pt-2.5 flex items-end justify-between">
               <div>
-                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                <div className="text-[12px] uppercase font-bold tracking-wider text-slate-400">
                   {language === 'ar' ? 'المجموع المؤدى' : 'Total Montant Réglé'}
                 </div>
                 <div className="text-2xl font-black font-mono text-emerald-600 tracking-tight leading-none mt-1">
@@ -231,11 +202,11 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
               </div>
 
               <div className="text-right rtl:text-left space-y-1">
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                   <CheckCircle className="w-3 h-3" />
                   {language === 'ar' ? 'خالص / مسوّى (0 درهم متبقي)' : 'Payé / Soldé (0 DH restant)'}
                 </span>
-                <div className="text-[10px] text-slate-500 font-mono">
+                <div className="text-[12px] text-slate-500 font-mono">
                   {language === 'ar' ? 'الأجل القادم: ' : 'Prochaine échéance : '}
                   <strong className="text-slate-800 font-bold">{payment.newDueDate}</strong>
                 </div>
@@ -245,7 +216,7 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
 
           {/* Optional Notes */}
           {payment.notes && (
-            <div className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 italic break-words overflow-hidden">
+            <div className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[12px] text-slate-600 italic break-words overflow-hidden">
               <span className="font-semibold text-slate-700 not-italic">
                 {language === 'ar' ? 'ملاحظة: ' : 'Note : '}
               </span>
@@ -254,7 +225,7 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
           )}
 
           {/* 4. Footer */}
-          <div className="border-t border-slate-200 pt-2.5 flex items-center justify-between text-[10px] text-slate-500">
+          <div className="border-t border-slate-200 pt-2.5 flex items-center justify-between text-[12px] text-slate-500">
             <span>
               {language === 'ar' ? 'شكراً لوفائكم — اتصال نشط' : 'Merci pour votre fidélité — Connexion active'}
             </span>
@@ -271,9 +242,9 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
           <button
             type="button"
             onClick={handlePrint}
-            className="min-h-[40px] px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm hover:scale-[1.01] active:scale-[0.99]"
+            className="min-h-[40px] px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm hover:scale-[1.01] active:scale-[0.99]"
           >
-            <Printer className="w-3.5 h-3.5 text-amber-400" />
+            <Printer className="w-3.5 h-3.5 text-[var(--warning)]" />
             <span>{language === 'ar' ? 'طباعة / PDF' : 'Imprimer / PDF'}</span>
           </button>
 
@@ -282,7 +253,7 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="min-h-[40px] px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm hover:scale-[1.01] active:scale-[0.99]"
+            className="min-h-[40px] px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm hover:scale-[1.01] active:scale-[0.99]"
           >
             <Share2 className="w-3.5 h-3.5" />
             <span>واتساب</span>
@@ -292,12 +263,12 @@ export default function InvoiceReceiptModal({ payment, client, onClose }: Props)
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[40px] px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center justify-center transition cursor-pointer border border-slate-200"
+            className="min-h-[40px] px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold flex items-center justify-center transition cursor-pointer border border-slate-200"
           >
             {t('close')}
           </button>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
