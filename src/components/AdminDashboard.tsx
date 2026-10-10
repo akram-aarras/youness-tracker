@@ -784,8 +784,8 @@ export default function AdminDashboard({
               </tbody>
             </table>
 
-            {/* Urgent Table Pagination Bar if > 10 */}
-            {urgentBillingClients.length > URGENT_PAGE_SIZE && (
+            {/* Urgent Table Pagination Bar */}
+            {urgentBillingClients.length > 0 && (
               <div className="px-4 py-3 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/20 text-xs sm:text-sm">
                 <span className="text-[var(--muted)] font-medium">
                   {t('pagination_showing', {
@@ -1414,60 +1414,58 @@ export default function AdminDashboard({
                     })}
                   </span>
 
-                  {totalReconPages > 1 && (
-                    <div className="flex items-center gap-1.5 flex-wrap justify-center">
-                      <button
-                        type="button"
-                        onClick={() => setReconPage((p) => Math.max(1, p - 1))}
-                        disabled={reconPage === 1}
-                        className="px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer shadow-2xs font-medium"
-                        aria-label={t('pagination_previous')}
-                      >
-                        <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
-                        <span>{t('pagination_previous')}</span>
-                      </button>
+                  <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setReconPage((p) => Math.max(1, p - 1))}
+                      disabled={reconPage === 1}
+                      className="px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer shadow-2xs font-medium"
+                      aria-label={t('pagination_previous')}
+                    >
+                      <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
+                      <span>{t('pagination_previous')}</span>
+                    </button>
 
-                      <div className="flex items-center gap-1">
-                        {reconPageNumbers.map((page, idx) => {
-                          if (page === 'ellipsis') {
-                            return (
-                              <span key={`recon-ell-${idx}`} className="w-7 text-center text-[var(--muted)] select-none">
-                                …
-                              </span>
-                            );
-                          }
-                          const isCurrent = page === reconPage;
+                    <div className="flex items-center gap-1">
+                      {reconPageNumbers.map((page, idx) => {
+                        if (page === 'ellipsis') {
                           return (
-                            <button
-                              key={`recon-p-${page}`}
-                              type="button"
-                              onClick={() => setReconPage(page as number)}
-                              className={`w-8 h-8 rounded-xl font-semibold transition flex items-center justify-center cursor-pointer ${
-                                isCurrent
-                                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
-                                  : 'border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] shadow-2xs'
-                              }`}
-                              aria-current={isCurrent ? 'page' : undefined}
-                              aria-label={`${t('pagination_page')} ${page}`}
-                            >
-                              {page}
-                            </button>
+                            <span key={`recon-ell-${idx}`} className="w-7 text-center text-[var(--muted)] select-none">
+                              …
+                            </span>
                           );
-                        })}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setReconPage((p) => Math.min(totalReconPages, p + 1))}
-                        disabled={reconPage === totalReconPages}
-                        className="px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer shadow-2xs font-medium"
-                        aria-label={t('pagination_next')}
-                      >
-                        <span>{t('pagination_next')}</span>
-                        <ChevronRight className="w-4 h-4 rtl:rotate-180" />
-                      </button>
+                        }
+                        const isCurrent = page === reconPage;
+                        return (
+                          <button
+                            key={`recon-p-${page}`}
+                            type="button"
+                            onClick={() => setReconPage(page as number)}
+                            className={`w-8 h-8 rounded-xl font-semibold transition flex items-center justify-center cursor-pointer ${
+                              isCurrent
+                                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                                : 'border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] shadow-2xs'
+                            }`}
+                            aria-current={isCurrent ? 'page' : undefined}
+                            aria-label={`${t('pagination_page')} ${page}`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      })}
                     </div>
-                  )}
+
+                    <button
+                      type="button"
+                      onClick={() => setReconPage((p) => Math.min(totalReconPages, p + 1))}
+                      disabled={reconPage === totalReconPages}
+                      className="px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer shadow-2xs font-medium"
+                      aria-label={t('pagination_next')}
+                    >
+                      <span>{t('pagination_next')}</span>
+                      <ChevronRight className="w-4 h-4 rtl:rotate-180" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
