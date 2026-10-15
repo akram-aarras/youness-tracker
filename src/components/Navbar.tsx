@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useStore } from '@/lib/store';
+import { useStore, getTodayDateStr } from '@/lib/store';
 import { LayoutDashboard, Users, Ticket, ShieldCheck, Search, Settings2, Wifi, WifiOff, Smartphone, CreditCard, Download, LogOut, RotateCcw, X, ArrowUpRight } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -78,7 +78,7 @@ export default function Navbar({ activeTab = 'dashboard', setActiveTab, onOpenPa
     const url = URL.createObjectURL(new Blob([exportDataAsJSON()], { type: 'application/json' }));
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `youness-wifi-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.download = `youness-wifi-backup-${getTodayDateStr()}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
   };

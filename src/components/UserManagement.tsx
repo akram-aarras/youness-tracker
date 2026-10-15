@@ -3,7 +3,7 @@
 import Dialog from '@/components/ui/Dialog';
 
 import React, { useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore, getTodayDateStr } from '@/lib/store';
 import { User, Role } from '@/lib/types';
 import { ShieldCheck, Wrench, UserPlus, Search, CheckCircle2, XCircle, Trash2, Copy, Check, Eye, EyeOff, Sparkles, Phone, Mail, AlertTriangle, Briefcase, KeyRound, ShieldAlert, Edit2, Compass, Download, Upload, Database, Loader2 } from 'lucide-react';
 
@@ -117,7 +117,7 @@ export default function UserManagement() {
       const blob = new Blob([jsonContent], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const datePart = new Date().toISOString().split('T')[0];
+      const datePart = getTodayDateStr();
       a.href = url;
       a.download = `youness-wifi-backup-${datePart}.json`;
       document.body.appendChild(a);

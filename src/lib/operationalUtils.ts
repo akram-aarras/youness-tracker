@@ -1,30 +1,39 @@
 import type { Client, PaymentLog, SubscriptionStatus } from './types';
 
-// Format: YYYY-MM-DD
-export function getTodayDateStr(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+// Format: YYYY-MM-DD in local Morocco timezone
+export function getTodayDateStr(date: Date = new Date()): string {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Africa/Casablanca',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return formatter.format(date);
+  } catch {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
 }
 
-export function addMonthsToDateStr(dateStr: string, monthsToAdd: number = 1): string {
+export function addMonthsToDateStr(dateStr: string, monthsToAdd: number = 1, anchorDay?: number): string {
   if (!dateStr || !dateStr.includes('-')) {
     const today = new Date();
-    today.setMonth(today.getMonth() + monthsToAdd);
     const y = today.getFullYear();
     const m = String(today.getMonth() + 1).padStart(2, '0');
-    const d = String(today.getDate()).padStart(2, '0');
+    const d = String(anchorDay || today.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
   }
 
   const [yearStr, monthStr, dayStr] = dateStr.split('-');
   let year = parseInt(yearStr, 10);
   let month = parseInt(monthStr, 10);
-  const targetDay = parseInt(dayStr, 10);
+  const currentDay = parseInt(dayStr, 10);
+  const targetDay = anchorDay && anchorDay >= 1 && anchorDay <= 31 ? anchorDay : currentDay;
 
-  // Advance month
+  // Advance month cleanly
   month += monthsToAdd;
   while (month > 12) {
     month -= 12;
@@ -35,7 +44,7 @@ export function addMonthsToDateStr(dateStr: string, monthsToAdd: number = 1): st
     year -= 1;
   }
 
-  // Handle month length overflow
+  // Handle month length overflow without date drift
   const maxDays = new Date(year, month, 0).getDate();
   const finalDay = Math.min(targetDay, maxDays);
 
@@ -169,7 +178,7 @@ export function buildWhatsAppDueReminderMessage(
   amount: number | string
 ): string {
   return [
-    `السلام عليكم سي ${name}،`,
+    `السلام عليكم ${name}،`,
     `نذكركم بأن موعد أداء اشتراك الإنترنت لشهر ${month} قد حان.`,
     `▫️ الواجب الشهري: ${amount} درهم`,
     `شكراً لوفائكم وثقتكم في خدماتنا.`,
@@ -183,7 +192,7 @@ export function buildWhatsAppOverdueNoticeMessage(
   amount: number | string
 ): string {
   return [
-    `السلام عليكم سي ${name}،`,
+    `السلام عليكم ${name}،`,
     `نود إخباركم بأن اشتراك الإنترنت الخاص بكم متأخر عن موعده المحدد.`,
     `▫️ المبلغ المستحق: ${amount} درهم`,
     `المرجو تسوية الواجب في أقرب وقت لضمان استمرار الخدمة وتفادي توقف الصبيب.`,
@@ -199,7 +208,7 @@ export function buildWhatsAppReceiptMessage(
   amount: number | string
 ): string {
   return [
-    `السلام عليكم سي ${name}،`,
+    `السلام عليكم ${name}،`,
     `تم تسجيل أداء اشتراك الإنترنت الخاص بكم لشهر ${month} بنجاح.`,
     `▫️ المبلغ المؤدى: ${amount} درهم`,
     `شكراً لالتزامكم.`,
@@ -266,7 +275,7 @@ export function buildHistoricalUnpaidReminderUrl(
   isFuture: boolean = false
 ) {
   const cleanPhone = cleanMoroccanPhoneNumber(client.phone);
-  const fee = client.monthlyFee || 200;
+  const fee = client.monthlyFee || 100;
   let message = '';
 
   if (isFuture) {
@@ -347,7 +356,7 @@ export function generateBilanCSV(
     const c = row.client;
     const p = row.payment;
     const isPaid = row.isPaid;
-    const fee = c.monthlyFee || 50;
+    const fee = c.monthlyFee || 100;
 
     const statusLabel = isPaid
       ? (language === 'ar' ? 'مؤدى' : 'Réglé')

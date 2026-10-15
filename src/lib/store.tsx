@@ -203,39 +203,59 @@ interface StoreContextType {
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
-// Helper to get today's date in YYYY-MM-DD
-export function getTodayDateStr(): string {
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+// Helper to get today's date in YYYY-MM-DD (Morocco / local time to prevent midnight UTC shift)
+export function getTodayDateStr(date: Date = new Date()): string {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Africa/Casablanca',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return formatter.format(date);
+  } catch {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
 }
 
-// Add calendar months safely to a date string YYYY-MM-DD
-export function addMonthsToDateStr(dateStr: string, monthsToAdd: number = 1): string {
-  if (!dateStr) return getTodayDateStr();
-  const parts = dateStr.split('-');
-  if (parts.length !== 3) return dateStr;
-  const year = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10) - 1; // 0-based month
-  const day = parseInt(parts[2], 10);
-
-  const target = new Date(year, month, day);
-  target.setMonth(target.getMonth() + monthsToAdd);
-
-  // If day rolled over into next month (e.g. 31 Jan + 1 month -> 3 March in non-leap year)
-  // clamp to the last day of the intended month
-  const expectedMonth = (month + monthsToAdd) % 12;
-  const normalizedExpected = expectedMonth < 0 ? expectedMonth + 12 : expectedMonth;
-  if (target.getMonth() !== normalizedExpected) {
-    target.setDate(0); // Sets to last day of previous month
+// Add calendar months safely to a date string YYYY-MM-DD without short-month date drift
+export function addMonthsToDateStr(dateStr: string, monthsToAdd: number = 1, anchorDay?: number): string {
+  if (!dateStr || !dateStr.includes('-')) {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(anchorDay || today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
 
-  const yyyy = target.getFullYear();
-  const mm = String(target.getMonth() + 1).padStart(2, '0');
-  const dd = String(target.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  let year = parseInt(parts[0], 10);
+  let month = parseInt(parts[1], 10); // 1-12
+  const currentDay = parseInt(parts[2], 10);
+  const targetDay = anchorDay && anchorDay >= 1 && anchorDay <= 31 ? anchorDay : currentDay;
+
+  // Advance month cleanly
+  month += monthsToAdd;
+  while (month > 12) {
+    month -= 12;
+    year += 1;
+  }
+  while (month < 1) {
+    month += 12;
+    year -= 1;
+  }
+
+  // Handle month length overflow without date drift
+  const maxDays = new Date(year, month, 0).getDate();
+  const finalDay = Math.min(targetDay, maxDays);
+
+  const mm = String(month).padStart(2, '0');
+  const dd = String(finalDay).padStart(2, '0');
+  return `${year}-${mm}-${dd}`;
 }
 
 // Helper to calculate days difference from today normalized to midnight (Real-Time Dynamic Sync)
@@ -565,7 +585,7 @@ export function generateBilanCSV(
     const c = row.client;
     const p = row.payment;
     const isPaid = row.isPaid;
-    const fee = c.monthlyFee || 50;
+    const fee = c.monthlyFee || 100;
 
     const statusLabel = isPaid
       ? (language === 'ar' ? 'مؤدى' : 'Réglé')
@@ -1152,7 +1172,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         avatar: '👨‍💼',
         status: 'active',
         password,
-        createdAt: new Date().toISOString().split('T')[0],
+        createdAt: getTodayDateStr(),
       };
 
       const otherUsers = users.filter((u) => u.role !== 'admin' && u.id !== 'user-admin');
@@ -1325,7 +1345,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
     setClients((prev) => prev.filter((c) => c.id !== clientId));
     setTickets((prev) => prev.filter((t) => t.clientId !== clientId));
-    setPayments((prev) => prev.filter((p) => p.clientId !== clientId));
+    // Protect historical revenue: do NOT delete client payment records when client is deleted
     try {
       return await deleteClientFromSupabase(clientId);
     } catch (err) {
@@ -1454,8 +1474,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       googleMapsUrl:
         clientData.googleMapsUrl?.trim() || 'https://maps.google.com/?q=35.5784,-5.3684',
       status,
-      monthlyFee: Number(clientData.monthlyFee) > 0 ? Number(clientData.monthlyFee) : 50,
-      subscriptionPlan: clientData.subscriptionPlan || 'باقة اقتصادية - 50 د.م./شهر (Pack Éco 50 MAD)',
+      monthlyFee: Number(clientData.monthlyFee) > 0 ? Number(clientData.monthlyFee) : 100,
+      subscriptionPlan: clientData.subscriptionPlan || 'Pack Standard (100 DH)',
       installationDate: clientData.installationDate || todayStr,
       nextDueDate: dueDate,
       lastPaymentDate: clientData.initialPayment
@@ -1472,7 +1492,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (clientData.initialPayment) {
-      const initialFee = newClient.monthlyFee || 50;
+      const initialFee = newClient.monthlyFee || 100;
       const receiptNumber = generateReceiptNumber(payments, todayStr);
       const newPayment: PaymentLog = {
         id: `pay-${Date.now()}`,
@@ -1580,7 +1600,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const client = clients.find((c) => c.id === clientId);
     if (!client) throw new Error('Client not found');
 
-    const rawBase = typeof baseFee === 'number' && !isNaN(baseFee) ? baseFee : (client.monthlyFee || 50);
+    const rawBase = typeof baseFee === 'number' && !isNaN(baseFee) ? baseFee : (client.monthlyFee || 100);
     const effectiveBaseFee = Math.max(0, rawBase);
     const rawExtra = typeof extraAmount === 'number' && !isNaN(extraAmount) ? extraAmount : 0;
     const effectiveExtraAmount = Math.max(0, rawExtra);

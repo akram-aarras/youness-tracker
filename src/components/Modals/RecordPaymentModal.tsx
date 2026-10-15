@@ -40,7 +40,7 @@ export default function RecordPaymentModal({
   const [selectedClientId, setSelectedClientId] = useState<string>(
     initialClientId || (clients[0]?.id ?? '')
   );
-  const [billingMonth] = useState<string>(
+  const [billingMonth, setBillingMonth] = useState<string>(
     initialBillingMonth || defaultDateStr.substring(0, 7)
   );
   const selectedClient = clients.find((c) => c.id === selectedClientId);
@@ -182,23 +182,23 @@ export default function RecordPaymentModal({
         {/* If targeted billing month reconciliation (historical or advance future) */}
         {initialBillingMonth && (
           <div className={`px-4 sm:px-6 py-2.5 border-b flex items-center justify-between text-sm shrink-0 ${
-            initialBillingMonth > defaultDateStr.substring(0, 7)
+            billingMonth > defaultDateStr.substring(0, 7)
               ? 'bg-emerald-500/10 border-emerald-500/25 text-[var(--success)]'
               : 'bg-amber-500/10 border-amber-500/20 text-[var(--warning)]'
           }`}>
             <span className="font-semibold flex items-center gap-1.5">
-              <span>{initialBillingMonth > defaultDateStr.substring(0, 7) ? '🔮' : '📅'}</span>
+              <span>{billingMonth > defaultDateStr.substring(0, 7) ? '🔮' : '📅'}</span>
               <span>
                 {t('target_billing_month')}{' '}
-                <strong>{formatBillingMonthLabel(initialBillingMonth, language)} ({initialBillingMonth})</strong>
+                <strong>{formatBillingMonthLabel(billingMonth, language)} ({billingMonth})</strong>
               </span>
             </span>
             <span className={`text-[12px] font-mono font-bold px-2 py-0.5 rounded border ${
-              initialBillingMonth > defaultDateStr.substring(0, 7)
+              billingMonth > defaultDateStr.substring(0, 7)
                 ? 'bg-emerald-500/20 text-[var(--success)] border-emerald-500/30'
                 : 'bg-amber-500/20 text-[var(--warning)] border-amber-500/30'
             }`}>
-              {initialBillingMonth > defaultDateStr.substring(0, 7)
+              {billingMonth > defaultDateStr.substring(0, 7)
                 ? t('advance_payment_badge')
                 : t('monthly_reconciliation_badge')}
             </span>
@@ -491,6 +491,18 @@ export default function RecordPaymentModal({
               </div>
 
               <div>
+                <label className="block text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5" htmlFor="RecordPaymentModal-field-billing-month">
+                  {language === 'ar' ? 'شهر الفوترة المستهدف' : language === 'en' ? 'Target Billing Month' : 'Mois de facturation'} <span className="text-[var(--muted)] font-normal text-[12px]">(YYYY-MM)</span>
+                </label>
+                <input
+                  type="month"
+                  value={billingMonth}
+                  onChange={(e) => setBillingMonth(e.target.value)}
+                  className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] font-mono focus:outline-none focus:border-amber-500/50 transition"
+                  id="RecordPaymentModal-field-billing-month"/>
+              </div>
+
+              <div className="sm:col-span-2">
                 <p className="block text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5" >
                   {t('extend_period_label')}
                 </p>

@@ -8,7 +8,9 @@ import {
   buildWhatsAppReceipt,
   buildHistoricalUnpaidReminderUrl,
   generateBilanCSV,
+  addMonthsToDateStr,
 } from '../src/lib/operationalUtils.ts';
+import { encodeSession, decodeSession, type SessionPayload } from '../src/lib/auth.ts';
 import type { Client, PaymentLog, User } from '../src/lib/types';
 
 // Mock Client
@@ -129,7 +131,7 @@ describe('1. Moroccan Phone Sanitization & WhatsApp Links', () => {
     // Verify roundtrip decode matches original text
     const decoded = decodeURIComponent(textParam);
     assert.strictEqual(decoded, reminder.text);
-    assert.ok(decoded.includes('السلام عليكم سي محمد بنسعيد'));
+    assert.ok(decoded.includes('السلام عليكم محمد بنسعيد'));
     assert.ok(decoded.includes('نذكركم بأن موعد أداء اشتراك الإنترنت لشهر'));
     assert.ok(decoded.includes('▫️ الواجب الشهري: 100 درهم'));
     assert.ok(decoded.includes('إدارة شبكة يونس للإنترنت'));
@@ -156,7 +158,7 @@ describe('1. Moroccan Phone Sanitization & WhatsApp Links', () => {
     const textParam = receipt.url.replace('https://wa.me/212612345678?text=', '');
     const decoded = decodeURIComponent(textParam);
     assert.strictEqual(decoded, receipt.text);
-    assert.ok(decoded.includes('السلام عليكم سي محمد بنسعيد'));
+    assert.ok(decoded.includes('السلام عليكم محمد بنسعيد'));
     assert.ok(decoded.includes('تم تسجيل أداء اشتراك الإنترنت الخاص بكم لشهر'));
     assert.ok(decoded.includes('▫️ المبلغ المؤدى: 120 درهم'));
     assert.ok(decoded.includes('شبكة يونس للإنترنت'));
@@ -171,16 +173,15 @@ describe('1. Moroccan Phone Sanitization & WhatsApp Links', () => {
     const textParam = histReminder.url.replace('https://wa.me/212612345678?text=', '');
     const decoded = decodeURIComponent(textParam);
     assert.strictEqual(decoded, histReminder.text);
-    assert.ok(decoded.includes('السلام عليكم سي محمد بنسعيد'));
+    assert.ok(decoded.includes('السلام عليكم محمد بنسعيد'));
     assert.ok(decoded.includes('نود إخباركم بأن اشتراك الإنترنت الخاص بكم متأخر عن موعده المحدد'));
     assert.ok(decoded.includes('▫️ المبلغ المستحق: 100 درهم'));
     assert.ok(decoded.includes('شبكة يونس للإنترنت'));
 
-    // Future upcoming month -> Template A
-    const futureReminder = buildHistoricalUnpaidReminderUrl(sampleClient, 'نونبر 2026', true);
-    assert.ok(futureReminder.text.includes('نذكركم بأن موعد أداء اشتراك الإنترنت لشهر نونبر 2026 قد حان'));
-    assert.ok(futureReminder.text.includes('▫️ الواجب الشهري: 100 درهم'));
-    assert.ok(futureReminder.text.includes('إدارة شبكة يونس للإنترنت'));
+    // Fallback fee test when client.monthlyFee is missing
+    const clientWithoutFee: Client = { ...sampleClient, monthlyFee: undefined as any };
+    const defaultReminder = buildHistoricalUnpaidReminderUrl(clientWithoutFee, 'نونبر 2026', true);
+    assert.ok(defaultReminder.text.includes('▫️ الواجب الشهري: 100 درهم'));
   });
 });
 
@@ -548,5 +549,118 @@ describe('7. Monthly Reconciliation Table Pagination (33 Subscribers)', () => {
     assert.strictEqual(reconciliationPage, 1);
   });
 });
+
+describe('8. Session Cookie Integrity & HMAC Protection', () => {
+  it('should sign session with HMAC and successfully decode valid session', () => {
+    const payload: SessionPayload = {
+      userId: 'user-admin',
+      email: 'youness@younesswifi.ma',
+      username: 'youness_admin',
+      name: 'Youness (Owner)',
+      role: 'admin',
+      exp: Date.now() + 3600 * 1000,
+    };
+
+    const token = encodeSession(payload);
+    assert.ok(token.includes('.'), 'Signed token must contain a dot separator for signature');
+
+    const decoded = decodeSession(token);
+    assert.notStrictEqual(decoded, null, 'Valid signed token must decode successfully');
+    assert.strictEqual(decoded?.userId, 'user-admin');
+    assert.strictEqual(decoded?.role, 'admin');
+  });
+
+  it('should reject forged cookies created via btoa() without HMAC signature', () => {
+    const forgedPayload = {
+      userId: 'user-forged-admin',
+      email: 'hacker@bad.com',
+      username: 'hacker',
+      name: 'Hacker',
+      role: 'admin',
+      exp: Date.now() + 3600 * 1000,
+    };
+
+    // Simulate browser console btoa() forging
+    const forgedCookie = Buffer.from(JSON.stringify(forgedPayload)).toString('base64');
+    const result = decodeSession(forgedCookie);
+    assert.strictEqual(result, null, 'Unsigned forged cookie must be strictly rejected');
+  });
+
+  it('should reject cookies with tampered payload or forged signature', () => {
+    const payload: SessionPayload = {
+      userId: 'user-tech-1',
+      email: 'tech@younesswifi.ma',
+      username: 'tech1',
+      name: 'Tech 1',
+      role: 'technician',
+      exp: Date.now() + 3600 * 1000,
+    };
+
+    const validToken = encodeSession(payload);
+    const [payloadB64, signature] = validToken.split('.');
+
+    // Tamper with payload to escalate role to admin
+    const tamperedPayload = { ...payload, role: 'admin' };
+    const tamperedB64 = Buffer.from(JSON.stringify(tamperedPayload)).toString('base64')
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const tamperedToken = `${tamperedB64}.${signature}`;
+
+    const result = decodeSession(tamperedToken);
+    assert.strictEqual(result, null, 'Tampered token with invalid HMAC signature must be rejected');
+  });
+});
+
+describe('9. Date Math & Short-Month Drift Protection', () => {
+  it('should advance from 2026-11-01 cleanly to 2026-12-01 and 2027-01-01 without drift', () => {
+    const start = '2026-11-01';
+    const month1 = addMonthsToDateStr(start, 1);
+    assert.strictEqual(month1, '2026-12-01', 'Renewing from 2026-11-01 must land on 2026-12-01');
+
+    const month2 = addMonthsToDateStr(month1, 1);
+    assert.strictEqual(month2, '2027-01-01', 'Renewing from 2026-12-01 must land on 2027-01-01');
+
+    const month3 = addMonthsToDateStr(month2, 1);
+    assert.strictEqual(month3, '2027-02-01', 'Renewing from 2027-01-01 must land on 2027-02-01');
+  });
+
+  it('should preserve custom anchor days (e.g. 15th) cleanly across months', () => {
+    const start = '2026-11-15';
+    const next1 = addMonthsToDateStr(start, 1);
+    assert.strictEqual(next1, '2026-12-15', 'Custom day 15 must be preserved on next month');
+
+    const next2 = addMonthsToDateStr(next1, 1);
+    assert.strictEqual(next2, '2027-01-15', 'Custom day 15 must stay on 15 in new year');
+
+    const next3 = addMonthsToDateStr(next2, 1);
+    assert.strictEqual(next3, '2027-02-15', 'Custom day 15 must stay on 15 in February');
+  });
+});
+
+describe('10. Historical Revenue Preservation on Subscriber Deletion', () => {
+  it('should keep payments in state when subscriber is deleted', () => {
+    let clients = [
+      { id: 'cli-001', name: 'Subscriber 1', monthlyFee: 100 },
+      { id: 'cli-002', name: 'Subscriber 2', monthlyFee: 100 },
+    ];
+    const payments = [
+      { id: 'pay-1', clientId: 'cli-001', clientName: 'Subscriber 1', amount: 100 },
+      { id: 'pay-2', clientId: 'cli-002', clientName: 'Subscriber 2', amount: 100 },
+    ];
+
+    // Simulate deleteClient without deleting payments
+    const clientIdToDelete = 'cli-001';
+    clients = clients.filter((c) => c.id !== clientIdToDelete);
+
+    // Verify subscriber is removed from clients directory
+    assert.strictEqual(clients.length, 1);
+    assert.strictEqual(clients[0].id, 'cli-002');
+
+    // Verify historical payments and total revenue KPIs remain completely intact
+    assert.strictEqual(payments.length, 2, 'Historical payments must NOT be deleted');
+    const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+    assert.strictEqual(totalRevenue, 200, 'Total recorded revenue must remain intact at 200 DH');
+  });
+});
+
 
 

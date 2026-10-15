@@ -41,3 +41,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# subscriber data & operational scripts
+clients_raw.txt
+scripts/import_clients.mjs
+scripts/update_all_clients_defaults.mjs

@@ -58,7 +58,7 @@ export function mapRowToClient(row: ClientRow): Client {
     gpsCoordinates: row.gps_coordinates || undefined,
     googleMapsUrl: row.google_maps_url || undefined,
     status: (row.status as SubscriptionStatus) || 'active',
-    monthlyFee: Number(row.monthly_fee) || 50,
+    monthlyFee: Number(row.monthly_fee) || 100,
     subscriptionPlan: row.subscription_plan || undefined,
     nextDueDate: row.next_due_date ? String(row.next_due_date).split('T')[0] : '',
     lastPaymentDate: row.last_payment_date ? String(row.last_payment_date).split('T')[0] : undefined,
@@ -202,6 +202,7 @@ export async function fetchClientsFromSupabase(): Promise<Client[] | null> {
     const { data, error } = await supabase
       .from('clients')
       .select('*')
+      .limit(10000)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -222,6 +223,7 @@ export async function fetchPaymentsFromSupabase(): Promise<PaymentLog[] | null> 
     let res = await supabase
       .from('payments')
       .select('*')
+      .limit(10000)
       .order('created_at', { ascending: false });
 
     if (res.error && (res.error.message.includes('schema cache') || res.error.message.includes('Could not find') || res.error.code === 'PGRST205')) {
@@ -229,6 +231,7 @@ export async function fetchPaymentsFromSupabase(): Promise<PaymentLog[] | null> 
       res = await supabase
         .from('payment_logs')
         .select('*')
+        .limit(10000)
         .order('created_at', { ascending: false });
     }
 
@@ -249,6 +252,7 @@ export async function fetchTicketsFromSupabase(): Promise<Ticket[] | null> {
     const { data, error } = await supabase
       .from('tickets')
       .select('*')
+      .limit(10000)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -268,6 +272,7 @@ export async function fetchUsersFromSupabase(): Promise<User[] | null> {
     const { data, error } = await supabase
       .from('user_profiles')
       .select('*')
+      .limit(10000)
       .order('created_at', { ascending: true });
 
     if (error) {

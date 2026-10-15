@@ -13,6 +13,8 @@ import {
   CreditCard,
   CheckCircle,
   Loader2,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 interface Props {
@@ -89,10 +91,11 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
   // Hardware Details (All optional with safe fallbacks)
   const [antennaModel, setAntennaModel] = useState('Ubiquiti LiteBeam 5AC');
   const [antennaMac, setAntennaMac] = useState('');
-  const [antennaIp] = useState('192.168.10.');
+  const [antennaIp, setAntennaIp] = useState('192.168.10.');
   const [routerModel, setRouterModel] = useState('Standard Router');
   const [wifiSsid, setWifiSsid] = useState('');
-  const [wifiPassword] = useState('');
+  const [wifiPassword, setWifiPassword] = useState('');
+  const [showWifiPassword, setShowWifiPassword] = useState(false);
   const [pppoeUsername, setPppoeUsername] = useState('');
   const [pppoePassword, setPppoePassword] = useState('123456');
   const [sectorTower, setSectorTower] = useState('Tour Boujarah (Relais Centre)');
@@ -100,8 +103,8 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Subscription Setup
-  const [monthlyFee, setMonthlyFee] = useState<number>(50);
-  const [subscriptionPlan, setSubscriptionPlan] = useState('باقة اقتصادية - 50 د.م./شهر (Pack Éco 50 MAD)');
+  const [monthlyFee, setMonthlyFee] = useState<number>(100);
+  const [subscriptionPlan, setSubscriptionPlan] = useState('Standard Wi-Fi Plan (100 MAD)');
   const [installationDate, setInstallationDate] = useState(getTodayDateStr());
   const [nextDueDate, setNextDueDate] = useState(addMonthsToDateStr(getTodayDateStr(), 1));
   const [initialPayment, setInitialPayment] = useState(true);
@@ -159,8 +162,8 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
         address: address.trim() || 'Tétouan',
         googleMapsUrl:
           googleMapsUrl.trim() || 'https://maps.google.com/?q=35.5784,-5.3684',
-        monthlyFee: Number(monthlyFee) > 0 ? Number(monthlyFee) : 50,
-        subscriptionPlan: subscriptionPlan || 'باقة اقتصادية - 50 د.م./شهر (Pack Éco 50 MAD)',
+        monthlyFee: Number(monthlyFee) > 0 ? Number(monthlyFee) : 100,
+        subscriptionPlan: subscriptionPlan || 'Standard Wi-Fi Plan (100 MAD)',
         installationDate: installationDate || getTodayDateStr(),
         nextDueDate: nextDueDate || addMonthsToDateStr(getTodayDateStr(), 1),
         initialPayment,
@@ -385,6 +388,18 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
+                  <label className="block text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5" htmlFor="RegisterClientModal-field-antenna-ip">
+                    {text("Adresse IP Antenne","Antenna IP address","عنوان IP للهوائي")}<span className="ms-1 text-[var(--muted)] font-normal text-[12px]">{text("(facultatif)","(optional)","(اختياري)")}</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={antennaIp}
+                    onChange={(e) => setAntennaIp(e.target.value)}
+                    placeholder="192.168.10.150"
+                    className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] font-mono focus:outline-none focus:border-amber-500/50 transition"
+                    id="RegisterClientModal-field-antenna-ip"/>
+                </div>
+                <div>
                   <label className="block text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5" htmlFor="RegisterClientModal-field-7">
                     {text("Relais de rattachement","Assigned relay","محطة الربط")}<span className="ms-1 text-[var(--muted)] font-normal text-[12px]">{text("(facultatif)","(optional)","(اختياري)")}</span>
                   </label>
@@ -402,33 +417,34 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     ))}
                   </datalist>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5" htmlFor="RegisterClientModal-field-8">
-                    {text("Niveau de signal (dBm)","Signal strength (dBm)","قوة الإشارة (dBm)")}<span className="ms-1 text-[var(--muted)] font-normal text-[12px]">(Optional, defaults to -65)</span>
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="-65"
-                    value={signalStrengthDbm}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === '' || val === '-') {
-                        setSignalStrengthDbm(val);
-                      } else {
-                        const cleaned = val.replace(/[^\d-]/g, '');
-                        const sanitized = cleaned.startsWith('-')
-                          ? '-' + cleaned.slice(1).replace(/-/g, '')
-                          : cleaned.replace(/-/g, '');
-                        setSignalStrengthDbm(sanitized);
-                      }
-                    }}
-                    className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] font-mono focus:outline-none focus:border-amber-500/50 transition"
-                    id="RegisterClientModal-field-8"
-                  />
-                  <div className="text-[12px] text-[var(--muted)] mt-1">
-                    Optimal: between -55 dBm and -65 dBm (Default: -65 dBm)
-                  </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5" htmlFor="RegisterClientModal-field-8">
+                  {text("Niveau de signal (dBm)","Signal strength (dBm)","قوة الإشارة (dBm)")}<span className="ms-1 text-[var(--muted)] font-normal text-[12px]">(Optional, defaults to -65)</span>
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="-65"
+                  value={signalStrengthDbm}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || val === '-') {
+                      setSignalStrengthDbm(val);
+                    } else {
+                      const cleaned = val.replace(/[^\d-]/g, '');
+                      const sanitized = cleaned.startsWith('-')
+                        ? '-' + cleaned.slice(1).replace(/-/g, '')
+                        : cleaned.replace(/-/g, '');
+                      setSignalStrengthDbm(sanitized);
+                    }
+                  }}
+                  className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] font-mono focus:outline-none focus:border-amber-500/50 transition"
+                  id="RegisterClientModal-field-8"
+                />
+                <div className="text-[12px] text-[var(--muted)] mt-1">
+                  Optimal: between -55 dBm and -65 dBm (Default: -65 dBm)
                 </div>
               </div>
 
@@ -462,6 +478,28 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     onChange={(e) => setWifiSsid(e.target.value)}
                     className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500/50 transition"
                     id="RegisterClientModal-field-10"/>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5" htmlFor="RegisterClientModal-field-wifi-pass">
+                  {text("Mot de passe Wi-Fi","Wi-Fi password","كلمة مرور Wi-Fi")}<span className="ms-1 text-[var(--muted)] font-normal text-[12px]">{text("(facultatif)","(optional)","(اختياري)")}</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showWifiPassword ? 'text' : 'password'}
+                    placeholder={text("Mot de passe WPA2 (laisser vide si aucun)", "WPA2 Password (leave empty if none)", "كلمة مرور WPA2 (اتركه فارغاً إن لم يوجد)")}
+                    value={wifiPassword}
+                    onChange={(e) => setWifiPassword(e.target.value)}
+                    className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] font-mono focus:outline-none focus:border-amber-500/50 transition pr-10 rtl:pr-3.5 rtl:pl-10"
+                    id="RegisterClientModal-field-wifi-pass"/>
+                  <button
+                    type="button"
+                    onClick={() => setShowWifiPassword(!showWifiPassword)}
+                    className="absolute right-3 rtl:right-auto rtl:left-3 top-2.5 text-[var(--muted)] hover:text-[var(--text)] transition cursor-pointer"
+                    aria-label={text("Afficher ou masquer le mot de passe", "Show or hide password", "إظهار أو إخفاء كلمة المرور")}>
+                    {showWifiPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -516,8 +554,8 @@ export default function RegisterClientModal({ onClose, onSuccess }: Props) {
                     }}
                     className="w-full bg-[var(--surface-muted)] border border-[var(--border)]/70 rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-amber-500/50 transition cursor-pointer"
                     id="RegisterClientModal-field-13">
-                    <option value="باقة اقتصادية - 50 د.م./شهر (Pack Éco 50 MAD)">باقة اقتصادية - 50 د.م./شهر (Pack Éco 50 MAD)</option>
                     <option value="Standard Wi-Fi Plan (100 MAD)">Standard Wi-Fi Plan (100 MAD)</option>
+                    <option value="باقة اقتصادية - 50 د.م./شهر (Pack Éco 50 MAD)">باقة اقتصادية - 50 د.م./شهر (Pack Éco 50 MAD)</option>
                     <option value="20 Mbps Fiber-Air Eco (120 MAD)">20 Mbps Fiber-Air Eco (120 MAD)</option>
                     <option value="30 Mbps Fiber-Air Ultra (150 MAD)">30 Mbps Fiber-Air Ultra (150 MAD)</option>
                     <option value="40 Mbps Gaming Plus (200 MAD)">40 Mbps Gaming Plus (200 MAD)</option>

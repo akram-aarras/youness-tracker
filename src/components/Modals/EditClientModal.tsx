@@ -116,7 +116,7 @@ export default function EditClientModal({ client, onClose, onSuccess }: Props) {
           signalStrengthDbm: Number(signalStrengthDbm) || -65,
           routerModel: routerModel.trim() || 'Standard Router',
           wifiSsid: wifiSsid.trim() || `${name.trim().split(' ')[0]}_WiFi`,
-          wifiPassword: wifiPassword.trim() || '12345678',
+          wifiPassword: wifiPassword.trim() || undefined,
           pppoeUsername: pppoeUsername.trim() || `user_${client.id.slice(0, 6)}`,
           pppoePassword: pppoePassword.trim() || '123456',
         },

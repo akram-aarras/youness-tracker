@@ -3,6 +3,7 @@ import { getSupabaseAdmin, checkSupabaseAdminConfigured } from '@/lib/supabaseAd
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { decodeSession, SESSION_COOKIE_NAME } from '@/lib/auth';
 import { Role, User } from '@/lib/types';
+import { getTodayDateStr } from '@/lib/operationalUtils';
 
 export async function POST(request: Request) {
   try {
@@ -176,9 +177,8 @@ export async function POST(request: Request) {
         phone: cleanPhone,
         avatar,
         status: 'active',
-        password: password.trim(),
         specialty: cleanSpecialty,
-        createdAt: new Date().toISOString().split('T')[0],
+        createdAt: getTodayDateStr(),
       };
 
       return NextResponse.json({
@@ -199,9 +199,8 @@ export async function POST(request: Request) {
       phone: cleanPhone,
       avatar,
       status: 'active',
-      password: password.trim(),
       specialty: cleanSpecialty,
-      createdAt: new Date().toISOString().split('T')[0],
+      createdAt: getTodayDateStr(),
     };
 
     return NextResponse.json({
