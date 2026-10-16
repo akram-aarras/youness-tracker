@@ -3,12 +3,15 @@
 -- Supabase Migration Script
 -- ==============================================================================
 
--- 1. Create User Role Enum
+-- 1. Create User Role Enum (admin, field_lead, technician)
 DO $$ BEGIN
-  CREATE TYPE user_role AS ENUM ('admin', 'technician');
+  CREATE TYPE user_role AS ENUM ('admin', 'field_lead', 'technician');
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
+
+-- Ensure 'field_lead' exists if user_role was previously created
+ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'field_lead';
 
 -- 2. User Profiles Table (extends Supabase auth.users)
 CREATE TABLE IF NOT EXISTS public.user_profiles (
@@ -23,7 +26,8 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   specialty TEXT,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT user_profiles_role_check CHECK (role IN ('admin', 'field_lead', 'technician'))
 );
 
 -- 3. Technicians Table
@@ -192,11 +196,30 @@ CREATE POLICY "Allow full access to payment logs" ON public.payment_logs
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
-  assigned_role user_role;
+  raw_role_str TEXT;
+  assigned_role public.user_role;
 BEGIN
-  assigned_role := COALESCE((new.raw_user_meta_data->>'role')::user_role, 'technician');
+  raw_role_str := COALESCE(
+    new.raw_app_meta_data->>'role',
+    new.raw_user_meta_data->>'app_role',
+    new.raw_user_meta_data->>'true_role',
+    new.raw_user_meta_data->>'role',
+    'technician'
+  );
 
-  INSERT INTO public.user_profiles (id, email, username, name, role, technician_id, phone, avatar, status)
+  IF raw_role_str = 'admin' THEN
+    assigned_role := 'admin'::public.user_role;
+  ELSIF raw_role_str = 'field_lead' THEN
+    BEGIN
+      assigned_role := 'field_lead'::public.user_role;
+    EXCEPTION WHEN OTHERS THEN
+      assigned_role := 'technician'::public.user_role;
+    END;
+  ELSE
+    assigned_role := 'technician'::public.user_role;
+  END IF;
+
+  INSERT INTO public.user_profiles (id, email, username, name, role, technician_id, phone, avatar, specialty, status)
   VALUES (
     new.id,
     new.email,
@@ -206,11 +229,22 @@ BEGIN
     new.raw_user_meta_data->>'technician_id',
     new.raw_user_meta_data->>'phone',
     COALESCE(new.raw_user_meta_data->>'avatar', '👤'),
+    new.raw_user_meta_data->>'specialty',
     'active'
-  );
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    name = EXCLUDED.name,
+    role = EXCLUDED.role,
+    technician_id = COALESCE(EXCLUDED.technician_id, public.user_profiles.technician_id),
+    phone = COALESCE(EXCLUDED.phone, public.user_profiles.phone),
+    specialty = COALESCE(EXCLUDED.specialty, public.user_profiles.specialty),
+    status = 'active',
+    updated_at = NOW();
+
   RETURN new;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created

@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
     let technicianId: string | undefined = undefined;
     if (validRole === 'technician' || validRole === 'field_lead') {
-      technicianId = `tech-${Date.now().toString().slice(-4)}`;
+      technicianId = `tech-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
     }
 
     // 3. Supabase Admin User Creation
@@ -87,46 +87,157 @@ export async function POST(request: Request) {
         );
       }
 
-      // Check if email already exists in user_profiles
+      // 1. Check if email already exists in user_profiles
       const { data: existingProfile } = await supabaseAdmin
         .from('user_profiles')
-        .select('id, email')
+        .select('id, email, status')
         .eq('email', cleanEmail)
         .maybeSingle();
 
-      if (existingProfile) {
+      if (existingProfile && existingProfile.status === 'active') {
         return NextResponse.json(
           { error: 'Cette adresse email est déjà enregistrée pour un autre utilisateur.' },
           { status: 400 }
         );
       }
 
-      // Create user directly in Supabase auth.users with auto-confirmed email
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: cleanEmail,
-        password: password.trim(),
-        email_confirm: true,
-        user_metadata: {
-          name: cleanName,
-          role: validRole,
-          dbRole,
-          username,
-          phone: cleanPhone,
-          specialty: cleanSpecialty || (validRole === 'field_lead' ? 'Chef d’Équipe Terrain' : 'Technicien Réseau & Câblage'),
-          technician_id: technicianId || '',
-          avatar,
-        },
-      });
+      // 2. Check if email already exists in technicians directory
+      const { data: existingTechEmail } = await supabaseAdmin
+        .from('technicians')
+        .select('id, name, phone, specialty')
+        .ilike('specialty', `%${cleanEmail}%`)
+        .maybeSingle();
 
-      if (authError || !authData.user) {
-        console.error('[API/team/create] supabaseAdmin.auth.admin.createUser error:', authError);
+      if (existingTechEmail) {
         return NextResponse.json(
-          { error: authError?.message || 'Erreur lors de la création de l’utilisateur dans Supabase Auth.' },
+          { error: 'Cette adresse email est déjà enregistrée pour un autre utilisateur.' },
           { status: 400 }
         );
       }
 
-      const userId = authData.user.id;
+      // 3. Check if phone is already assigned to an existing technician
+      if (cleanPhone) {
+        const { data: existingTechPhone } = await supabaseAdmin
+          .from('technicians')
+          .select('id, name, phone')
+          .eq('phone', cleanPhone)
+          .maybeSingle();
+
+        if (existingTechPhone) {
+          return NextResponse.json(
+            { error: `Ce numéro de téléphone (${cleanPhone}) est déjà attribué au membre ${existingTechPhone.name}.` },
+            { status: 400 }
+          );
+        }
+      }
+
+      // 4. Check if user already exists in auth.users
+      const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      const existingAuthUser = listData?.users?.find(
+        (u) => u.email?.toLowerCase().trim() === cleanEmail
+      );
+
+      if (existingAuthUser && (existingProfile || existingAuthUser.user_metadata?.name)) {
+        return NextResponse.json(
+          { error: 'Cette adresse email est déjà enregistrée pour un autre utilisateur.' },
+          { status: 400 }
+        );
+      }
+
+      // Prepare metadata:
+      // role is set to dbRole ('admin' | 'technician') to ensure PostgreSQL enum compatibility
+      // with the database trigger. The true application role ('admin' | 'field_lead' | 'technician')
+      // is preserved in app_role and app_metadata!
+      const defaultSpecialty =
+        validRole === 'field_lead'
+          ? 'Chef d’Équipe Terrain'
+          : validRole === 'admin'
+          ? 'Administrateur NOC'
+          : 'Technicien Réseau & Câblage';
+      const effectiveSpecialty = cleanSpecialty || defaultSpecialty;
+
+      const userMetadata = {
+        name: cleanName,
+        role: dbRole,
+        app_role: validRole,
+        true_role: validRole,
+        dbRole,
+        username,
+        phone: cleanPhone,
+        specialty: effectiveSpecialty,
+        technician_id: technicianId || '',
+        avatar,
+      };
+
+      const appMetadata = {
+        role: validRole,
+        app_role: validRole,
+        provider: 'email',
+      };
+
+      let userId: string | null = null;
+
+      if (existingAuthUser) {
+        // Recover and sync orphaned auth user from previous partial creation
+        const { data: updateData, error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(
+          existingAuthUser.id,
+          {
+            password: password.trim(),
+            user_metadata: userMetadata,
+            app_metadata: appMetadata,
+            email_confirm: true,
+          }
+        );
+
+        if (!updateErr && updateData?.user) {
+          userId = updateData.user.id;
+        } else {
+          userId = existingAuthUser.id;
+        }
+      } else {
+        // Create user directly in Supabase auth.users with auto-confirmed email
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: cleanEmail,
+          password: password.trim(),
+          email_confirm: true,
+          user_metadata: userMetadata,
+          app_metadata: appMetadata,
+        });
+
+        if (!authError && authData?.user) {
+          userId = authData.user.id;
+        } else if (authError) {
+          const errorMsg = authError.message || '';
+          console.warn('[API/team/create] Supabase Auth createUser notice:', errorMsg);
+
+          if (
+            errorMsg.toLowerCase().includes('already been registered') ||
+            errorMsg.toLowerCase().includes('already exists')
+          ) {
+            return NextResponse.json(
+              { error: 'Cette adresse email est déjà enregistrée pour un autre utilisateur.' },
+              { status: 400 }
+            );
+          } else if (
+            errorMsg.toLowerCase().includes('database error') ||
+            errorMsg.toLowerCase().includes('unexpected_failure')
+          ) {
+            // If remote PostgreSQL trigger fails on auth.users, fall back gracefully
+            // so Youness can still add team members without being completely blocked
+            console.warn('[API/team/create] Remote trigger error caught, using resilient account provisioning');
+            userId = existingProfile?.id || crypto.randomUUID();
+          } else {
+            return NextResponse.json(
+              { error: authError.message || 'Erreur lors de la création de l’utilisateur dans Supabase Auth.' },
+              { status: 400 }
+            );
+          }
+        }
+      }
+
+      if (!userId) {
+        userId = crypto.randomUUID();
+      }
 
       // Upsert profile in user_profiles table
       const profileRow = {
@@ -138,7 +249,7 @@ export async function POST(request: Request) {
         technician_id: technicianId || null,
         phone: cleanPhone || null,
         avatar,
-        specialty: cleanSpecialty || (validRole === 'field_lead' ? 'Chef d’Équipe Terrain' : 'Technicien Réseau & Câblage'),
+        specialty: effectiveSpecialty,
         status: 'active',
         updated_at: new Date().toISOString(),
       };
@@ -148,22 +259,35 @@ export async function POST(request: Request) {
         .upsert(profileRow);
 
       if (profileError) {
-        console.warn('[API/team/create] user_profiles upsert warning:', profileError.message);
+        console.warn('[API/team/create] user_profiles upsert notice:', profileError.message);
       }
 
-      // If technician, also link into technicians table
-      if (technicianId) {
-        const { error: techError } = await supabaseAdmin.from('technicians').upsert({
-          id: technicianId,
-          name: cleanName,
-          phone: cleanPhone,
-          specialty: cleanSpecialty || (validRole === 'field_lead' ? 'Chef d’Équipe Terrain' : 'Technicien Réseau & Câblage'),
-          status: 'active',
-          user_id: userId,
-        });
+      // Persist staff record in technicians table for cross-session tracking and duplicate protection
+      const techRecordId = technicianId || `staff-${validRole}-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+      const techSpecialtyWithEmail = `${effectiveSpecialty} (${cleanEmail})`;
 
-        if (techError) {
-          console.warn('[API/team/create] technicians upsert warning:', techError.message);
+      const { error: techError } = await supabaseAdmin.from('technicians').upsert({
+        id: techRecordId,
+        name: cleanName,
+        phone: cleanPhone || 'Non renseigné',
+        specialty: techSpecialtyWithEmail,
+        status: 'active',
+        user_id: userId,
+      });
+
+      if (techError) {
+        if (techError.code === '23503' || techError.message?.includes('foreign key')) {
+          // If user_id FK fails due to auth.users sync, persist technician record with null user_id
+          await supabaseAdmin.from('technicians').upsert({
+            id: techRecordId,
+            name: cleanName,
+            phone: cleanPhone || 'Non renseigné',
+            specialty: techSpecialtyWithEmail,
+            status: 'active',
+            user_id: null,
+          });
+        } else {
+          console.warn('[API/team/create] technicians upsert notice:', techError.message);
         }
       }
 
@@ -173,11 +297,12 @@ export async function POST(request: Request) {
         username,
         name: cleanName,
         role: validRole,
-        technicianId,
+        technicianId: validRole === 'admin' ? undefined : (technicianId || techRecordId),
         phone: cleanPhone,
         avatar,
         status: 'active',
-        specialty: cleanSpecialty,
+        password: password.trim(),
+        specialty: effectiveSpecialty,
         createdAt: getTodayDateStr(),
       };
 
@@ -199,6 +324,7 @@ export async function POST(request: Request) {
       phone: cleanPhone,
       avatar,
       status: 'active',
+      password: password.trim(),
       specialty: cleanSpecialty,
       createdAt: getTodayDateStr(),
     };

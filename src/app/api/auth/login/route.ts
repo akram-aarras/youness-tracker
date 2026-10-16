@@ -59,6 +59,7 @@ export async function POST(request: Request) {
           authErrorMessage = authError.message;
         } else if (authData.user) {
           const meta = authData.user.user_metadata || {};
+          const appMeta = (authData.user as { app_metadata?: Record<string, unknown> }).app_metadata || {};
           // Fetch user profile from user_profiles table
           const { data: profile } = await supabase
             .from('user_profiles')
@@ -74,7 +75,28 @@ export async function POST(request: Request) {
               );
             }
 
-            const effectiveRole = (meta.role === 'field_lead' ? 'field_lead' : profile.role) as Role;
+            const rawRole =
+              meta.app_role ||
+              meta.true_role ||
+              appMeta.role ||
+              appMeta.app_role ||
+              meta.role ||
+              profile.role;
+
+            const isFieldLead =
+              rawRole === 'field_lead' ||
+              (profile.specialty &&
+                (profile.specialty.toLowerCase().includes('chef') ||
+                  profile.specialty.toLowerCase().includes('lead'))) ||
+              (meta.specialty &&
+                (meta.specialty.toLowerCase().includes('chef') ||
+                  meta.specialty.toLowerCase().includes('lead')));
+
+            const effectiveRole: Role = isFieldLead
+              ? 'field_lead'
+              : rawRole === 'admin' || profile.role === 'admin'
+              ? 'admin'
+              : 'technician';
 
             authenticatedUser = {
               id: profile.id,
@@ -89,8 +111,27 @@ export async function POST(request: Request) {
               specialty: profile.specialty || meta.specialty,
             };
           } else {
-            // Profile row missing: fallback to user_metadata on the auth user
-            const effectiveRole = (meta.role || meta.dbRole || 'technician') as Role;
+            // Profile row missing: fallback to user_metadata / app_metadata on the auth user
+            const rawRole =
+              meta.app_role ||
+              meta.true_role ||
+              appMeta.role ||
+              appMeta.app_role ||
+              meta.role ||
+              meta.dbRole;
+
+            const isFieldLead =
+              rawRole === 'field_lead' ||
+              (meta.specialty &&
+                (meta.specialty.toLowerCase().includes('chef') ||
+                  meta.specialty.toLowerCase().includes('lead')));
+
+            const effectiveRole: Role = isFieldLead
+              ? 'field_lead'
+              : rawRole === 'admin'
+              ? 'admin'
+              : 'technician';
+
             authenticatedUser = {
               id: authData.user.id,
               email: authData.user.email || emailToUse,

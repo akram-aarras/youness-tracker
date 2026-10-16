@@ -9,6 +9,7 @@ import {
   buildHistoricalUnpaidReminderUrl,
   generateBilanCSV,
   addMonthsToDateStr,
+  getTodayDateStr,
 } from '../src/lib/operationalUtils.ts';
 import { encodeSession, decodeSession, type SessionPayload } from '../src/lib/auth.ts';
 import type { Client, PaymentLog, User } from '../src/lib/types';
@@ -23,7 +24,7 @@ const sampleClient: Client = {
   subscriptionPlan: 'Pack Standard 100 MAD',
   monthlyFee: 100,
   installationDate: '2026-01-01',
-  nextDueDate: '2026-10-15',
+  nextDueDate: addMonthsToDateStr(getTodayDateStr(), 1),
   status: 'active',
   notes: 'Client VIP & Fibre <Rapide> "Prioritaire"',
   hardware: {

@@ -275,23 +275,73 @@ export async function fetchUsersFromSupabase(): Promise<User[] | null> {
       .limit(10000)
       .order('created_at', { ascending: true });
 
-    if (error) {
-      console.warn('[Supabase] fetchUsers failed:', error.message);
-      return null;
+    if (!error && data && data.length > 0) {
+      return data.map((row) => {
+        const isFieldLead =
+          row.role === 'field_lead' ||
+          (row.role === 'technician' &&
+            row.specialty &&
+            (row.specialty.toLowerCase().includes('chef') ||
+              row.specialty.toLowerCase().includes('lead')));
+
+        const effectiveRole: Role = isFieldLead
+          ? 'field_lead'
+          : row.role === 'admin'
+          ? 'admin'
+          : 'technician';
+
+        return {
+          id: row.id,
+          email: row.email,
+          username: row.username,
+          name: row.name,
+          role: effectiveRole,
+          technicianId: row.technician_id,
+          phone: row.phone || '',
+          avatar: row.avatar || (effectiveRole === 'admin' ? '👨‍💼' : '🔧'),
+          status: row.status || 'active',
+          specialty: row.specialty,
+          createdAt: row.created_at ? String(row.created_at).split('T')[0] : undefined,
+        };
+      });
     }
-    return (data || []).map((row) => ({
-      id: row.id,
-      email: row.email,
-      username: row.username,
-      name: row.name,
-      role: row.role as any,
-      technicianId: row.technician_id,
-      phone: row.phone || '',
-      avatar: row.avatar || '👤',
-      status: row.status || 'active',
-      specialty: row.specialty,
-      createdAt: row.created_at ? String(row.created_at).split('T')[0] : undefined,
-    }));
+
+    // Resilient fallback: If user_profiles is empty or restricted, hydrate staff from technicians table
+    const { data: techs } = await supabase
+      .from('technicians')
+      .select('*')
+      .limit(10000)
+      .order('created_at', { ascending: true });
+
+    if (techs && techs.length > 0) {
+      return techs.map((t) => {
+        const emailMatch = t.specialty?.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+        const email = emailMatch ? emailMatch[1] : `${t.id}@atlasnet.ma`;
+        const isAdmin = t.specialty?.toLowerCase().includes('admin');
+        const isFieldLead =
+          !isAdmin &&
+          (t.specialty?.toLowerCase().includes('chef') ||
+            t.specialty?.toLowerCase().includes('lead'));
+
+        const effectiveRole: Role = isAdmin ? 'admin' : isFieldLead ? 'field_lead' : 'technician';
+
+        return {
+          id: t.user_id || t.id,
+          email,
+          username: email.split('@')[0],
+          name: t.name,
+          role: effectiveRole,
+          technicianId: isAdmin ? undefined : t.id,
+          phone: t.phone || '',
+          avatar: effectiveRole === 'admin' ? '👨‍💼' : '🔧',
+          status: 'active',
+          specialty: t.specialty ? t.specialty.replace(/\s*\([^)]*@[^)]*\)/, '').trim() : undefined,
+          createdAt: t.created_at ? String(t.created_at).split('T')[0] : undefined,
+        };
+      });
+    }
+
+    return [];
   } catch (err) {
     console.warn('[Supabase] fetchUsers exception:', err);
     return null;
