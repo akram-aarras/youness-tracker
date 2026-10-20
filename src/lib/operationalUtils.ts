@@ -406,3 +406,39 @@ export function downloadBilanCSV(
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+/**
+ * Collision-proof client ID generator.
+ * Scans all existing client IDs (e.g. 'cli-001' ... 'cli-392'), determines the highest
+ * numeric suffix, and yields the next sequential ID (e.g. 'cli-393').
+ * Also performs an existence check against all existing IDs to ensure 100% collision immunity.
+ */
+export function generateNextClientId(existingClients: Array<{ id: string }>): string {
+  let maxIdNum = 0;
+  const existingIdSet = new Set<string>();
+
+  for (const client of existingClients) {
+    if (!client || !client.id) continue;
+    const rawId = String(client.id).trim();
+    existingIdSet.add(rawId);
+
+    const match = rawId.match(/^cli-(\d+)$/i);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxIdNum) {
+        maxIdNum = num;
+      }
+    }
+  }
+
+  let candidateNum = Math.max(maxIdNum, existingClients.length) + 1;
+  let candidateId = `cli-${String(candidateNum).padStart(3, '0')}`;
+
+  while (existingIdSet.has(candidateId)) {
+    candidateNum++;
+    candidateId = `cli-${String(candidateNum).padStart(3, '0')}`;
+  }
+
+  return candidateId;
+}
+

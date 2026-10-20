@@ -31,6 +31,7 @@ import {
   localizePaymentMethod,
 } from './i18n';
 import { encodeSession, SESSION_COOKIE_NAME } from './auth';
+import { generateNextClientId } from './operationalUtils';
 import {
   supabase,
   isSupabaseConfigured,
@@ -730,9 +731,62 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   // Synchronize state with Supabase (Hydration & Multi-Device Sync)
   const refreshFromSupabase = useCallback(async () => {
-    if (!isSupabaseConfigured || !supabase) return;
+    if (!isSupabaseConfigured) return;
     try {
       setIsSyncing(true);
+      // Fast path: Unified sync route (runs server-side with supabaseAdmin)
+      if (typeof window !== 'undefined') {
+        try {
+          const syncRes = await fetch('/api/data/sync');
+          if (syncRes.ok) {
+            const syncData = await syncRes.json();
+            if (syncData.success) {
+              if (Array.isArray(syncData.clients)) {
+                setClients(syncData.clients);
+                try {
+                  localStorage.setItem('youness_wisp_clients', JSON.stringify(syncData.clients));
+                } catch {}
+              }
+              if (Array.isArray(syncData.payments)) {
+                setPayments(syncData.payments);
+                try {
+                  localStorage.setItem('youness_wisp_payments', JSON.stringify(syncData.payments));
+                } catch {}
+              }
+              if (Array.isArray(syncData.tickets)) {
+                setTickets(syncData.tickets);
+                try {
+                  localStorage.setItem('youness_wisp_tickets', JSON.stringify(syncData.tickets));
+                } catch {}
+              }
+              if (Array.isArray(syncData.users) && syncData.users.length > 0) {
+                const fetchedUsers = syncData.users;
+                setUsers((prev) => {
+                  const fetchedMap = new Map(fetchedUsers.map((u: User) => [u.email.toLowerCase(), u]));
+                  const merged = fetchedUsers.concat(
+                    prev.filter((u) => !fetchedMap.has(u.email.toLowerCase()))
+                  );
+                  try {
+                    localStorage.setItem('youness_wisp_users', JSON.stringify(merged));
+                  } catch {}
+                  return merged;
+                });
+              }
+              if (Array.isArray(syncData.technicians) && syncData.technicians.length > 0) {
+                setTechnicians(syncData.technicians);
+                try {
+                  localStorage.setItem('youness_wisp_technicians', JSON.stringify(syncData.technicians));
+                } catch {}
+              }
+              return;
+            }
+          }
+        } catch (syncErr) {
+          console.warn('[Sync] /api/data/sync notice, falling back:', syncErr);
+        }
+      }
+
+      // Fallback path: individual fetch helpers
       const [clientsRes, paymentsRes, ticketsRes, usersRes] = await Promise.allSettled([
         fetchClientsFromSupabase(),
         fetchPaymentsFromSupabase(),
@@ -1430,7 +1484,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       initialPayment?: boolean;
     }
   ): Client => {
-    const id = `cli-${String(clients.length + 1).padStart(3, '0')}`;
+    const id = generateNextClientId(clients);
     const todayStr = getTodayDateStr();
     const dueDate = clientData.nextDueDate || addMonthsToDateStr(todayStr, 1);
     const status = calculateClientStatus(dueDate);

@@ -99,31 +99,39 @@ function fallbackReceiptNumber(rowOrPayment: { id?: string; payment_date?: strin
   return `REC-${yyyymmdd}-${suffix}`;
 }
 
-export function mapRowToPayment(row: PaymentRow): PaymentLog {
-  const paymentDate = row.payment_date ? String(row.payment_date).split('T')[0] : '';
-  const receiptNumber = (row.receipt_number && String(row.receipt_number).trim())
-    ? String(row.receipt_number).trim()
-    : fallbackReceiptNumber(row);
+export function mapRowToPayment(row: PaymentRow | Record<string, unknown>): PaymentLog {
+  const r = row as Record<string, unknown>;
+  const paymentDate = r.payment_date ? String(r.payment_date).split('T')[0] : '';
+  const receiptNumber = (r.receipt_number && String(r.receipt_number).trim())
+    ? String(r.receipt_number).trim()
+    : fallbackReceiptNumber(r as { id?: string; payment_date?: string | null });
+  const method = ((r.method || r.payment_method) as PaymentMethod) || 'cash';
+  const recordedBy = (r.recorded_by || r.collected_by || 'Admin') as string;
+  const amount = Number(r.amount) || 0;
+  const baseFee = r.base_fee !== null && r.base_fee !== undefined ? Number(r.base_fee) : amount;
+  const prevDueDate = r.previous_due_date ? String(r.previous_due_date).split('T')[0] : (r.due_date ? String(r.due_date).split('T')[0] : '');
+
+
   return {
-    id: row.id,
+    id: String(row.id || ''),
     receiptNumber,
-    clientId: row.client_id || '',
-    clientName: row.client_name || '',
-    amount: Number(row.amount) || 0,
-    baseFee: row.base_fee !== null && row.base_fee !== undefined ? Number(row.base_fee) : undefined,
+    clientId: String(row.client_id || ''),
+    clientName: String(row.client_name || ''),
+    amount,
+    baseFee,
     extraAmount: row.extra_amount !== null && row.extra_amount !== undefined ? Number(row.extra_amount) : 0,
-    extraReason: row.extra_reason || undefined,
-    method: (row.method as PaymentMethod) || 'cash',
+    extraReason: row.extra_reason ? String(row.extra_reason) : undefined,
+    method,
     paymentDate,
-    billingMonth: row.billing_month || (paymentDate ? paymentDate.substring(0, 7) : undefined),
-    previousDueDate: row.previous_due_date ? String(row.previous_due_date).split('T')[0] : '',
+    billingMonth: (row.billing_month ? String(row.billing_month) : '') || (paymentDate ? paymentDate.substring(0, 7) : undefined),
+    previousDueDate: prevDueDate,
     newDueDate: row.new_due_date ? String(row.new_due_date).split('T')[0] : '',
-    recordedBy: row.recorded_by || 'Admin',
-    notes: row.notes || undefined,
+    recordedBy,
+    notes: row.notes ? String(row.notes) : undefined,
   };
 }
 
-export function mapPaymentToRow(payment: PaymentLog): PaymentRow {
+export function mapPaymentToPaymentLogRow(payment: PaymentLog): Record<string, unknown> {
   const receiptNumber = (payment.receiptNumber && payment.receiptNumber.trim())
     ? payment.receiptNumber.trim()
     : fallbackReceiptNumber(payment);
@@ -138,13 +146,34 @@ export function mapPaymentToRow(payment: PaymentLog): PaymentRow {
     extra_reason: payment.extraReason || null,
     method: payment.method,
     payment_date: payment.paymentDate,
-    billing_month: payment.billingMonth || payment.paymentDate?.substring(0, 7),
     previous_due_date: payment.previousDueDate,
     new_due_date: payment.newDueDate,
     recorded_by: payment.recordedBy,
     notes: payment.notes || null,
   };
 }
+
+export function mapPaymentToPaymentsRow(payment: PaymentLog): Record<string, unknown> {
+  const receiptNumber = (payment.receiptNumber && payment.receiptNumber.trim())
+    ? payment.receiptNumber.trim()
+    : fallbackReceiptNumber(payment);
+  return {
+    id: payment.id,
+    receipt_number: receiptNumber,
+    client_id: payment.clientId,
+    client_name: payment.clientName,
+    amount: payment.amount,
+    payment_method: payment.method,
+    payment_date: payment.paymentDate,
+    collected_by: payment.recordedBy,
+    notes: payment.notes || null,
+  };
+}
+
+export function mapPaymentToRow(payment: PaymentLog): PaymentRow {
+  return mapPaymentToPaymentLogRow(payment) as unknown as PaymentRow;
+}
+
 
 export function mapRowToTicket(row: TicketRow): Ticket {
   return {
@@ -197,6 +226,20 @@ export function mapTicketToRow(ticket: Partial<Ticket>): Partial<TicketRow> {
 // ============================================================================
 
 export async function fetchClientsFromSupabase(): Promise<Client[] | null> {
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/clients');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.clients)) {
+          return data.clients;
+        }
+      }
+    } catch {
+      // Fallback to direct client below
+    }
+  }
+
   if (!supabase) return null;
   try {
     const { data, error } = await supabase
@@ -217,22 +260,40 @@ export async function fetchClientsFromSupabase(): Promise<Client[] | null> {
 }
 
 export async function fetchPaymentsFromSupabase(): Promise<PaymentLog[] | null> {
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/payments');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.payments)) {
+          return data.payments;
+        }
+      }
+    } catch {
+      // Fallback to direct client below
+    }
+  }
+
   if (!supabase) return null;
   try {
-    // Try 'payments' view / table first
+    // Try 'payment_logs' first (contains full rich data)
     let res = await supabase
-      .from('payments')
+      .from('payment_logs')
       .select('*')
       .limit(10000)
-      .order('created_at', { ascending: false });
+      .order('payment_date', { ascending: false });
 
-    if (res.error && (res.error.message.includes('schema cache') || res.error.message.includes('Could not find') || res.error.code === 'PGRST205')) {
-      // Fallback to 'payment_logs' table
-      res = await supabase
-        .from('payment_logs')
+    if (res.error || !res.data || res.data.length === 0) {
+      // Fallback to 'payments' table
+      const altRes = await supabase
+        .from('payments')
         .select('*')
         .limit(10000)
-        .order('created_at', { ascending: false });
+        .order('payment_date', { ascending: false });
+
+      if (!altRes.error && altRes.data && altRes.data.length > 0) {
+        res = altRes;
+      }
     }
 
     if (res.error) {
@@ -247,6 +308,20 @@ export async function fetchPaymentsFromSupabase(): Promise<PaymentLog[] | null> 
 }
 
 export async function fetchTicketsFromSupabase(): Promise<Ticket[] | null> {
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/tickets');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.tickets)) {
+          return data.tickets;
+        }
+      }
+    } catch {
+      // Fallback to direct client below
+    }
+  }
+
   if (!supabase) return null;
   try {
     const { data, error } = await supabase
@@ -353,6 +428,28 @@ export async function fetchUsersFromSupabase(): Promise<User[] | null> {
 // ============================================================================
 
 export async function insertClientToSupabase(client: Client): Promise<boolean> {
+  // 1. In browser, route through dedicated server API route (verified with session, runs via supabaseAdmin)
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(client),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.client?.id) {
+          client.id = data.client.id;
+        }
+        return true;
+      }
+      console.warn('[API/clients POST] Status:', res.status);
+    } catch (apiErr) {
+      console.warn('[API/clients POST] Fetch notice, falling back to direct client:', apiErr);
+    }
+  }
+
+  // 2. Direct client fallback (Node / offline / demo)
   if (!supabase) return false;
   try {
     const row = mapClientToRow(client);
@@ -369,10 +466,25 @@ export async function insertClientToSupabase(client: Client): Promise<boolean> {
 }
 
 export async function updateClientInSupabase(id: string, updates: Partial<Client>): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/clients', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...updates }),
+      });
+      if (res.ok) return true;
+      console.warn('[API/clients PATCH] Status:', res.status);
+    } catch (apiErr) {
+      console.warn('[API/clients PATCH] Fetch notice, falling back to direct client:', apiErr);
+    }
+  }
+
   if (!supabase) return false;
   try {
     const row = mapClientToRow(updates);
     delete row.id;
+    row.updated_at = new Date().toISOString();
     const { error } = await supabase.from('clients').update(row).eq('id', id);
     if (error) {
       console.warn('[Supabase] updateClient failed:', error.message);
@@ -386,8 +498,23 @@ export async function updateClientInSupabase(id: string, updates: Partial<Client
 }
 
 export async function deleteClientFromSupabase(id: string): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/clients', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) return true;
+      console.warn('[API/clients DELETE] Status:', res.status);
+    } catch (apiErr) {
+      console.warn('[API/clients DELETE] Fetch notice, falling back to direct client:', apiErr);
+    }
+  }
+
   if (!supabase) return false;
   try {
+    await supabase.from('tickets').delete().eq('client_id', id);
     const { error } = await supabase.from('clients').delete().eq('id', id);
     if (error) {
       console.warn('[Supabase] deleteClient failed:', error.message);
@@ -401,6 +528,19 @@ export async function deleteClientFromSupabase(id: string): Promise<boolean> {
 }
 
 export async function archiveClientInSupabase(id: string): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/clients', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: 'archived' }),
+      });
+      if (res.ok) return true;
+    } catch (apiErr) {
+      console.warn('[API/clients archive] Fetch notice:', apiErr);
+    }
+  }
+
   if (!supabase) return false;
   try {
     const { error } = await supabase
@@ -420,17 +560,32 @@ export async function archiveClientInSupabase(id: string): Promise<boolean> {
 }
 
 export async function insertPaymentToSupabase(payment: PaymentLog): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment }),
+      });
+      if (res.ok) return true;
+      console.warn('[API/payments POST] Status:', res.status);
+    } catch (apiErr) {
+      console.warn('[API/payments POST] Fetch notice, falling back to direct client:', apiErr);
+    }
+  }
+
   if (!supabase) return false;
   try {
-    const row = mapPaymentToRow(payment);
-    // Try 'payments' first
-    let res = await supabase.from('payments').insert(row);
-    if (res.error && (res.error.message.includes('schema cache') || res.error.message.includes('Could not find') || res.error.code === 'PGRST205')) {
-      // Fallback to 'payment_logs'
-      res = await supabase.from('payment_logs').insert(row);
-    }
-    if (res.error) {
-      console.warn('[Supabase] insertPayment failed:', res.error.message);
+    // 1. Try payment_logs table (Strictly omitting billing_month to prevent PGRST204)
+    const logRow = mapPaymentToPaymentLogRow(payment);
+    const resLogs = await supabase.from('payment_logs').upsert(logRow);
+
+    // 2. Also try payments table
+    const payRow = mapPaymentToPaymentsRow(payment);
+    const resPay = await supabase.from('payments').upsert(payRow);
+
+    if (resLogs.error && resPay.error) {
+      console.warn('[Supabase] insertPayment failed:', resLogs.error.message || resPay.error.message);
       return false;
     }
     return true;
@@ -447,6 +602,25 @@ export async function updateClientDueDateInSupabase(
   status: SubscriptionStatus,
   monthlyFee?: number
 ): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/clients', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: clientId,
+          nextDueDate,
+          lastPaymentDate,
+          status,
+          monthlyFee,
+        }),
+      });
+      if (res.ok) return true;
+    } catch (apiErr) {
+      console.warn('[API/clients PATCH due date] Fetch notice:', apiErr);
+    }
+  }
+
   if (!supabase) return false;
   try {
     const updates: Partial<ClientRow> = {
@@ -471,6 +645,20 @@ export async function updateClientDueDateInSupabase(
 }
 
 export async function insertTicketToSupabase(ticket: Ticket): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ticket),
+      });
+      if (res.ok) return true;
+      console.warn('[API/tickets POST] Status:', res.status);
+    } catch (apiErr) {
+      console.warn('[API/tickets POST] Fetch notice, falling back to direct client:', apiErr);
+    }
+  }
+
   if (!supabase) return false;
   try {
     const row = mapTicketToRow(ticket);
@@ -487,6 +675,20 @@ export async function insertTicketToSupabase(ticket: Ticket): Promise<boolean> {
 }
 
 export async function updateTicketInSupabase(ticketId: string, updates: Partial<Ticket>): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: ticketId, ...updates }),
+      });
+      if (res.ok) return true;
+      console.warn('[API/tickets PATCH] Status:', res.status);
+    } catch (apiErr) {
+      console.warn('[API/tickets PATCH] Fetch notice, falling back to direct client:', apiErr);
+    }
+  }
+
   if (!supabase) return false;
   try {
     const row = mapTicketToRow(updates);
@@ -501,3 +703,4 @@ export async function updateTicketInSupabase(ticketId: string, updates: Partial<
     return false;
   }
 }
+

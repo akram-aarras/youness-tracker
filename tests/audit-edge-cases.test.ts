@@ -10,6 +10,7 @@ import {
   generateBilanCSV,
   addMonthsToDateStr,
   getTodayDateStr,
+  generateNextClientId,
 } from '../src/lib/operationalUtils.ts';
 import { encodeSession, decodeSession, type SessionPayload } from '../src/lib/auth.ts';
 import type { Client, PaymentLog, User } from '../src/lib/types';
@@ -662,6 +663,41 @@ describe('10. Historical Revenue Preservation on Subscriber Deletion', () => {
     assert.strictEqual(totalRevenue, 200, 'Total recorded revenue must remain intact at 200 DH');
   });
 });
+
+describe('11. Collision-Proof Client ID Generation & Supabase Alignment', () => {
+  it('should generate max(numeric_id) + 1 rather than length + 1 when gaps exist', () => {
+    // Simulate real database state: 374 clients in total, but highest ID is cli-392
+    const mockClients = Array.from({ length: 374 }, (_, i) => ({
+      id: i === 373 ? 'cli-392' : `cli-${String(i + 1).padStart(3, '0')}`,
+    }));
+
+    const nextId = generateNextClientId(mockClients);
+    assert.strictEqual(
+      nextId,
+      'cli-393',
+      'Next client ID must be cli-393 (max+1) rather than cli-375 (length+1 which collides with existing client)'
+    );
+  });
+
+  it('should yield cli-001 for empty client list', () => {
+    const nextId = generateNextClientId([]);
+    assert.strictEqual(nextId, 'cli-001');
+  });
+
+  it('should skip past any non-standard IDs or collidable existing keys', () => {
+    const mockClients = [
+      { id: 'cli-001' },
+      { id: 'cli-002' },
+      { id: 'cli-003' },
+    ];
+    assert.strictEqual(generateNextClientId(mockClients), 'cli-004');
+
+    // With deleted middle client
+    const afterDelete = [{ id: 'cli-001' }, { id: 'cli-003' }];
+    assert.strictEqual(generateNextClientId(afterDelete), 'cli-004');
+  });
+});
+
 
 
 
