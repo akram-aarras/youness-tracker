@@ -442,3 +442,55 @@ export function generateNextClientId(existingClients: Array<{ id: string }>): st
   return candidateId;
 }
 
+/**
+ * Reverts client due date, last payment date, and status safely when undoing a payment.
+ * Reverts next_due_date to previousDueDate if available and valid, or steps back 1 billing month.
+ * Restores lastPaymentDate to the most recent remaining payment or installationDate.
+ */
+export function calculateUndoPaymentReversal(
+  client: Client,
+  paymentToUndo: PaymentLog,
+  remainingPayments: PaymentLog[] = [],
+  referenceDateInput?: string | Date
+): {
+  revertedNextDueDate: string;
+  revertedLastPaymentDate: string | undefined;
+  revertedStatus: SubscriptionStatus;
+} {
+  // 1. Determine reverted next_due_date:
+  let revertedNextDueDate: string;
+  if (
+    paymentToUndo.previousDueDate &&
+    paymentToUndo.previousDueDate.includes('-') &&
+    paymentToUndo.previousDueDate !== paymentToUndo.newDueDate
+  ) {
+    revertedNextDueDate = paymentToUndo.previousDueDate;
+  } else {
+    revertedNextDueDate = addMonthsToDateStr(client.nextDueDate, -1);
+  }
+
+  // 2. Determine reverted last_payment_date:
+  let revertedLastPaymentDate: string | undefined;
+  if (remainingPayments && remainingPayments.length > 0) {
+    const sortedRemaining = [...remainingPayments].sort(
+      (a, b) => (b.paymentDate || '').localeCompare(a.paymentDate || '') || b.id.localeCompare(a.id)
+    );
+    revertedLastPaymentDate = sortedRemaining[0].paymentDate;
+  } else {
+    revertedLastPaymentDate = client.installationDate || undefined;
+  }
+
+  // 3. Recompute client status:
+  const revertedStatus = calculateClientStatus(
+    revertedNextDueDate,
+    client.status === 'archived' ? 'archived' : undefined,
+    referenceDateInput
+  );
+
+  return {
+    revertedNextDueDate,
+    revertedLastPaymentDate,
+    revertedStatus,
+  };
+}
+

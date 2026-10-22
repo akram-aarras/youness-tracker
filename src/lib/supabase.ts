@@ -595,6 +595,53 @@ export async function insertPaymentToSupabase(payment: PaymentLog): Promise<bool
   }
 }
 
+export async function deletePaymentFromSupabase(
+  paymentId: string,
+  clientId?: string,
+  revertedNextDueDate?: string,
+  revertedLastPaymentDate?: string,
+  status?: SubscriptionStatus
+): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/payments', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentId,
+          clientId,
+          revertedNextDueDate,
+          revertedLastPaymentDate,
+          status,
+        }),
+      });
+      if (res.ok) return true;
+    } catch (apiErr) {
+      console.warn('[API/payments DELETE] Fetch notice, falling back to direct client:', apiErr);
+    }
+  }
+
+  if (!supabase) return false;
+  try {
+    await supabase.from('payment_logs').delete().eq('id', paymentId);
+    await supabase.from('payments').delete().eq('id', paymentId);
+
+    if (clientId && revertedNextDueDate) {
+      const updates: Partial<ClientRow> = {
+        next_due_date: revertedNextDueDate,
+        last_payment_date: revertedLastPaymentDate || null,
+        updated_at: new Date().toISOString(),
+      };
+      if (status) updates.status = status;
+      await supabase.from('clients').update(updates).eq('id', clientId);
+    }
+    return true;
+  } catch (err) {
+    console.warn('[Supabase] deletePaymentFromSupabase exception:', err);
+    return false;
+  }
+}
+
 export async function updateClientDueDateInSupabase(
   clientId: string,
   nextDueDate: string,

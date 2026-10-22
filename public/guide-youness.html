@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>دليل استخدام نظام AtlasNet - خاص بيونس</title>
+  
+  <!-- خطوط عربية احترافية من Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* =========================================================
+       1. VARIABLES & RESET
+       ========================================================= */
+    :root {
+      --primary: #059669;         /* زمردي قيادي */
+      --primary-dark: #065f46;
+      --primary-light: #ecfdf5;
+      --primary-border: #a7f3d0;
+      
+      --accent: #d97706;          /* برتقالي ذهبي للعمليات المالية */
+      --accent-light: #fffbeb;
+      
+      --slate-950: #020617;
+      --slate-900: #0f172a;
+      --slate-800: #1e293b;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748b;
+      --slate-200: #e2e8f0;
+      --slate-100: #f1f5f9;
+      --slate-50:  #f8fafc;
+      
+      --status-active: #059669;
+      --status-active-bg: #ecfdf5;
+      --status-due: #d97706;
+      --status-due-bg: #fffbeb;
+      --status-overdue: #e11d48;
+      --status-overdue-bg: #fff1f2;
+      --status-suspended: #991b1b;
+      --status-suspended-bg: #fef2f2;
+      --status-archived: #475569;
+      --status-archived-bg: #f1f5f9;
+      
+      --font-main: 'Tajawal', 'Cairo', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      background-color: #cbd5e1;
+      color: var(--slate-900);
+      font-family: var(--font-main);
+      line-height: 1.5;
+      font-size: 13.5px;
+      padding: 30px 15px;
+    }
+
+    /* زر الطباعة العائم */
+    .print-bar {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(8px);
+      padding: 10px 22px;
+      border-radius: 9999px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.15);
+      color: white;
+    }
+
+    .print-btn {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      border: none;
+      padding: 9px 20px;
+      border-radius: 9999px;
+      font-family: var(--font-main);
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .print-btn:hover {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.45);
+    }
+
+    .print-hint {
+      font-size: 12.5px;
+      color: #cbd5e1;
+      font-weight: 500;
+    }
+
+    .print-hint kbd {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* حاوية الصفحات */
+    .document-container {
+      max-width: 210mm;
+      margin: 50px auto 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    /* صفحة A4 مستقلة */
+    .page {
+      background: #ffffff;
+      width: 210mm;
+      min-height: 297mm;
+      height: 297mm;
+      padding: 16mm 18mm;
+      margin: 0 auto;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* رأس الصفحة الرسمي */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--slate-200);
+      padding-bottom: 11px;
+      margin-bottom: 14px;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-logo-img {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      padding: 2px;
+    }
+
+    .header-logo-badge {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, #059669 0%, #0f172a 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 900;
+      font-size: 19px;
+      letter-spacing: -0.5px;
+      box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25);
+    }
+
+    .header-brand-info h1 {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--slate-900);
+      line-height: 1.2;
+    }
+
+    .header-brand-info p {
+      font-size: 11.5px;
+      color: var(--slate-500);
+      font-weight: 600;
+    }
+
+    .header-meta {
+      text-align: left;
+      font-size: 11px;
+      color: var(--slate-500);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 3px;
+    }
+
+    .executive-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      background: var(--slate-900);
+      color: #34d399;
+      font-size: 10.5px;
+      font-weight: 700;
+      border-radius: 9999px;
+      letter-spacing: 0.3px;
+    }
+
+    .executive-pill::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 6px #10b981;
+    }
+
+    /* أسفل الصفحة (Footer) */
+    .page-footer {
+      border-top: 1px solid var(--slate-200);
+      padding-top: 9px;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10.5px;
+      color: var(--slate-500);
+    }
+
+    .page-number {
+      font-weight: 700;
+      color: var(--slate-700);
+      background: var(--slate-100);
+      padding: 2px 9px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+    }
+
+    /* المحتوى القابل للتمدد داخل الصفحة */
+    .page-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* عناوين الأقسام الرئيسية داخل الصفحة */
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+
+    .section-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-icon-box {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: var(--primary-light);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--primary-border);
+    }
+
+    .section-icon-box svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .section-title h2 {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--slate-900);
+    }
+
+    .section-subtitle {
+      font-size: 11.5px;
+      color: var(--slate-500);
+      margin-top: -8px;
+      margin-bottom: 6px;
+    }
+
+    /* كروت النمط الحديث */
+    .card {
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .card-emerald {
+      border-right: 4px solid var(--primary);
+      background: linear-gradient(to left, #ffffff, #f0fdf4);
+    }
+
+    .card-amber {
+      border-right: 4px solid var(--accent);
+      background: linear-gradient(to left, #ffffff, #fffbeb);
+    }
+
+    .card-slate {
+      border-right: 4px solid var(--slate-700);
+      background: var(--slate-50);
+    }
+
+    /* شبكات الكروت */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 11px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 9px;
+    }
+
+    /* إحصائيات الصفحة الأولى */
+    .stat-box {
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 11px;
+      padding: 11px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .stat-box-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .stat-label {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--slate-600);
+    }
+
+    .stat-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-val {
+      font-size: 21px;
+      font-weight: 900;
+      font-family: var(--font-mono);
+      line-height: 1.1;
+      color: var(--slate-900);
+    }
+
+    .stat-desc {
+      font-size: 10.5px;
+      color: var(--slate-500);
+      margin-top: 4px;
+      line-height: 1.35;
+    }
+
+    /* شارات وتصنيفات */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2.5px 8px;
+      border-radius: 6px;
+      font-size: 10.5px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .badge-active {
+      background: var(--status-active-bg);
+      color: var(--status-active);
+      border: 1px solid #a7f3d0;
+    }
+
+    .badge-due {
+      background: var(--status-due-bg);
+      color: var(--status-due);
+      border: 1px solid #fde68a;
+    }
+
+    .badge-overdue {
+      background: var(--status-overdue-bg);
+      color: var(--status-overdue);
+      border: 1px solid #fecdd3;
+    }
+
+    .badge-suspended {
+      background: var(--status-suspended-bg);
+      color: var(--status-suspended);
+      border: 1px solid #fca5a5;
+    }
+
+    .badge-archived {
+      background: var(--status-archived-bg);
+      color: var(--status-archived);
+      border: 1px solid var(--slate-200);
+    }
+
+    /* نصوص إيضاحية بلهجة تقنية مغربية مبسطة */
+    .moroccan-tip {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 11.5px;
+      color: var(--slate-700);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .moroccan-tip strong {
+      color: var(--primary-dark);
+      font-weight: 800;
+    }
+
+    /* جداول توضيحية */
+    .guide-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11.5px;
+      margin-top: 4px;
+    }
+
+    .guide-table th {
+      background: var(--slate-100);
+      color: var(--slate-700);
+      text-align: right;
+      padding: 7px 10px;
+      font-weight: 800;
+      border: 1px solid var(--slate-200);
+      font-size: 11px;
+    }
+
+    .guide-table td {
+      padding: 7px 10px;
+      border: 1px solid var(--slate-200);
+      color: var(--slate-800);
+      vertical-align: middle;
+    }
+
+    .guide-table tr:nth-child(even) {
+      background: #fafafa;
+    }
+
+    /* أزرار العمليات الـ 5 (الصفحة 3) */
+    .action-button-card {
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 11px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .btn-circle-preview {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06);
+    }
+
+    .btn-circle-preview svg {
+      width: 19px;
+      height: 19px;
+    }
+
+    .action-details h3 {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--slate-900);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+
+    .action-details p {
+      font-size: 11.5px;
+      color: var(--slate-600);
+      line-height: 1.4;
+    }
+
+    .action-details .benefit {
+      font-size: 10.5px;
+      color: var(--primary-dark);
+      font-weight: 700;
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* الرتب الثلاث لإدارة الفريق (الصفحة 4) */
+    .role-card {
+      border: 1px solid var(--slate-200);
+      border-radius: 11px;
+      padding: 11px;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .role-header {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 6px;
+    }
+
+    .role-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .role-title {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: var(--slate-900);
+      line-height: 1.2;
+    }
+
+    .role-title span {
+      display: block;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--slate-500);
+    }
+
+    .role-list {
+      list-style: none;
+      font-size: 10.5px;
+      color: var(--slate-600);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .role-list li {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .role-list li::before {
+      content: '✓';
+      color: var(--primary);
+      font-weight: bold;
+      font-size: 11px;
+    }
+
+    /* خطوات إضافة موظف */
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 11.5px;
+    }
+
+    .step-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--slate-900);
+      color: white;
+      font-size: 11px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-family: var(--font-mono);
+    }
+
+    /* =========================================================
+       2. PRINT MEDIA RULES (A4 PDF EXPORT RULES)
+       ========================================================= */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 10mm 12mm 10mm 12mm;
+      }
+
+      body {
+        background: transparent !important;
+        padding: 0 !important;
+        color: #000000 !important;
+      }
+
+      .print-bar {
+        display: none !important;
+      }
+
+      .document-container {
+        max-width: 100% !important;
+        margin: 0 !important;
+        gap: 0 !important;
+      }
+
+      .page {
+        width: 100% !important;
+        min-height: 275mm !important;
+        height: auto !important;
+        max-height: none !important;
+        padding: 0 0 4mm 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+
+      .page:last-child {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+      }
+
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      .card, .action-button-card, .stat-box, .role-card {
+        box-shadow: none !important;
+        border-color: #cbd5e1 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- شريط الطباعة العائم (يختفي في ملف الـ PDF المطبوع) -->
+  <div class="print-bar">
+    <button class="print-btn" onclick="window.print()">
+      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+      </svg>
+      <span>🖨️ تحميل كملف PDF / طباعة فورية</span>
+    </button>
+    <span class="print-hint">للحفظ كـ PDF تنفيذي: اختر <kbd>Ctrl + P</kbd> ثم حفظ كملف PDF</span>
+  </div>
+
+  <div class="document-container">
+
+    <!-- ===================================================================
+         الصفحة 1: نظرة عامة والترحيب بيونس (Vue d'ensemble & Dashboard)
+         =================================================================== -->
+    <section class="page" id="page-1">
+      <div>
+        <!-- رأس الصفحة -->
+        <header class="page-header">
+          <div class="header-brand">
+            <img src="logo.png" class="header-logo-img" alt="AtlasNet" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="display: block;">
+            <div class="header-logo-badge" style="display: none;">AN</div>
+            <div class="header-brand-info">
+              <h1>AtlasNet WISP Manager</h1>
+              <p>نظام التدبير الميداني والمالي لشبكة الإنترنت اللاسلكي</p>
+            </div>
+          </div>
+          <div class="header-meta">
+            <span class="executive-pill">وثيقة تشغيلية خاصة</span>
+            <span>المسؤول المباشر: <strong>الأخ يونس (Admin NOC)</strong></span>
+            <span>نطاق التغطية: شبكة تطوان والنواحي</span>
+          </div>
+        </header>
+
+        <div class="page-content">
+          <!-- رسالة ترحيبية خاصة بالأخ يونس -->
+          <div class="card card-emerald">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <h2 style="font-size: 15px; font-weight: 800; color: var(--primary-dark); display: flex; align-items: center; gap: 8px;">
+                <span>👋</span> مرحباً بك أخي يونس في لوحة تحكم شبكتك AtlasNet
+              </h2>
+              <span class="badge badge-active">النظام متصل سحابياً ⚡ Supabase Live</span>
+            </div>
+            <p style="font-size: 12px; color: var(--slate-700); line-height: 1.55;">
+              تم تصميم هذا الدليل التنفيذي ليكون مرجعك السريع والمبسط لإدارة شبكة الإنترنت بنجاح وسلاسة. يتيح لك النظام التحكم المركزي الكامل في قاعدة المشتركين، أجهزة الاستقبال والروترات، تسجيل الخلاص والمداخيل اليومية، وتنسيق عمل التقنيين الميدانيين بكل احترافية ودون أي تعقيد.
+            </p>
+          </div>
+
+          <!-- بطاقات المؤشرات الـ 4 الرئيسية للقاعدة الحالية -->
+          <div>
+            <div class="section-title">
+              <div class="section-title-wrap">
+                <div class="section-icon-box">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                </div>
+                <h2>المؤشرات الهيكلية للقاعدة الحالية</h2>
+              </div>
+              <span style="font-size: 11px; color: var(--slate-500); font-family: var(--font-mono);">STATUT BASE DE DONNÉES</span>
+            </div>
+
+            <div class="grid-2" style="margin-top: 6px;">
+              <!-- بطاقة 1: المشتركون -->
+              <div class="stat-box">
+                <div class="stat-box-top">
+                  <span class="stat-label">إجمالي المشتركين المسجلين</span>
+                  <div class="stat-icon" style="background: #ecfdf5; color: #059669;">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                  </div>
+                </div>
+                <div class="stat-val">383 <span style="font-size: 13px; font-weight: 600; color: var(--slate-500);">مشترك</span></div>
+                <div class="stat-desc">قاعدة بيانات المشتركين الفعلية موزعة بدقة على أحياء تطوان مع ربط هوائيات CPE وروترات PPPoE.</div>
+              </div>
+
+              <!-- بطاقة 2: الأثمنة المخصصة -->
+              <div class="stat-box">
+                <div class="stat-box-top">
+                  <span class="stat-label">أثمنة الاشتراكات المخصصة</span>
+                  <div class="stat-icon" style="background: #fffbeb; color: #d97706;">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                </div>
+                <div class="stat-val">50 - 200 <span style="font-size: 13px; font-weight: 600; color: var(--slate-500);">درهم / شهر</span></div>
+                <div class="stat-desc">مرونة كاملة في تحديد سومة الاشتراك لكل زبون (50، 100، 120، 150، 200 درهم) مع تحديث الخلاص تلقائياً.</div>
+              </div>
+
+              <!-- بطاقة 3: التحديث السحابي الفوري -->
+              <div class="stat-box">
+                <div class="stat-box-top">
+                  <span class="stat-label">المزامنة السحابية الفورية</span>
+                  <div class="stat-icon" style="background: #eff6ff; color: #2563eb;">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  </div>
+                </div>
+                <div class="stat-val" style="font-size: 16px; color: #2563eb; padding-top: 4px;">مزامنة لحظية 100%</div>
+                <div class="stat-desc">أي خلاص أو تعديل أو تذكرة عطل يسجلها التقني من هاتفه تظهر عندك فوراً دون الحاجة لتحديث الصفحة.</div>
+              </div>
+
+              <!-- بطاقة 4: الأمان والنسخ الاحتياطي -->
+              <div class="stat-box">
+                <div class="stat-box-top">
+                  <span class="stat-label">النسخ الاحتياطي والأمان</span>
+                  <div class="stat-icon" style="background: #fdf2f8; color: #db2777;">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                  </div>
+                </div>
+                <div class="stat-val" style="font-size: 16px; color: #db2777; padding-top: 4px;">تصدير JSON مشفر</div>
+                <div class="stat-desc">إمكانية تنزيل نسخة كاملة لجميع المشتركين والمدفوعات والتذاكر في أي وقت وحفظها في حاسوبك بأمان.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- مخطط تدفق البيانات اليومية بين يونس والفريق -->
+          <div class="card card-slate">
+            <h3 style="font-size: 12.5px; font-weight: 800; color: var(--slate-900); margin-bottom: 7px; display: flex; align-items: center; gap: 6px;">
+              <span>🔄</span> دورة العمل اليومية في نظام AtlasNet (Workflow)
+            </h3>
+            <div class="grid-3" style="gap: 8px; font-size: 11px;">
+              <div style="background: white; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--slate-200);">
+                <div style="font-weight: 800; color: var(--primary-dark); margin-bottom: 2px;">1. متابعة الصباح</div>
+                <div>إلقاء نظرة على لوحة القيادة لمعرفة المشتركين الذين حان أجل خلاصهم اليوم، وتوزيع التدخلات الفنية العاجلة.</div>
+              </div>
+              <div style="background: white; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--slate-200);">
+                <div style="font-weight: 800; color: var(--accent); margin-bottom: 2px;">2. التحصيل الميداني</div>
+                <div>يقوم التقنيون أو المشرف بجمع الاشتراكات وتسجيلها بنقرة واحدة عبر زر الخلاص لتحديث الأجل تلقائياً.</div>
+              </div>
+              <div style="background: white; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--slate-200);">
+                <div style="font-weight: 800; color: var(--slate-800); margin-bottom: 2px;">3. إغلاق الصندوق</div>
+                <div>مقارنة مدخول اليوم المسجل بالنظام مع السيولة النقدية المحصلة فعلياً والتأكد من مطابقة الحسابات 100%.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- نصيحة خاصة بيونس -->
+          <div class="moroccan-tip">
+            <span style="font-size: 16px;">💡</span>
+            <div>
+              <strong>معلومة مهمة ليونس:</strong> يتوفر النظام على إمكانية الدخول من الهاتف الذكي واللوحة اللمسية والحاسوب في آن واحد. يمكنك تتبع شبكتك في أي مكان بمدينة تطوان مع تحديثات فورية بدون أي تأخير.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- أسفل الصفحة -->
+      <footer class="page-footer">
+        <div>نظام AtlasNet WISP Tracker • دليل التشغيل التنفيذي للأخ يونس</div>
+        <div class="page-number">صفحة 1 من 4</div>
+      </footer>
+    </section>
+
+    <!-- ===================================================================
+         الصفحة 2: إدارة المشتركين والبحث والفلترة (Gestion & Filtres)
+         =================================================================== -->
+    <section class="page" id="page-2">
+      <div>
+        <!-- رأس الصفحة -->
+        <header class="page-header">
+          <div class="header-brand">
+            <img src="logo.png" class="header-logo-img" alt="AtlasNet" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="display: block;">
+            <div class="header-logo-badge" style="display: none;">AN</div>
+            <div class="header-brand-info">
+              <h1>إدارة المشتركين والبحث والفلترة الذكية</h1>
+              <p>كيفية العثور على أي مشترك في ثوانٍ والتحكم في دورة حياة الاشتراكات</p>
+            </div>
+          </div>
+          <div class="header-meta">
+            <span class="executive-pill">قسم المشتركين (Clients)</span>
+            <span>البحث الفوري: مدعوم لـ 383+ مشترك</span>
+          </div>
+        </header>
+
+        <div class="page-content">
+          <!-- 1. شريط البحث الشامل -->
+          <div class="card card-emerald">
+            <div class="section-title">
+              <div class="section-title-wrap">
+                <div class="section-icon-box">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+                <h2>شريط البحث الفوري متعدد المعايير (Recherche Multi-critères)</h2>
+              </div>
+              <span class="badge" style="background: var(--slate-900); color: white; font-family: var(--font-mono);">اختصار: Ctrl + K</span>
+            </div>
+            <p style="font-size: 11.5px; color: var(--slate-600); margin-top: 4px; line-height: 1.5;">
+              شريط البحث مزود بتقنية الاستجابة فائقة السرعة، بحيث تظهر النتائج وأنت تكتب الحرف الأول دون أي بطء. يمكنك البحث في جدول المشتركين باستخدام أي معلومة تخطر ببالك:
+            </p>
+            
+            <div class="grid-3" style="margin-top: 8px; gap: 7px; font-size: 11px;">
+              <div style="background: white; border: 1px solid var(--slate-200); padding: 6px 9px; border-radius: 6px;">
+                <span style="color: var(--primary-dark); font-weight: bold;">👤 اسم المشترك:</span> يونس، بنجلون، تطواني...
+              </div>
+              <div style="background: white; border: 1px solid var(--slate-200); padding: 6px 9px; border-radius: 6px;">
+                <span style="color: var(--primary-dark); font-weight: bold;">📞 رقم الهاتف:</span> كتابة أي 4 أرقام من الهاتف
+              </div>
+              <div style="background: white; border: 1px solid var(--slate-200); padding: 6px 9px; border-radius: 6px;">
+                <span style="color: var(--primary-dark); font-weight: bold;">🌐 حساب PPPoE:</span> اسم المستخدم بالروتر
+              </div>
+              <div style="background: white; border: 1px solid var(--slate-200); padding: 6px 9px; border-radius: 6px;">
+                <span style="color: var(--primary-dark); font-weight: bold;">📡 عنوان IP الهوائي:</span> مثل 192.168.1.55
+              </div>
+              <div style="background: white; border: 1px solid var(--slate-200); padding: 6px 9px; border-radius: 6px;">
+                <span style="color: var(--primary-dark); font-weight: bold;">🏷️ الماك MAC Address:</span> مثل 24:A4:3C...
+              </div>
+              <div style="background: white; border: 1px solid var(--slate-200); padding: 6px 9px; border-radius: 6px;">
+                <span style="color: var(--primary-dark); font-weight: bold;">📍 الحي أو العنوان:</span> كويلما، بوجراح، الملاليين...
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. فلتر الأحياء وفلاتر الحالات الـ 5 -->
+          <div>
+            <div class="section-title">
+              <div class="section-title-wrap">
+                <div class="section-icon-box">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                </div>
+                <h2>فلاتر الحالة ودورة حياة الاشتراك (Les Statuts d'Abonnement)</h2>
+              </div>
+              <span style="font-size: 11px; color: var(--slate-500);">تحديث أوتوماتيكي حسب تاريخ الأجل</span>
+            </div>
+
+            <table class="guide-table" style="margin-top: 6px;">
+              <thead>
+                <tr>
+                  <th style="width: 18%;">الحالة والشارة</th>
+                  <th style="width: 27%;">المعنى الحسابي والتوقيت</th>
+                  <th style="width: 35%;">الإجراء التشغيلي المطلوب من يونس</th>
+                  <th style="width: 20%;">تأثير الصبيب</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="badge badge-active">🟢 نشط / مسوّى</span></td>
+                  <td>الخلاص مريكل بالكامل ومتبقي أكثر من 3 أيام على حلول الأجل القادم.</td>
+                  <td>الخدمة مستقرة، لا يتطلب أي إجراء حالياً.</td>
+                  <td><strong style="color: var(--primary);">صبيب عادي 100%</strong></td>
+                </tr>
+                <tr>
+                  <td><span class="badge badge-due">🟡 اقتراب الأجل</span></td>
+                  <td>متبقي <strong>3 أيام أو أقل</strong> على انتهاء الشهر أو تاريخ الأجل هو اليوم (0j).</td>
+                  <td>إرسال تذكير أوتوماتيكي ودي عبر زر الواتساب بنقرة واحدة لتفادي التأخير.</td>
+                  <td><strong style="color: #b45309;">تنبيه ودي</strong></td>
+                </tr>
+                <tr>
+                  <td><span class="badge badge-overdue">🔴 متأخر عن الأداء</span></td>
+                  <td>فات أجل الأداء بيوم واحد أو أكثر (يظهر عدد الأيام بالسالب، مثلاً تأخر بـ 5 أيام).</td>
+                  <td>الاتصال بالمشترك أو إرسال إشعار بالأداء عبر التقني المكلف بالحي.</td>
+                  <td><strong style="color: #be123c;">مهلة إضافية</strong></td>
+                </tr>
+                <tr>
+                  <td><span class="badge badge-suspended">⛔ معلق (Suspendu)</span></td>
+                  <td>تم توقيف الخط مؤقتاً بسبب التأخر الكبير في الأداء أو بطلب المشترك (سفر/أشغال).</td>
+                  <td>توقيف الصبيب من السيرفر وإعادة تشغيله فور تسوية المستحقات.</td>
+                  <td><strong style="color: #991b1b;">موقوف مؤقتاً</strong></td>
+                </tr>
+                <tr>
+                  <td><span class="badge badge-archived">⚪ مؤرشف (Archivé)</span></td>
+                  <td>مشترك سابق قام بإلغاء اشتراكه نهائياً ونزع الهوائي، مع حفظ تاريخه.</td>
+                  <td>لا يظهر في الجدول اليومي، لكن محفوظ في الأرشيف للرجوع إليه عند الحاجة.</td>
+                  <td><strong style="color: var(--slate-500);">ملغى نهائياً</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 3. فلتر الأحياء والمناطق الميدانية -->
+          <div class="card card-amber">
+            <h3 style="font-size: 12.5px; font-weight: 800; color: var(--slate-900); margin-bottom: 5px; display: flex; align-items: center; gap: 6px;">
+              <span>📍</span> فلتر الأحياء (Filtre par Quartier) وتنسيق الجولات الميدانية
+            </h3>
+            <p style="font-size: 11.5px; color: var(--slate-700); line-height: 1.5;">
+              القائمة المنسدلة في الأعلى تمكنك من عزل أي حي في مدينة تطوان (مثل: <em>حي كويلما، بوجراح، الملاليين، خندق الزربوح، السواني...</em>). 
+              هذه الخاصية تفيدك في:
+            </p>
+            <div class="grid-2" style="margin-top: 6px; font-size: 11px; gap: 8px;">
+              <div style="background: white; border: 1px solid #fde68a; padding: 7px 10px; border-radius: 6px;">
+                <strong>• تكليف التقنيين:</strong> إرسال التقني لتحصيل أو صيانة المشتركين المتجاورين في نفس الحي لتوفير الوقت والوقود.
+              </div>
+              <div style="background: white; border: 1px solid #fde68a; padding: 7px 10px; border-radius: 6px;">
+                <strong>• مراقبة المحطات الإقليمية:</strong> في حال انقطاع الكهرباء أو عطل في نقطة بث معينة، يمكنك تصفية الحي لمعرفة المشتركين المتأثرين فوراً.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- أسفل الصفحة -->
+      <footer class="page-footer">
+        <div>نظام AtlasNet WISP Tracker • دليل التشغيل التنفيذي للأخ يونس</div>
+        <div class="page-number">صفحة 2 من 4</div>
+      </footer>
+    </section>
+
+    <!-- ===================================================================
+         الصفحة 3: شرح الأزرار الـ 5 أمام كل مشترك (Boutons d'Action)
+         =================================================================== -->
+    <section class="page" id="page-3">
+      <div>
+        <!-- رأس الصفحة -->
+        <header class="page-header">
+          <div class="header-brand">
+            <img src="logo.png" class="header-logo-img" alt="AtlasNet" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="display: block;">
+            <div class="header-logo-badge" style="display: none;">AN</div>
+            <div class="header-brand-info">
+              <h1>شرح أزرار العمليات السريعة أمام كل مشترك</h1>
+              <p>البطاقات التوضيحية للأزرار الدائرية الـ 5 المتاحة في جدول المشتركين</p>
+            </div>
+          </div>
+          <div class="header-meta">
+            <span class="executive-pill">التحكم الفوري بنقرة واحدة</span>
+            <span>اختصار المهام الميدانية</span>
+          </div>
+        </header>
+
+        <div class="page-content">
+          <p class="section-subtitle">
+            يحتوي كل صف في جدول المشتركين على 5 أزرار دائرية مصممة لتمكين يونس وفريقه من تنفيذ أي إجراء بنقرة واحدة ودون الحاجة للدخول في صفحات متعددة:
+          </p>
+
+          <!-- بطاقة الزر 1: الواتساب -->
+          <div class="action-button-card" style="border-right: 4px solid #10b981;">
+            <div class="btn-circle-preview" style="background: #ecfdf5; color: #059669; border-color: #a7f3d0;">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+            </div>
+            <div class="action-details">
+              <h3>1. زر الواتساب المباشر (Message WhatsApp)</h3>
+              <p>
+                يقوم بفتح تطبيق الواتساب أو واتساب ويب فوراً مع المشترك برسالة مغربية رسمية ومهنية مجهزة مسبقاً (تتضمن اسم المشترك، تاريخ الأجل، وثمن الاشتراك الشهري). لا تحتاج لتسجيل رقم هاتف المشترك في جهات اتصال هاتفك.
+              </p>
+              <div class="benefit">
+                <span>⚡ الفائدة ليونس:</span> توفير الوقت في إرسال التذكيرات بالخلاص، والتواصل الفوري مع الزبون عند الصيانة.
+              </div>
+            </div>
+          </div>
+
+          <!-- بطاقة الزر 2: خلاص واشتراك -->
+          <div class="action-button-card" style="border-right: 4px solid #f59e0b;">
+            <div class="btn-circle-preview" style="background: #fffbeb; color: #d97706; border-color: #fde68a;">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+            </div>
+            <div class="action-details">
+              <h3>2. زر تسجيل الخلاص والدفعات (Enregistrer Paiement)</h3>
+              <p>
+                بمجرد استلام الواجب الشهري من المشترك، تضغط على هذا الزر ليفتح لك نافذة الدفع. بمجرد تأكيد المبلغ، يقوم النظام أوتوماتيكياً بترحيل تاريخ نهاية الأجل شهراً كاملاً للأمام، تحديث إحصائيات الخزينة، وتوليد وصل أداء رقمي (Reçu).
+              </p>
+              <div class="benefit">
+                <span>⚡ الفائدة ليونس:</span> عدم نسيان أي دفعة نقدية، وضبط الحساب المالي بدون أخطاء يدوية.
+              </div>
+            </div>
+          </div>
+
+          <!-- بطاقة الزر 3: فتح تذكرة عطل -->
+          <div class="action-button-card" style="border-right: 4px solid #2563eb;">
+            <div class="btn-circle-preview" style="background: #eff6ff; color: #2563eb; border-color: #bfdbfe;">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </div>
+            <div class="action-details">
+              <h3>3. زر تسجيل عطل تقني وتدخل ميداني (Créer un Ticket Panne)</h3>
+              <p>
+                إذا اشتكى الزبون من ضعف الصبيب، انقطاع النت، أو تحرك الهوائي بسبب الرياح، يتم الضغط على هذا الزر لفتح تذكرة عطل فورية، وتعيين التقني المسؤول مع تحديد درجة الاستعجال لتصل التذكرة للتقني على هاتفه.
+              </p>
+              <div class="benefit">
+                <span>⚡ الفائدة ليونس:</span> تتبع الأعطال وضمان إصلاحها بسرعة دون نسيان أي شكوى للزبائن.
+              </div>
+            </div>
+          </div>
+
+          <!-- بطاقة الزر 4: تعديل المشترك -->
+          <div class="action-button-card" style="border-right: 4px solid #0284c7;">
+            <div class="btn-circle-preview" style="background: #f0f9ff; color: #0284c7; border-color: #bae6fd;">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            </div>
+            <div class="action-details">
+              <h3>4. زر تعديل البيانات والمعدات (Modifier Abonné)</h3>
+              <p>
+                يتيح تعديل أي معلومة تخص المشترك: تغيير رقم الهاتف، تغيير الحي أو العنوان، تعديل السومة الشهرية المخصصة (بين 50 و 200 درهم)، تعديل اسم مستخدم PPPoE، أو استبدال موديل الموديم والهوائي Ubiquiti LiteBeam.
+              </p>
+              <div class="benefit">
+                <span>⚡ الفائدة ليونس:</span> الحفاظ على دقة المعطيات الفنية عند ترقية العتاد أو تغيير الروتر للزبون.
+              </div>
+            </div>
+          </div>
+
+          <!-- بطاقة الزر 5: الحذف والأرشفة -->
+          <div class="action-button-card" style="border-right: 4px solid #e11d48;">
+            <div class="btn-circle-preview" style="background: #fff1f2; color: #e11d48; border-color: #fecdd3;">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </div>
+            <div class="action-details">
+              <h3>5. زر الحذف أو الأرشفة الآمنة (Supprimer / Archiver)</h3>
+              <p>
+                لحذف الزبون من الجدول النشط عند فسخ العقد. يحتوي الزر على حماية أمنية وتأكيد قبل التنفيذ، مع إمكانية أرشفة الزبون للحفاظ على سجل المدفوعات التاريخية في الخزينة دون تشويه الإحصائيات السنوية.
+              </p>
+              <div class="benefit">
+                <span>⚡ الفائدة ليونس:</span> حماية تامة من الحذف الخطأ بنقرة عفوية، مع بقاء الحسابات نظيفة ودقيقة.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- أسفل الصفحة -->
+      <footer class="page-footer">
+        <div>نظام AtlasNet WISP Tracker • دليل التشغيل التنفيذي للأخ يونس</div>
+        <div class="page-number">صفحة 3 من 4</div>
+      </footer>
+    </section>
+
+    <!-- ===================================================================
+         الصفحة 4: إدارة الفريق والخزينة المالية (Équipe & Trésorerie)
+         =================================================================== -->
+    <section class="page" id="page-4">
+      <div>
+        <!-- رأس الصفحة -->
+        <header class="page-header">
+          <div class="header-brand">
+            <img src="logo.png" class="header-logo-img" alt="AtlasNet" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="display: block;">
+            <div class="header-logo-badge" style="display: none;">AN</div>
+            <div class="header-brand-info">
+              <h1>إدارة الفريق الميداني والخزينة المالية</h1>
+              <p>الصلاحيات الـ 3، إضافة التقنيين، وتتبع المداخيل اليومية والشهرية</p>
+            </div>
+          </div>
+          <div class="header-meta">
+            <span class="executive-pill">الحسابات والعمليات</span>
+            <span>التحكم الإداري الكامل</span>
+          </div>
+        </header>
+
+        <div class="page-content">
+          <!-- 1. الرتب الثلاث في النظام -->
+          <div>
+            <div class="section-title">
+              <div class="section-title-wrap">
+                <div class="section-icon-box">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                </div>
+                <h2>الرتب الثلاث ومستويات الوصول (Hiérarchie de l'Équipe)</h2>
+              </div>
+              <span style="font-size: 11px; color: var(--slate-500);">صلاحيات محددة ومحمية</span>
+            </div>
+
+            <div class="grid-3" style="margin-top: 6px;">
+              <!-- الرتبة 1: Admin NOC -->
+              <div class="role-card" style="border-top: 3px solid #059669;">
+                <div>
+                  <div class="role-header">
+                    <div class="role-icon" style="background: #ecfdf5; color: #059669;">
+                      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <div class="role-title">
+                      Admin NOC
+                      <span>مدير الشبكة (يونس)</span>
+                    </div>
+                  </div>
+                  <ul class="role-list">
+                    <li>صلاحيات مطلقة 100% على النظام.</li>
+                    <li>رؤية الخزينة ومداخيل الشبكة بالكامل.</li>
+                    <li>إضافة وتعديل وحذف الموظفين والزبائن.</li>
+                    <li>تصدير واستيراد النسخ الاحتياطية.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- الرتبة 2: Field Lead -->
+              <div class="role-card" style="border-top: 3px solid #d97706;">
+                <div>
+                  <div class="role-header">
+                    <div class="role-icon" style="background: #fffbeb; color: #d97706;">
+                      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                    <div class="role-title">
+                      Field Lead
+                      <span>مسؤول الميدان والتدخلات</span>
+                    </div>
+                  </div>
+                  <ul class="role-list">
+                    <li>توزيع التذاكر والأعطال على التقنيين.</li>
+                    <li>مراقبة جودة الإشارة (Signal dBm).</li>
+                    <li>متابعة التثبيتات الجديدة بالأحياء.</li>
+                    <li>صلاحية محدودة على الخزينة العامة.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- الرتبة 3: Technicien -->
+              <div class="role-card" style="border-top: 3px solid #2563eb;">
+                <div>
+                  <div class="role-header">
+                    <div class="role-icon" style="background: #eff6ff; color: #2563eb;">
+                      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+                    </div>
+                    <div class="role-title">
+                      Technicien
+                      <span>التقني الميداني</span>
+                    </div>
+                  </div>
+                  <ul class="role-list">
+                    <li>واجهة خاصة بالهاتف (Mobile View).</li>
+                    <li>رؤية التذاكر الموكلة إليه فقط وإغلاقها.</li>
+                    <li>تسجيل إشارة الهوائي أثناء التركيب.</li>
+                    <li>محجوب تماماً عن أرباح وخزينة الشبكة.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. خطوات إضافة موظف جديد -->
+          <div class="card card-slate">
+            <h3 style="font-size: 12.5px; font-weight: 800; color: var(--slate-900); margin-bottom: 7px; display: flex; align-items: center; gap: 6px;">
+              <span>➕</span> كيف تضيف تقنياً أو موظفاً جديداً في الفريق؟ (3 خطوات سريعة)
+            </h3>
+            <div class="grid-3" style="gap: 8px;">
+              <div class="step-item">
+                <div class="step-num">1</div>
+                <div>
+                  <strong>الضغط على زر إضافة عضو:</strong> ادخل على تبويب "فريق العمل" واضغط على الزر البرتقالي في الأعلى.
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-num">2</div>
+                <div>
+                  <strong>ملء الاسم والتخصص:</strong> اكتب اسم التقني، هاتفه، واختر رتبته (Technicien) وتخصصه الميداني.
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-num">3</div>
+                <div>
+                  <strong>إرسال الدخول عبر واتساب:</strong> يقوم النظام بتوليد كلمة سر فورية مع زر نسخ نص الدخول لإرساله له بالواتساب.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. تتبع الخزينة والمداخيل الشهرية -->
+          <div>
+            <div class="section-title">
+              <div class="section-title-wrap">
+                <div class="section-icon-box">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <h2>لوحة الخزينة والمتابعة المالية (Trésorerie & Recouvrement)</h2>
+              </div>
+              <span style="font-size: 11px; color: var(--slate-500); font-family: var(--font-mono);">DEVISE: MAD (درهم)</span>
+            </div>
+
+            <div class="grid-3" style="margin-top: 6px;">
+              <!-- مداخيل اليوم -->
+              <div style="background: white; border: 1px solid var(--slate-200); border-radius: 9px; padding: 10px;">
+                <div style="font-size: 11px; font-weight: 700; color: var(--slate-600); margin-bottom: 3px;">💰 مدخول اليوم (Recettes du Jour)</div>
+                <div style="font-size: 15px; font-weight: 900; color: var(--primary-dark); font-family: var(--font-mono);">حساب فوري مباشر</div>
+                <p style="font-size: 10.5px; color: var(--slate-500); margin-top: 3px;">
+                  المجموع الصافي لجميع الخلاصات التي سُجلت خلال الـ 24 ساعة الماضية، لمعرفة المبلغ الذي يجب استلامه من التقنيين في المساء.
+                </p>
+              </div>
+
+              <!-- مدخول الشهر الجاري -->
+              <div style="background: white; border: 1px solid var(--slate-200); border-radius: 9px; padding: 10px;">
+                <div style="font-size: 11px; font-weight: 700; color: var(--slate-600); margin-bottom: 3px;">📊 مدخول الشهر الجاري (Revenu Mensuel)</div>
+                <div style="font-size: 15px; font-weight: 900; color: var(--accent); font-family: var(--font-mono);">تجديد تلقائي شهرياً</div>
+                <p style="font-size: 10.5px; color: var(--slate-500); margin-top: 3px;">
+                  يصفر العداد تلقائياً كل فاتح شهر مع الحفاظ على الأرشيف القديم، ويعرض نسبة التحصيل الفعلي (Taux de Recouvrement).
+                </p>
+              </div>
+
+              <!-- مجموع المتأخرات العالقة -->
+              <div style="background: white; border: 1px solid var(--slate-200); border-radius: 9px; padding: 10px;">
+                <div style="font-size: 11px; font-weight: 700; color: var(--slate-600); margin-bottom: 3px;">⚠️ المتأخرات العالقة (Impayés Cumulés)</div>
+                <div style="font-size: 15px; font-weight: 900; color: #e11d48; font-family: var(--font-mono);">حساب تراكمي دقيق</div>
+                <p style="font-size: 10.5px; color: var(--slate-500); margin-top: 3px;">
+                  يحسب النظام المبالغ غير المؤداة بدقة عبر ضرب أشهر التأخير في سومة الاشتراك الخاصة بكل زبون دون أي تهاون.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- بطاقة تصدير الحسابات -->
+          <div class="card card-emerald" style="padding: 9px 12px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <strong style="font-size: 11.5px; color: var(--primary-dark);">📄 تصدير الكشف المالي (Export Bilan CSV):</strong>
+                <span style="font-size: 11px; color: var(--slate-600); margin-right: 4px;">
+                  يمكنك بضغطة زر واحدة تحميل ملف Excel / CSV بجميع دفعات الشهر للتدقيق الحسابي السنوي.
+                </span>
+              </div>
+              <span class="badge badge-active" style="font-family: var(--font-mono);">Excel / CSV Ready</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- أسفل الصفحة -->
+      <footer class="page-footer">
+        <div>نظام AtlasNet WISP Tracker • دليل التشغيل التنفيذي للأخ يونس</div>
+        <div class="page-number">صفحة 4 من 4</div>
+      </footer>
+    </section>
+
+  </div>
+
+</body>
+</html>

@@ -11,6 +11,7 @@ import {
   addMonthsToDateStr,
   getTodayDateStr,
   generateNextClientId,
+  calculateUndoPaymentReversal,
 } from '../src/lib/operationalUtils.ts';
 import { encodeSession, decodeSession, type SessionPayload } from '../src/lib/auth.ts';
 import type { Client, PaymentLog, User } from '../src/lib/types';
@@ -695,6 +696,201 @@ describe('11. Collision-Proof Client ID Generation & Supabase Alignment', () => 
     // With deleted middle client
     const afterDelete = [{ id: 'cli-001' }, { id: 'cli-003' }];
     assert.strictEqual(generateNextClientId(afterDelete), 'cli-004');
+  });
+});
+
+describe('12. Undo Last Payment (تراجع عن آخر خلاص)', () => {
+  it('should revert next_due_date to previousDueDate and last_payment_date to preceding payment', () => {
+    const client: Client = {
+      id: 'cli-101',
+      name: 'كريم التازي (Karim Tazi)',
+      phone: '0661122334',
+      status: 'active',
+      monthlyFee: 100,
+      installationDate: '2026-01-01',
+      nextDueDate: '2026-11-15',
+      lastPaymentDate: '2026-10-14',
+    };
+
+    const firstPayment: PaymentLog = {
+      id: 'pay-001',
+      receiptNumber: 'REC-202609-001',
+      clientId: 'cli-101',
+      clientName: client.name,
+      amount: 100,
+      method: 'cash',
+      paymentDate: '2026-09-14',
+      previousDueDate: '2026-09-15',
+      newDueDate: '2026-10-15',
+    };
+
+    const secondPayment: PaymentLog = {
+      id: 'pay-002',
+      receiptNumber: 'REC-202610-002',
+      clientId: 'cli-101',
+      clientName: client.name,
+      amount: 100,
+      method: 'cash',
+      paymentDate: '2026-10-14',
+      previousDueDate: '2026-10-15',
+      newDueDate: '2026-11-15',
+    };
+
+    // Before undo: client has 2 payments, nextDueDate is 2026-11-15
+    const payments = [secondPayment, firstPayment];
+    const latestPayment = payments[0];
+    const remaining = payments.slice(1);
+
+    const reversal = calculateUndoPaymentReversal(
+      client,
+      latestPayment,
+      remaining,
+      '2026-10-22'
+    );
+
+    // Revert next_due_date back to previousDueDate (2026-10-15)
+    assert.strictEqual(
+      reversal.revertedNextDueDate,
+      '2026-10-15',
+      'next_due_date must revert to previousDueDate (2026-10-15)'
+    );
+
+    // Revert lastPaymentDate to firstPayment.paymentDate (2026-09-14)
+    assert.strictEqual(
+      reversal.revertedLastPaymentDate,
+      '2026-09-14',
+      'lastPaymentDate must revert to preceding payment date (2026-09-14)'
+    );
+
+    // On reference date 2026-10-22, next_due_date 2026-10-15 is overdue (7 days late)
+    assert.strictEqual(
+      reversal.revertedStatus,
+      'overdue',
+      'client status must dynamically update to overdue after undoing payment'
+    );
+  });
+
+  it('should fall back to 1 month back when previousDueDate is missing or equals newDueDate', () => {
+    const client: Client = {
+      id: 'cli-102',
+      name: 'فاطمة الزهراء (Fatima Zahra)',
+      phone: '0662233445',
+      status: 'active',
+      monthlyFee: 100,
+      installationDate: '2026-01-01',
+      nextDueDate: '2026-12-01',
+      lastPaymentDate: '2026-11-01',
+    };
+
+    const legacyPayment: PaymentLog = {
+      id: 'pay-legacy',
+      receiptNumber: 'REC-LEGACY',
+      clientId: 'cli-102',
+      clientName: client.name,
+      amount: 100,
+      method: 'cash',
+      paymentDate: '2026-11-01',
+      previousDueDate: '', // empty or missing
+      newDueDate: '2026-12-01',
+    };
+
+    const reversal = calculateUndoPaymentReversal(
+      client,
+      legacyPayment,
+      [],
+      '2026-11-05'
+    );
+
+    assert.strictEqual(
+      reversal.revertedNextDueDate,
+      '2026-11-01',
+      'Should step back 1 calendar month safely (2026-12-01 -> 2026-11-01)'
+    );
+    assert.strictEqual(
+      reversal.revertedLastPaymentDate,
+      '2026-01-01',
+      'When no other payments remain, lastPaymentDate reverts to installationDate'
+    );
+  });
+
+  it('should preserve month boundary when stepping back across varying month lengths', () => {
+    const client: Client = {
+      id: 'cli-103',
+      name: 'يوسف العلمي (Youssef Alami)',
+      phone: '0663344556',
+      status: 'active',
+      monthlyFee: 100,
+      installationDate: '2026-01-01',
+      nextDueDate: '2026-03-31',
+    };
+
+    const payment: PaymentLog = {
+      id: 'pay-mar',
+      receiptNumber: 'REC-MAR',
+      clientId: 'cli-103',
+      clientName: client.name,
+      amount: 100,
+      method: 'cash',
+      paymentDate: '2026-02-28',
+      previousDueDate: '',
+      newDueDate: '2026-03-31',
+    };
+
+    const reversal = calculateUndoPaymentReversal(client, payment, [], '2026-02-28');
+    assert.strictEqual(
+      reversal.revertedNextDueDate,
+      '2026-02-28',
+      'March 31 stepped back by 1 month must clamp safely to Feb 28 without overflow'
+    );
+  });
+
+  it('should delete only the targeted payment from payments list without touching others', () => {
+    let payments: PaymentLog[] = [
+      {
+        id: 'pay-001',
+        receiptNumber: 'REC-001',
+        clientId: 'cli-A',
+        clientName: 'Client A',
+        amount: 100,
+        method: 'cash',
+        paymentDate: '2026-10-01',
+      },
+      {
+        id: 'pay-002',
+        receiptNumber: 'REC-002',
+        clientId: 'cli-B',
+        clientName: 'Client B',
+        amount: 150,
+        method: 'card',
+        paymentDate: '2026-10-05',
+      },
+      {
+        id: 'pay-003',
+        receiptNumber: 'REC-003',
+        clientId: 'cli-A',
+        clientName: 'Client A',
+        amount: 100,
+        method: 'cash',
+        paymentDate: '2026-10-15',
+      },
+    ];
+
+    // Undo last payment for Client A (pay-003)
+    const clientAPayments = payments
+      .filter((p) => p.clientId === 'cli-A')
+      .sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
+
+    const paymentToUndo = clientAPayments[0];
+    assert.strictEqual(paymentToUndo.id, 'pay-003');
+
+    // Filter out pay-003
+    payments = payments.filter((p) => p.id !== paymentToUndo.id);
+
+    assert.strictEqual(payments.length, 2);
+    assert.strictEqual(payments.some((p) => p.id === 'pay-003'), false);
+    // pay-001 for Client A and pay-002 for Client B must remain
+    assert.strictEqual(payments.some((p) => p.id === 'pay-001'), true);
+    assert.strictEqual(payments.some((p) => p.id === 'pay-002'), true);
   });
 });
 

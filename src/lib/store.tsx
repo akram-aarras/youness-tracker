@@ -31,7 +31,7 @@ import {
   localizePaymentMethod,
 } from './i18n';
 import { encodeSession, SESSION_COOKIE_NAME } from './auth';
-import { generateNextClientId } from './operationalUtils';
+import { generateNextClientId, calculateUndoPaymentReversal } from './operationalUtils';
 import {
   supabase,
   isSupabaseConfigured,
@@ -43,6 +43,7 @@ import {
   deleteClientFromSupabase,
   archiveClientInSupabase,
   insertPaymentToSupabase,
+  deletePaymentFromSupabase,
   updateClientDueDateInSupabase,
   insertTicketToSupabase,
   updateTicketInSupabase,
@@ -154,6 +155,7 @@ interface StoreContextType {
     notes?: string;
     updateClientBaseFee?: boolean;
   }) => PaymentLog;
+  undoLastPayment: (clientId: string) => Promise<{ success: boolean; error?: string; undonePayment?: PaymentLog }>;
   createTicket: (ticket: {
     clientId: string;
     category: Ticket['category'];
@@ -1724,6 +1726,75 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return newPayment;
   };
 
+  const undoLastPayment = async (
+    clientId: string
+  ): Promise<{ success: boolean; error?: string; undonePayment?: PaymentLog }> => {
+    const client = clients.find((c) => c.id === clientId);
+    if (!client) {
+      return { success: false, error: 'Client introuvable' };
+    }
+
+    const clientPayments = payments
+      .filter((p) => p.clientId === clientId)
+      .sort((a, b) => (b.paymentDate || '').localeCompare(a.paymentDate || '') || b.id.localeCompare(a.id));
+
+    if (clientPayments.length === 0) {
+      return { success: false, error: 'Aucun paiement à annuler pour ce client' };
+    }
+
+    const latestPayment = clientPayments[0];
+    const remainingPayments = clientPayments.slice(1);
+
+    const { revertedNextDueDate, revertedLastPaymentDate, revertedStatus } = calculateUndoPaymentReversal(
+      client,
+      latestPayment,
+      remainingPayments,
+      effectiveToday
+    );
+
+    // 1. Optimistically update local React state and cache
+    setPayments((prev) => {
+      const updated = prev.filter((p) => p.id !== latestPayment.id);
+      try {
+        localStorage.setItem('youness_wisp_payments', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    setClients((prev) => {
+      const updated = prev.map((c) => {
+        if (c.id === clientId) {
+          return {
+            ...c,
+            nextDueDate: revertedNextDueDate,
+            lastPaymentDate: revertedLastPaymentDate,
+            status: revertedStatus,
+          };
+        }
+        return c;
+      });
+      try {
+        localStorage.setItem('youness_wisp_clients', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // 2. Persist to Supabase and API route asynchronously
+    try {
+      await deletePaymentFromSupabase(
+        latestPayment.id,
+        clientId,
+        revertedNextDueDate,
+        revertedLastPaymentDate,
+        revertedStatus
+      );
+    } catch (err) {
+      console.warn('[Undo Payment] Notice syncing deletion to DB:', err);
+    }
+
+    return { success: true, undonePayment: latestPayment };
+  };
+
   const createTicket = ({
     clientId,
     category,
@@ -1862,6 +1933,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         exportBilanCSV: (monthStr, rows) => downloadBilanCSV(monthStr, rows, language),
         importDataFromJSON,
         recordPayment,
+        undoLastPayment,
         createTicket,
         updateTicket,
         updateTicketStatus,

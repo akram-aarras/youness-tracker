@@ -202,3 +202,112 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getAuthSession(request);
+    if (!session && process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ error: 'Non autorisé. Veuillez vous connecter.' }, { status: 401 });
+    }
+
+    const db = getDatabaseClient();
+    if (!db) {
+      return NextResponse.json({ error: 'Base de données non configurée.' }, { status: 503 });
+    }
+
+    let paymentId: string | null = null;
+    let clientId: string | null = null;
+    let revertedNextDueDate: string | null = null;
+    let revertedLastPaymentDate: string | null = null;
+    let status: SubscriptionStatus | null = null;
+
+    try {
+      const body = await request.json();
+      paymentId = body.paymentId || body.id || null;
+      clientId = body.clientId || null;
+      revertedNextDueDate = body.revertedNextDueDate || null;
+      revertedLastPaymentDate = body.revertedLastPaymentDate || null;
+      status = body.status || null;
+    } catch {
+      const url = new URL(request.url);
+      paymentId = url.searchParams.get('paymentId') || url.searchParams.get('id');
+      clientId = url.searchParams.get('clientId');
+      revertedNextDueDate = url.searchParams.get('revertedNextDueDate');
+      revertedLastPaymentDate = url.searchParams.get('revertedLastPaymentDate');
+      status = (url.searchParams.get('status') as SubscriptionStatus) || null;
+    }
+
+    if (!paymentId && !clientId) {
+      return NextResponse.json({ error: 'paymentId ou clientId requis.' }, { status: 400 });
+    }
+
+    // 1. If only clientId is provided, find the most recent payment for this client
+    if (!paymentId && clientId) {
+      const { data: logs } = await db
+        .from('payment_logs')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('payment_date', { ascending: false })
+        .limit(1);
+
+      if (logs && logs.length > 0) {
+        paymentId = logs[0].id;
+        if (!revertedNextDueDate && logs[0].previous_due_date) {
+          revertedNextDueDate = logs[0].previous_due_date;
+        }
+      } else {
+        const { data: fallbackPays } = await db
+          .from('payments')
+          .select('*')
+          .eq('client_id', clientId)
+          .order('payment_date', { ascending: false })
+          .limit(1);
+        if (fallbackPays && fallbackPays.length > 0) {
+          paymentId = fallbackPays[0].id;
+        }
+      }
+    }
+
+    // 2. Delete payment from payment_logs and payments
+    if (paymentId) {
+      const { error: logErr } = await db.from('payment_logs').delete().eq('id', paymentId);
+      if (logErr) {
+        console.warn('[API/payments DELETE] payment_logs delete notice:', logErr.message);
+      }
+      const { error: payErr } = await db.from('payments').delete().eq('id', paymentId);
+      if (payErr) {
+        console.warn('[API/payments DELETE] payments delete notice:', payErr.message);
+      }
+    }
+
+    // 3. Revert client's next_due_date, last_payment_date, and status in clients table
+    if (clientId && revertedNextDueDate) {
+      const clientUpdateRow: Record<string, unknown> = {
+        next_due_date: revertedNextDueDate,
+        last_payment_date: revertedLastPaymentDate || null,
+        updated_at: new Date().toISOString(),
+      };
+      if (status) clientUpdateRow.status = status;
+
+      const { error: clientUpdateErr } = await db
+        .from('clients')
+        .update(clientUpdateRow)
+        .eq('id', clientId);
+
+      if (clientUpdateErr) {
+        console.warn('[API/payments DELETE] client revert due date notice:', clientUpdateErr.message);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      deletedPaymentId: paymentId,
+      clientId,
+      revertedNextDueDate,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[API/payments DELETE] Exception:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}

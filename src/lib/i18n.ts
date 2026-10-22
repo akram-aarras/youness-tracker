@@ -206,6 +206,13 @@ export interface Translations {
   custom_rate_badge: string;
   rate_updated_success_msg: string;
   view_slip_btn: string;
+  undo_last_payment: string;
+  undo_last_payment_short: string;
+  undo_payment_confirm_title: string;
+  undo_payment_confirm_msg: string;
+  undo_payment_confirm_btn: string;
+  undo_payment_success_toast: string;
+  undo_payment_error_toast: string;
   archive_client_btn: string;
   delete_client_btn: string;
   call_client: string;
@@ -567,6 +574,13 @@ export const translations: Record<Language, Translations> = {
     custom_rate_badge: 'Custom Rate',
     rate_updated_success_msg: 'Rate updated successfully',
     view_slip_btn: 'Receipt Slip',
+    undo_last_payment: 'Undo Last Payment',
+    undo_last_payment_short: 'Undo Payment',
+    undo_payment_confirm_title: 'Confirm Undo Payment',
+    undo_payment_confirm_msg: 'Are you sure you want to cancel the last payment ({receipt}) of {amount} MAD for subscriber {name}? The next due date will be reverted to {dueDate}.',
+    undo_payment_confirm_btn: 'Confirm Undo',
+    undo_payment_success_toast: 'Last payment successfully undone. Next due date reverted.',
+    undo_payment_error_toast: 'Failed to undo last payment.',
     archive_client_btn: 'Archive Subscriber',
     delete_client_btn: 'Delete Subscriber',
     call_client: 'Call',
@@ -927,6 +941,13 @@ export const translations: Record<Language, Translations> = {
     custom_rate_badge: 'Tarif personnalisé',
     rate_updated_success_msg: 'Tarif mis à jour avec succès',
     view_slip_btn: 'Voir le reçu',
+    undo_last_payment: 'Annuler dernier paiement',
+    undo_last_payment_short: 'Annuler dernier paiement',
+    undo_payment_confirm_title: 'Confirmer l’annulation du paiement',
+    undo_payment_confirm_msg: 'Voulez-vous vraiment annuler le dernier paiement ({receipt}) de {amount} MAD pour l’abonné {name} ? La date d’échéance sera ramenée au {dueDate}.',
+    undo_payment_confirm_btn: 'Confirmer l’annulation',
+    undo_payment_success_toast: 'Le dernier paiement a été annulé avec succès. Date d’échéance restaurée.',
+    undo_payment_error_toast: 'Impossible d’annuler le paiement.',
     archive_client_btn: 'Archiver l\'abonné',
     delete_client_btn: 'Supprimer l\'abonné',
     call_client: 'Appeler',
@@ -1287,6 +1308,13 @@ export const translations: Record<Language, Translations> = {
     custom_rate_badge: 'سعر مخصص',
     rate_updated_success_msg: 'تم تحديث السعر بنجاح',
     view_slip_btn: 'معاينة الوصل',
+    undo_last_payment: 'تراجع عن آخر خلاص',
+    undo_last_payment_short: 'تراجع عن آخر دفع',
+    undo_payment_confirm_title: 'تأكيد التراجع عن الخلاص',
+    undo_payment_confirm_msg: 'هل أنت متأكد من التراجع عن آخر خلاص ({receipt}) بمبلغ {amount} درهم للمشترك {name}؟ سيتم إرجاع تاريخ الاستحقاق إلى {dueDate}.',
+    undo_payment_confirm_btn: 'تأكيد التراجع',
+    undo_payment_success_toast: 'تم التراجع عن آخر خلاص بنجاح واستعادة تاريخ الاستحقاق.',
+    undo_payment_error_toast: 'فشل التراجع عن الخلاص. يرجى المحاولة مرة أخرى.',
     archive_client_btn: 'أرشفة المشترك',
     delete_client_btn: 'حذف المشترك',
     call_client: 'اتصال',

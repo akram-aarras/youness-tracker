@@ -4,8 +4,8 @@ import Dialog from '@/components/ui/Dialog';
 
 import React, { useState } from 'react';
 import { Client } from '@/lib/types';
-import { useStore, getDaysDiffFromToday } from '@/lib/store';
-import { X, Radio, Wifi, MapPin, Phone, CreditCard, Shield, Eye, EyeOff, Copy, Check, ExternalLink, MessageSquare, Wrench, Clock, AlertTriangle, Edit3, Save, Receipt, Archive, Trash2 } from 'lucide-react';
+import { useStore, getDaysDiffFromToday, addMonthsToDateStr } from '@/lib/store';
+import { X, Radio, Wifi, MapPin, Phone, CreditCard, Shield, Eye, EyeOff, Copy, Check, ExternalLink, MessageSquare, Wrench, Clock, AlertTriangle, Edit3, Save, Receipt, Archive, Trash2, RotateCcw, Loader2 } from 'lucide-react';
 import InvoiceReceiptModal from './InvoiceReceiptModal';
 import { PaymentLog } from '@/lib/types';
 
@@ -24,11 +24,16 @@ export default function ClientDetailModal({
   onSendWhatsApp,
   onCreateTicket,
 }: Props) {
-  const { currentUser, payments, updateClient, deleteClient, archiveClient, t, language, localizePlanName } = useStore();
+  const { currentUser, payments, updateClient, deleteClient, archiveClient, undoLastPayment, t, language, localizePlanName } = useStore();
   const [showPassword, setShowPassword] = useState(false);
   const [showWifiPassword, setShowWifiPassword] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const isAdmin = currentUser?.role === 'admin' || !currentUser;
+
+  // Undo Last Payment states
+  const [paymentToUndo, setPaymentToUndo] = useState<PaymentLog | null>(null);
+  const [isUndoing, setIsUndoing] = useState(false);
+  const [undoFeedback, setUndoFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Archive and Delete confirmation states
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
@@ -61,6 +66,28 @@ export default function ClientDetailModal({
       setIsEditingFee(false);
       setRateUpdatedSuccess(true);
       setTimeout(() => setRateUpdatedSuccess(false), 3000);
+    }
+  };
+
+  const handleConfirmUndo = async () => {
+    if (!paymentToUndo || isUndoing) return;
+    setIsUndoing(true);
+    try {
+      const res = await undoLastPayment(client.id);
+      if (res.success) {
+        setPaymentToUndo(null);
+        setUndoFeedback({ message: t('undo_payment_success_toast'), type: 'success' });
+        setTimeout(() => setUndoFeedback(null), 4000);
+      } else {
+        setUndoFeedback({ message: res.error || t('undo_payment_error_toast'), type: 'error' });
+        setTimeout(() => setUndoFeedback(null), 4000);
+      }
+    } catch (err) {
+      console.error('Failed to undo payment:', err);
+      setUndoFeedback({ message: t('undo_payment_error_toast'), type: 'error' });
+      setTimeout(() => setUndoFeedback(null), 4000);
+    } finally {
+      setIsUndoing(false);
     }
   };
 
@@ -613,13 +640,31 @@ export default function ClientDetailModal({
               <span>{t('payment_ledger_title', { count: clientPayments.length })}</span>
               <span className="text-[12px] text-[var(--muted)] font-normal">{t('payment_ledger_sub')}</span>
             </div>
+
+            {undoFeedback && (
+              <div
+                className={`mb-3 p-3 rounded-xl border text-sm flex items-center gap-2 ${
+                  undoFeedback.type === 'success'
+                    ? 'bg-emerald-500/10 text-[var(--success)] border-emerald-500/30'
+                    : 'bg-rose-500/10 text-[var(--error)] border-rose-500/30'
+                }`}
+              >
+                {undoFeedback.type === 'success' ? (
+                  <Check className="w-4 h-4 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                )}
+                <span>{undoFeedback.message}</span>
+              </div>
+            )}
+
             {clientPayments.length === 0 ? (
               <div className="p-4 rounded-xl bg-[var(--surface-muted)] border border-[var(--border)] text-center text-sm text-[var(--muted)]">
                 {t('no_past_payments')}
               </div>
             ) : (
               <div className="space-y-2">
-                {clientPayments.map((p) => {
+                {clientPayments.map((p, index) => {
                   const hasExtra = (p.extraAmount ?? 0) > 0;
                   const itemBaseFee = p.baseFee ?? (p.amount - (p.extraAmount ?? 0));
                   return (
@@ -665,14 +710,27 @@ export default function ClientDetailModal({
                         <div className="text-[12px] text-[var(--muted)] font-mono">
                           {p.newDueDate}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedPaymentForSlip(p)}
-                          className="px-2.5 py-1 rounded-lg bg-[var(--surface-muted)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text)] border border-[var(--border)] text-[12px] font-semibold flex items-center gap-1 transition cursor-pointer mt-0.5"
-                        >
-                          <Receipt className="w-3 h-3" />
-                          <span>{t('view_slip_btn')}</span>
-                        </button>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPaymentForSlip(p)}
+                            className="px-2.5 py-1 rounded-lg bg-[var(--surface-muted)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text)] border border-[var(--border)] text-[12px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                          >
+                            <Receipt className="w-3 h-3" />
+                            <span>{t('view_slip_btn')}</span>
+                          </button>
+                          {index === 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setPaymentToUndo(p)}
+                              className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-[var(--error)] hover:text-rose-700 dark:hover:text-rose-300 border border-rose-500/30 text-[12px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                              title={t('undo_last_payment_short')}
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>{t('undo_last_payment_short')}</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -716,6 +774,19 @@ export default function ClientDetailModal({
                     <Check className="w-4 h-4 text-[var(--warning)]" />
                     {t('archived_subscriber_notice')}
                   </span>
+                )}
+
+                {/* Undo Last Payment Button (Admin) */}
+                {clientPayments.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setPaymentToUndo(clientPayments[0])}
+                    className="min-h-[40px] px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-[var(--error)] hover:text-rose-200 border border-rose-500/30 hover:border-rose-500/50 text-sm font-semibold flex items-center gap-2 transition cursor-pointer"
+                    title={t('undo_last_payment')}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-[var(--error)]" />
+                    <span>{t('undo_last_payment')}</span>
+                  </button>
                 )}
 
                 {/* Delete Button */}
@@ -834,6 +905,58 @@ export default function ClientDetailModal({
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{t('delete_confirm_action_btn')}</span>
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
+
+      {/* Undo Last Payment Confirmation Modal */}
+      {paymentToUndo && (
+        <Dialog onClose={() => setPaymentToUndo(null)} label="Undo Payment">
+          <div className="bg-[var(--surface)] border border-rose-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-rose-500/10 text-[var(--error)] border border-rose-500/30">
+                <RotateCcw className="w-6 h-6 text-[var(--error)]" />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-[var(--text)]">{t('undo_payment_confirm_title')}</h4>
+                <p className="text-sm text-[var(--muted)]">Youness WiFi</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+              {t('undo_payment_confirm_msg', {
+                receipt: paymentToUndo.receiptNumber,
+                amount: paymentToUndo.amount,
+                name: client.name,
+                dueDate: (paymentToUndo.previousDueDate && paymentToUndo.previousDueDate.includes('-') && paymentToUndo.previousDueDate !== paymentToUndo.newDueDate)
+                  ? paymentToUndo.previousDueDate
+                  : addMonthsToDateStr(client.nextDueDate, -1),
+              })}
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setPaymentToUndo(null)}
+                disabled={isUndoing}
+                className="px-4 py-2 rounded-xl bg-[var(--surface-muted)] hover:bg-[var(--surface-hover)] text-[var(--muted)] hover:text-[var(--text)] text-sm font-semibold transition cursor-pointer"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmUndo}
+                disabled={isUndoing}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold flex items-center gap-1.5 transition cursor-pointer shadow-lg shadow-rose-600/30 disabled:opacity-50"
+              >
+                {isUndoing ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-3.5 h-3.5" />
+                )}
+                <span>{t('undo_payment_confirm_btn')}</span>
               </button>
             </div>
           </div>
