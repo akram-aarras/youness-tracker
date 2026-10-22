@@ -137,13 +137,13 @@ describe('1. Moroccan Phone Sanitization & WhatsApp Links', () => {
     assert.ok(decoded.includes('السلام عليكم محمد بنسعيد'));
     assert.ok(decoded.includes('نذكركم بأن موعد أداء اشتراك الإنترنت لشهر'));
     assert.ok(decoded.includes('▫️ الواجب الشهري: 100 درهم'));
-    assert.ok(decoded.includes('إدارة شبكة يونس للإنترنت'));
+    assert.ok(decoded.includes('إدارة شبكة يونس و زكرياء للإنترنت'));
 
     // Test reminder with extra fee
     const reminderWithExtra = buildWhatsAppReminder(sampleClient, { amount: 30, reason: 'Frais de retard' });
     const decodedExtra = decodeURIComponent(reminderWithExtra.url.replace('https://wa.me/212612345678?text=', ''));
     assert.ok(decodedExtra.includes('▫️ الواجب الشهري: 130 درهم'));
-    assert.ok(decodedExtra.includes('إدارة شبكة يونس للإنترنت'));
+    assert.ok(decodedExtra.includes('إدارة شبكة يونس و زكرياء للإنترنت'));
 
     // Test overdue reminder (Template B)
     const overdueClient: Client = { ...sampleClient, nextDueDate: '2026-09-01', status: 'overdue' };

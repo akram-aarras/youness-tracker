@@ -59,7 +59,7 @@ export default function BulkUnpaidReminderModal({
             return `${idx + 1}. *${c.name}* (${c.neighborhood || 'تطوان'}) - ${fee} درهم - ${phoneLabel} - الأجل: ${c.nextDueDate}`;
           }),
           `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-          `📍 إدارة شبكة يونس للإنترنت`,
+          `📍 إدارة شبكة يونس و زكرياء للإنترنت`,
         ]
       : [
           `📊 *Youness WiFi - Rapport des Impayés (${monthLabel})*`,
