@@ -47,7 +47,7 @@ export default function BulkUnpaidReminderModal({
     const isAr = language === 'ar';
     const lines = isAr
       ? [
-          `📊 *شبكة يونس للإنترنت - تقرير الاشتراكات غير المؤداة (${monthLabel})*`,
+          `📊 *إدارة شبكة يونس و زكرياء للإنترنت - تقرير الاشتراكات غير المؤداة (${monthLabel})*`,
           `📅 تاريخ المعاينة: ${getTodayDateStr()}`,
           `👥 إجمالي المشتركين غير المسددين: ${unpaidList.length}`,
           `💰 المبلغ الإجمالي المستحق: ${totalUnpaidAmount.toLocaleString()} درهم`,

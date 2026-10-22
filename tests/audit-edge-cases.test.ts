@@ -136,21 +136,32 @@ describe('1. Moroccan Phone Sanitization & WhatsApp Links', () => {
     assert.strictEqual(decoded, reminder.text);
     assert.ok(decoded.includes('السلام عليكم محمد بنسعيد'));
     assert.ok(decoded.includes('نذكركم بأن موعد أداء اشتراك الإنترنت لشهر'));
-    assert.ok(decoded.includes('▫️ الواجب الشهري: 100 درهم'));
+    assert.ok(decoded.includes('💳 الواجب الشهري: 100 درهم'));
     assert.ok(decoded.includes('إدارة شبكة يونس و زكرياء للإنترنت'));
+    assert.ok(!decoded.includes('\uFFFD'), 'Decoded text must not contain replacement characters');
+    assert.strictEqual(
+      decoded.indexOf('السلام عليكم'),
+      decoded.lastIndexOf('السلام عليكم'),
+      'Greeting must not be duplicated in decoded text'
+    );
+    assert.strictEqual(
+      (reminder.url.match(/text=/g) || []).length,
+      1,
+      'URL must only contain a single text query param'
+    );
 
     // Test reminder with extra fee
     const reminderWithExtra = buildWhatsAppReminder(sampleClient, { amount: 30, reason: 'Frais de retard' });
     const decodedExtra = decodeURIComponent(reminderWithExtra.url.replace('https://wa.me/212612345678?text=', ''));
-    assert.ok(decodedExtra.includes('▫️ الواجب الشهري: 130 درهم'));
+    assert.ok(decodedExtra.includes('💳 الواجب الشهري: 130 درهم'));
     assert.ok(decodedExtra.includes('إدارة شبكة يونس و زكرياء للإنترنت'));
 
     // Test overdue reminder (Template B)
     const overdueClient: Client = { ...sampleClient, nextDueDate: '2026-09-01', status: 'overdue' };
     const overdueReminder = buildWhatsAppReminder(overdueClient);
     assert.ok(overdueReminder.text.includes('نود إخباركم بأن اشتراك الإنترنت الخاص بكم متأخر عن موعده المحدد'));
-    assert.ok(overdueReminder.text.includes('▫️ المبلغ المستحق: 100 درهم'));
-    assert.ok(overdueReminder.text.includes('شبكة يونس للإنترنت'));
+    assert.ok(overdueReminder.text.includes('💳 المبلغ المستحق: 100 درهم'));
+    assert.ok(overdueReminder.text.includes('إدارة شبكة يونس و زكرياء للإنترنت'));
   });
 
   it('should construct wa.me receipt URL with 212XXXXXXXXX and encoded text', () => {
@@ -163,8 +174,8 @@ describe('1. Moroccan Phone Sanitization & WhatsApp Links', () => {
     assert.strictEqual(decoded, receipt.text);
     assert.ok(decoded.includes('السلام عليكم محمد بنسعيد'));
     assert.ok(decoded.includes('تم تسجيل أداء اشتراك الإنترنت الخاص بكم لشهر'));
-    assert.ok(decoded.includes('▫️ المبلغ المؤدى: 120 درهم'));
-    assert.ok(decoded.includes('شبكة يونس للإنترنت'));
+    assert.ok(decoded.includes('💳 المبلغ المؤدى: 120 درهم'));
+    assert.ok(decoded.includes('إدارة شبكة يونس و زكرياء للإنترنت'));
   });
 
   it('should construct historical unpaid reminder URL with 212XXXXXXXXX and encoded text', () => {
@@ -178,13 +189,13 @@ describe('1. Moroccan Phone Sanitization & WhatsApp Links', () => {
     assert.strictEqual(decoded, histReminder.text);
     assert.ok(decoded.includes('السلام عليكم محمد بنسعيد'));
     assert.ok(decoded.includes('نود إخباركم بأن اشتراك الإنترنت الخاص بكم متأخر عن موعده المحدد'));
-    assert.ok(decoded.includes('▫️ المبلغ المستحق: 100 درهم'));
-    assert.ok(decoded.includes('شبكة يونس للإنترنت'));
+    assert.ok(decoded.includes('💳 المبلغ المستحق: 100 درهم'));
+    assert.ok(decoded.includes('إدارة شبكة يونس و زكرياء للإنترنت'));
 
     // Fallback fee test when client.monthlyFee is missing
     const clientWithoutFee: Client = { ...sampleClient, monthlyFee: undefined as any };
     const defaultReminder = buildHistoricalUnpaidReminderUrl(clientWithoutFee, 'نونبر 2026', true);
-    assert.ok(defaultReminder.text.includes('▫️ الواجب الشهري: 100 درهم'));
+    assert.ok(defaultReminder.text.includes('💳 الواجب الشهري: 100 درهم'));
   });
 });
 
