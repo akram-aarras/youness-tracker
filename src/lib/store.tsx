@@ -31,7 +31,14 @@ import {
   localizePaymentMethod,
 } from './i18n';
 import { encodeSession, SESSION_COOKIE_NAME } from './auth';
-import { generateNextClientId, calculateUndoPaymentReversal } from './operationalUtils';
+import {
+  generateNextClientId,
+  calculateUndoPaymentReversal,
+  formatMoroccanPhoneForExcel,
+  generateBilanExcelWorkbook,
+  downloadBilanExcel,
+  downloadBilanCSV as downloadBilanCSVOriginal,
+} from './operationalUtils';
 import {
   supabase,
   isSupabaseConfigured,
@@ -134,7 +141,7 @@ interface StoreContextType {
       isPaid: boolean;
       payment?: PaymentLog;
     }>
-  ) => void;
+  ) => Promise<void> | void;
   importDataFromJSON: (jsonData: string) => {
     success: boolean;
     error?: string;
@@ -617,26 +624,16 @@ export function generateBilanCSV(
   return BOM + lines.join('\r\n');
 }
 
-export function downloadBilanCSV(
+export async function downloadBilanCSV(
   monthStr: string,
   rows: Array<{
     client: Client;
     isPaid: boolean;
     payment?: PaymentLog;
   }>,
-  language: 'ar' | 'fr' | 'en' = 'fr'
-) {
-  if (typeof window === 'undefined') return;
-  const csvContent = generateBilanCSV(monthStr, rows, language);
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `Bilan_${monthStr}_YounessWiFi.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  _language: 'ar' | 'fr' | 'en' = 'ar'
+): Promise<void> {
+  return downloadBilanExcel(monthStr, rows);
 }
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -1963,4 +1960,7 @@ export {
   localizeTicketStatus,
   localizeTicketPriority,
   localizePaymentMethod,
+  formatMoroccanPhoneForExcel,
+  generateBilanExcelWorkbook,
+  downloadBilanExcel,
 };

@@ -12,6 +12,8 @@ import {
   getTodayDateStr,
   generateNextClientId,
   calculateUndoPaymentReversal,
+  generateBilanExcelWorkbook,
+  formatMoroccanPhoneForExcel,
 } from '../src/lib/operationalUtils.ts';
 import { encodeSession, decodeSession, type SessionPayload } from '../src/lib/auth.ts';
 import type { Client, PaymentLog, User } from '../src/lib/types';
@@ -902,6 +904,158 @@ describe('12. Undo Last Payment (تراجع عن آخر خلاص)', () => {
     // pay-001 for Client A and pay-002 for Client B must remain
     assert.strictEqual(payments.some((p) => p.id === 'pay-001'), true);
     assert.strictEqual(payments.some((p) => p.id === 'pay-002'), true);
+  });
+});
+
+describe('13. Professional .xlsx Excel Workbook Generation (Bilan)', () => {
+  const mockRows = [
+    {
+      client: {
+        id: 'cli-001',
+        name: 'محمد بنسعيد (Mohamed Bensaïd)',
+        phone: '06 12 34 56 78',
+        neighborhood: 'Boujarah',
+        address: 'Rue 10, N 15',
+        subscriptionPlan: 'Pack Standard 100 MAD',
+        monthlyFee: 100,
+        installationDate: '2026-01-01',
+        nextDueDate: '2026-11-15',
+        status: 'active' as const,
+      },
+      isPaid: true,
+      payment: samplePayment,
+    },
+    {
+      client: {
+        id: 'cli-002',
+        name: 'رشيد التطواني (Rachid El Tetouani)',
+        phone: '+212 6 98 76 54 32',
+        neighborhood: 'Sania Rmel',
+        address: 'Avenue Hassan II',
+        subscriptionPlan: 'Pack Pro 150 MAD',
+        monthlyFee: 150,
+        installationDate: '2026-02-01',
+        nextDueDate: '2026-10-10',
+        status: 'overdue' as const,
+        notes: 'Client en retard; rappel envoyé',
+      },
+      isPaid: false,
+    },
+    {
+      client: {
+        id: 'cli-003',
+        name: 'فاطمة الزهراء (Fatima Zahra)',
+        phone: '0711223344',
+        neighborhood: 'Touabel',
+        address: 'Quartier Touabel N 42',
+        subscriptionPlan: 'Pack Eco 50 MAD',
+        monthlyFee: 50,
+        installationDate: '2026-03-01',
+        nextDueDate: '2026-10-05',
+        status: 'suspended' as const,
+      },
+      isPaid: false,
+    },
+  ];
+
+  it('should format Moroccan phone numbers strictly as domestic text strings (06XXXXXXXX / 07XXXXXXXX)', () => {
+    assert.strictEqual(formatMoroccanPhoneForExcel('06 12 34 56 78'), '0612345678');
+    assert.strictEqual(formatMoroccanPhoneForExcel('+212 6 98 76 54 32'), '0698765432');
+    assert.strictEqual(formatMoroccanPhoneForExcel('0711223344'), '0711223344');
+    assert.strictEqual(formatMoroccanPhoneForExcel('00212612345678'), '0612345678');
+    assert.strictEqual(formatMoroccanPhoneForExcel(''), '');
+  });
+
+  it('should generate an Excel workbook with 3 Right-to-Left sheets and autoFilter on Sheet 1', async () => {
+    const workbook = await generateBilanExcelWorkbook('2026-10', mockRows);
+
+    assert.strictEqual(workbook.worksheets.length, 3, 'Workbook must contain exactly 3 worksheets');
+
+    const sheet1 = workbook.getWorksheet('جميع المشتركين');
+    const sheet2 = workbook.getWorksheet('غير مؤدى');
+    const sheet3 = workbook.getWorksheet('مؤدى');
+
+    assert.ok(sheet1, 'Sheet 1 "جميع المشتركين" must exist');
+    assert.ok(sheet2, 'Sheet 2 "غير مؤدى" must exist');
+    assert.ok(sheet3, 'Sheet 3 "مؤدى" must exist');
+
+    // RTL verification
+    assert.strictEqual(sheet1.views?.[0]?.rightToLeft, true, 'Sheet 1 must be Right-to-Left');
+    assert.strictEqual(sheet2.views?.[0]?.rightToLeft, true, 'Sheet 2 must be Right-to-Left');
+    assert.strictEqual(sheet3.views?.[0]?.rightToLeft, true, 'Sheet 3 must be Right-to-Left');
+
+    // AutoFilter on Sheet 1
+    assert.strictEqual(sheet1.autoFilter, 'A2:N2', 'Sheet 1 must have AutoFilter on header row');
+  });
+
+  it('should isolate unpaid subscribers in Sheet 2 and paid subscribers in Sheet 3', async () => {
+    const workbook = await generateBilanExcelWorkbook('2026-10', mockRows);
+
+    const sheet1 = workbook.getWorksheet('جميع المشتركين')!;
+    const sheet2 = workbook.getWorksheet('غير مؤدى')!;
+    const sheet3 = workbook.getWorksheet('مؤدى')!;
+
+    // Sheet 1 has 3 subscribers -> rows 3, 4, 5 + banner + header + summary = 6 rows
+    // Row 3 to 5 are subscribers
+    assert.strictEqual(sheet1.getRow(3).getCell(1).value, 'cli-001');
+    assert.strictEqual(sheet1.getRow(4).getCell(1).value, 'cli-002');
+    assert.strictEqual(sheet1.getRow(5).getCell(1).value, 'cli-003');
+
+    // Sheet 2 has ONLY unpaid subscribers (cli-002, cli-003)
+    assert.strictEqual(sheet2.getRow(3).getCell(1).value, 'cli-002');
+    assert.strictEqual(sheet2.getRow(3).getCell(7).value, 'غير مؤدى');
+    assert.strictEqual(sheet2.getRow(4).getCell(1).value, 'cli-003');
+    assert.strictEqual(sheet2.getRow(4).getCell(7).value, 'غير مؤدى');
+
+    // Sheet 3 has ONLY paid subscribers (cli-001)
+    assert.strictEqual(sheet3.getRow(3).getCell(1).value, 'cli-001');
+    assert.strictEqual(sheet3.getRow(3).getCell(7).value, 'مؤدى');
+  });
+
+  it('should apply emerald header styling, phone text format, and color-coded status cells', async () => {
+    const workbook = await generateBilanExcelWorkbook('2026-10', mockRows);
+    const sheet1 = workbook.getWorksheet('جميع المشتركين')!;
+
+    // Top banner styling (Row 1)
+    const banner = sheet1.getCell('A1');
+    assert.ok(String(banner.value).includes('كشف الحسابات الشهري'));
+    assert.strictEqual(banner.font?.bold, true);
+    assert.strictEqual(banner.fill?.type, 'pattern');
+    assert.strictEqual((banner.fill as any).fgColor?.argb, 'FF064E3B');
+
+    // Emerald header row (Row 2, #059669)
+    const headerRow = sheet1.getRow(2);
+    headerRow.eachCell((cell) => {
+      assert.strictEqual((cell.fill as any)?.fgColor?.argb, 'FF059669');
+      assert.strictEqual(cell.font?.bold, true);
+      assert.strictEqual(cell.font?.color?.argb, 'FFFFFFFF');
+    });
+
+    // Phone format in Row 3 (Column C)
+    const phoneCell = sheet1.getRow(3).getCell(3);
+    assert.strictEqual(phoneCell.value, '0612345678');
+    assert.strictEqual(phoneCell.numFmt, '@', 'Phone cell must be formatted strictly as Text string (@)');
+
+    // Paid status cell (Row 3, Column G): Light green (#D1FAE5) with dark green bold text (#065F46)
+    const paidStatusCell = sheet1.getRow(3).getCell(7);
+    assert.strictEqual(paidStatusCell.value, 'مؤدى');
+    assert.strictEqual((paidStatusCell.fill as any)?.fgColor?.argb, 'FFD1FAE5');
+    assert.strictEqual(paidStatusCell.font?.color?.argb, 'FF065F46');
+    assert.strictEqual(paidStatusCell.font?.bold, true);
+
+    // Unpaid status cell (Row 4, Column G): Light red (#FEE2E2) with dark red bold text (#991B1B)
+    const unpaidStatusCell = sheet1.getRow(4).getCell(7);
+    assert.strictEqual(unpaidStatusCell.value, 'غير مؤدى');
+    assert.strictEqual((unpaidStatusCell.fill as any)?.fgColor?.argb, 'FFFEE2E2');
+    assert.strictEqual(unpaidStatusCell.font?.color?.argb, 'FF991B1B');
+    assert.strictEqual(unpaidStatusCell.font?.bold, true);
+
+    // Summary row (Row 6 on Sheet 1)
+    const summaryRow = sheet1.getRow(6);
+    assert.strictEqual(summaryRow.getCell(1).value, 'المجموع العام');
+    assert.strictEqual(summaryRow.getCell(2).value, 'إجمالي المشتركين: 3');
+    assert.ok(String(summaryRow.getCell(7).value).includes('المؤدى: 120 درهم'));
+    assert.ok(String(summaryRow.getCell(8).value).includes('غير المؤدى: 200 درهم'));
   });
 });
 
