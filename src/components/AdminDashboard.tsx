@@ -890,7 +890,7 @@ export default function AdminDashboard({
             {/* Action: Exporter le Bilan CSV */}
             <button
               type="button"
-              onClick={() => exportBilanCSV(selectedMonthStr, allEligibleList)}
+              onClick={() => exportBilanCSV(selectedMonthStr, allEligibleList, historicalFilterTab)}
               disabled={allEligibleList.length === 0}
               className="min-h-[40px] px-3.5 py-2 rounded-xl bg-[#241E30] hover:bg-[#2D253B] disabled:opacity-40 disabled:cursor-not-allowed text-[#E0D8EB] hover:text-white font-bold text-xs transition flex items-center justify-center gap-2 border border-[#3A2F4C] shadow-md shadow-black/30 cursor-pointer shrink-0"
               title={t('export_bilan_csv_btn')}

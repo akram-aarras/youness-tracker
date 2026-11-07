@@ -988,28 +988,73 @@ describe('13. Professional .xlsx Excel Workbook Generation (Bilan)', () => {
     assert.strictEqual(sheet1.autoFilter, 'A2:N2', 'Sheet 1 must have AutoFilter on header row');
   });
 
-  it('should isolate unpaid subscribers in Sheet 2 and paid subscribers in Sheet 3', async () => {
+  it('should isolate unpaid subscribers in Sheet 2 with compact 6-column print layout and paid subscribers in Sheet 3', async () => {
     const workbook = await generateBilanExcelWorkbook('2026-10', mockRows);
 
     const sheet1 = workbook.getWorksheet('جميع المشتركين')!;
     const sheet2 = workbook.getWorksheet('غير مؤدى')!;
     const sheet3 = workbook.getWorksheet('مؤدى')!;
 
-    // Sheet 1 has 3 subscribers -> rows 3, 4, 5 + banner + header + summary = 6 rows
-    // Row 3 to 5 are subscribers
+    // Sheet 1 has 3 subscribers
     assert.strictEqual(sheet1.getRow(3).getCell(1).value, 'cli-001');
     assert.strictEqual(sheet1.getRow(4).getCell(1).value, 'cli-002');
     assert.strictEqual(sheet1.getRow(5).getCell(1).value, 'cli-003');
 
-    // Sheet 2 has ONLY unpaid subscribers (cli-002, cli-003)
-    assert.strictEqual(sheet2.getRow(3).getCell(1).value, 'cli-002');
-    assert.strictEqual(sheet2.getRow(3).getCell(7).value, 'غير مؤدى');
-    assert.strictEqual(sheet2.getRow(4).getCell(1).value, 'cli-003');
-    assert.strictEqual(sheet2.getRow(4).getCell(7).value, 'غير مؤدى');
+    // Sheet 2 has ONLY unpaid subscribers (cli-002, cli-003) in compact 6-column layout
+    // Headers: ['#', 'اسم المشترك', 'الهاتف', 'الحي', 'الواجب الشهري', 'تأشير الأداء / ملاحظات']
+    assert.strictEqual(sheet2.getRow(2).getCell(1).value, '#');
+    assert.strictEqual(sheet2.getRow(2).getCell(2).value, 'اسم المشترك');
+    assert.strictEqual(sheet2.getRow(2).getCell(3).value, 'الهاتف');
+    assert.strictEqual(sheet2.getRow(2).getCell(4).value, 'الحي');
+    assert.strictEqual(sheet2.getRow(2).getCell(5).value, 'الواجب الشهري');
+    assert.strictEqual(sheet2.getRow(2).getCell(6).value, 'تأشير الأداء / ملاحظات');
+    assert.strictEqual(sheet2.getRow(2).getCell(7).value, null); // Only 6 columns!
+
+    // Compact data row height = 18 pt
+    assert.strictEqual(sheet2.getRow(3).height, 18);
+    assert.strictEqual(sheet2.getRow(3).getCell(1).value, 1);
+    assert.strictEqual(sheet2.getRow(3).getCell(2).value, 'رشيد التطواني (Rachid El Tetouani)');
+    assert.strictEqual(sheet2.getRow(3).getCell(3).value, '0698765432');
+    assert.strictEqual(sheet2.getRow(3).getCell(4).value, 'Sania Rmel');
+    assert.strictEqual(sheet2.getRow(3).getCell(5).value, 150);
+    assert.ok(String(sheet2.getRow(3).getCell(6).value).includes('[  ] Client en retard'));
+
+    // Second unpaid subscriber
+    assert.strictEqual(sheet2.getRow(4).getCell(1).value, 2);
+    assert.strictEqual(sheet2.getRow(4).getCell(2).value, 'فاطمة الزهراء (Fatima Zahra)');
+    assert.strictEqual(sheet2.getRow(4).getCell(3).value, '0711223344');
+    assert.strictEqual(sheet2.getRow(4).getCell(5).value, 50);
+    assert.strictEqual(sheet2.getRow(4).getCell(6).value, '[  ]');
 
     // Sheet 3 has ONLY paid subscribers (cli-001)
     assert.strictEqual(sheet3.getRow(3).getCell(1).value, 'cli-001');
     assert.strictEqual(sheet3.getRow(3).getCell(7).value, 'مؤدى');
+  });
+
+  it('should order "غير مؤدى" first and activate it when filterTab is "pending" or "unpaid"', async () => {
+    const wbPending = await generateBilanExcelWorkbook('2026-10', mockRows, 'pending');
+    assert.strictEqual(wbPending.worksheets[0].name, 'غير مؤدى', 'When filterTab is pending, Sheet 0 must be "غير مؤدى"');
+    assert.strictEqual(wbPending.worksheets[1].name, 'جميع المشتركين');
+    assert.strictEqual(wbPending.worksheets[2].name, 'مؤدى');
+    assert.strictEqual(wbPending.views?.[0]?.activeTab, 0);
+
+    const wbUnpaid = await generateBilanExcelWorkbook('2026-10', mockRows, 'unpaid');
+    assert.strictEqual(wbUnpaid.worksheets[0].name, 'غير مؤدى', 'When filterTab is unpaid, Sheet 0 must be "غير مؤدى"');
+  });
+
+  it('should configure A4 portrait single-page-wide print setup on all worksheets', async () => {
+    const workbook = await generateBilanExcelWorkbook('2026-10', mockRows, 'pending');
+
+    for (const ws of workbook.worksheets) {
+      assert.strictEqual(ws.pageSetup?.paperSize, 9, 'paperSize must be 9 (A4)');
+      assert.strictEqual(ws.pageSetup?.orientation, 'portrait', 'orientation must be portrait');
+      assert.strictEqual(ws.pageSetup?.fitToPage, true, 'fitToPage must be true');
+      assert.strictEqual(ws.pageSetup?.fitToWidth, 1, 'fitToWidth must be 1 to prevent horizontal splitting');
+      assert.strictEqual(ws.pageSetup?.fitToHeight, 0, 'fitToHeight must be 0 for automatic vertical flow');
+      assert.strictEqual(ws.pageSetup?.margins?.left, 0.25);
+      assert.strictEqual(ws.pageSetup?.margins?.right, 0.25);
+      assert.strictEqual(ws.pageSetup?.printTitlesRow, '1:2', 'printTitlesRow must repeat header rows 1:2 on each page');
+    }
   });
 
   it('should apply emerald header styling, phone text format, and color-coded status cells', async () => {

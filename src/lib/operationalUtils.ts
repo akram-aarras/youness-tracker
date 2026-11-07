@@ -445,8 +445,11 @@ function localizePaymentMethodArabic(method?: string): string {
 /**
  * Generates a professionally styled .xlsx Excel workbook with 3 Right-to-Left sheets:
  * 1. "جميع المشتركين" (All Subscribers) with autoFilter on header row
- * 2. "غير مؤدى" (Unpaid Subscribers Only)
+ * 2. "غير مؤدى" (Unpaid Subscribers Only) - Compact 6-column print-optimized layout
  * 3. "مؤدى" (Paid Subscribers Only)
+ *
+ * If filterTab is 'pending' or 'unpaid', "غير مؤدى" is ordered first and activated so
+ * pressing Ctrl+P immediately prints only unpaid subscribers on 2 to 3 A4 pages.
  */
 export async function generateBilanExcelWorkbook(
   monthStr: string,
@@ -454,7 +457,8 @@ export async function generateBilanExcelWorkbook(
     client: Client;
     isPaid: boolean;
     payment?: PaymentLog;
-  }>
+  }>,
+  filterTab?: 'all' | 'paid' | 'unpaid' | 'pending'
 ): Promise<Workbook> {
   const ExcelJSModule = await import('exceljs');
   const ExcelJS = (ExcelJSModule.default || ExcelJSModule) as typeof import('exceljs');
@@ -465,213 +469,168 @@ export async function generateBilanExcelWorkbook(
   workbook.created = new Date();
   workbook.modified = new Date();
 
-  const headers = [
-    'معرف المشترك',
-    'اسم المشترك',
-    'الهاتف',
-    'الحي',
-    'الباقة',
-    'الواجب الشهري (درهم)',
-    'حالة الأداء',
-    'تاريخ الاستحقاق',
-    'تاريخ الأداء',
-    'طريقة الدفع',
-    'رقم التوصيل',
-    'مصاريف إضافية (درهم)',
-    'المستخلص',
-    'ملاحظات',
+  const isUnpaidFilter = filterTab === 'unpaid' || filterTab === 'pending';
+  const isPaidFilter = filterTab === 'paid';
+
+  let sheetOrder: Array<'unpaid' | 'all' | 'paid'>;
+  if (isUnpaidFilter) {
+    sheetOrder = ['unpaid', 'all', 'paid'];
+  } else if (isPaidFilter) {
+    sheetOrder = ['paid', 'all', 'unpaid'];
+  } else {
+    sheetOrder = ['all', 'unpaid', 'paid'];
+  }
+
+  // Set workbook view so the first tab (index 0) is active
+  workbook.views = [
+    {
+      x: 0,
+      y: 0,
+      width: 10000,
+      height: 20000,
+      firstSheet: 0,
+      activeTab: 0,
+      visibility: 'visible',
+    },
   ];
 
-  const minColWidths: Record<number, number> = {
-    1: 16, // معرف المشترك
-    2: 26, // اسم المشترك
-    3: 18, // الهاتف
-    4: 18, // الحي
-    5: 24, // الباقة
-    6: 22, // الواجب الشهري (درهم)
-    7: 20, // حالة الأداء
-    8: 20, // تاريخ الاستحقاق
-    9: 18, // تاريخ الأداء
-    10: 18, // طريقة الدفع
-    11: 20, // رقم التوصيل
-    12: 22, // مصاريف إضافية (درهم)
-    13: 20, // المستخلص
-    14: 28, // ملاحظات
+  const a4PageSetup = {
+    paperSize: 9, // A4
+    orientation: 'portrait' as const,
+    fitToPage: true,
+    fitToWidth: 1, // forces all columns onto 1 page wide
+    fitToHeight: 0, // automatic vertical flow
+    margins: {
+      left: 0.25,
+      right: 0.25,
+      top: 0.35,
+      bottom: 0.35,
+      header: 0.2,
+      footer: 0.2,
+    },
+    printTitlesRow: '1:2', // repeats the header on each printed page
   };
 
-  const sheetsConfig = [
-    {
-      name: 'جميع المشتركين',
-      title: `شبكة يونس وزكرياء للإنترنت — كشف الحسابات الشهري: ${monthStr} (جميع المشتركين)`,
-      data: rows,
-      enableAutoFilter: true,
-    },
-    {
-      name: 'غير مؤدى',
-      title: `شبكة يونس وزكرياء للإنترنت — لائحة المشتركين غير المؤدين (المتأخرات): ${monthStr} (غير مؤدى)`,
-      data: rows.filter((r) => !r.isPaid),
-      enableAutoFilter: true,
-    },
-    {
-      name: 'مؤدى',
-      title: `شبكة يونس وزكرياء للإنترنت — لائحة المشتركين المؤدين (الاستخلاصات): ${monthStr} (مؤدى)`,
-      data: rows.filter((r) => r.isPaid),
-      enableAutoFilter: true,
-    },
-  ];
+  for (let sIdx = 0; sIdx < sheetOrder.length; sIdx++) {
+    const sheetType = sheetOrder[sIdx];
+    const isFirstTab = sIdx === 0;
+    const views = [{ rightToLeft: true, ...(isFirstTab ? { activeTab: 0 } : {}) }];
 
-  for (const sheetConf of sheetsConfig) {
-    const sheet = workbook.addWorksheet(sheetConf.name, {
-      views: [{ rightToLeft: true }],
-    });
+    if (sheetType === 'unpaid') {
+      // -------------------------------------------------------------
+      // Compact 6-Column Print-Optimized Layout for "غير مؤدى"
+      // -------------------------------------------------------------
+      const sheet = workbook.addWorksheet('غير مؤدى', { views });
+      sheet.pageSetup = a4PageSetup;
 
-    // 1. Top Title Banner (Row 1)
-    sheet.mergeCells('A1:N1');
-    const bannerRow = sheet.getRow(1);
-    bannerRow.height = 42;
-    const bannerCell = sheet.getCell('A1');
-    bannerCell.value = sheetConf.title;
-    bannerCell.font = {
-      name: 'Segoe UI',
-      size: 14,
-      bold: true,
-      color: { argb: 'FFFFFFFF' },
-    };
-    bannerCell.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF064E3B' },
-    };
-    bannerCell.alignment = { vertical: 'middle', horizontal: 'center' };
-    bannerCell.border = {
-      top: { style: 'thin', color: { argb: 'FF047857' } },
-      bottom: { style: 'medium', color: { argb: 'FF047857' } },
-      left: { style: 'thin', color: { argb: 'FF047857' } },
-      right: { style: 'thin', color: { argb: 'FF047857' } },
-    };
+      const unpaidRows = rows.filter((r) => !r.isPaid);
 
-    // 2. Emerald Header Row (Row 2) (#059669)
-    const headerRow = sheet.getRow(2);
-    headerRow.height = 30;
-    headerRow.values = [...headers];
-    headerRow.eachCell((cell) => {
-      cell.font = {
+      // 1. Top Title Banner (Row 1)
+      sheet.mergeCells('A1:F1');
+      const bannerRow = sheet.getRow(1);
+      bannerRow.height = 34;
+      const bannerCell = sheet.getCell('A1');
+      bannerCell.value = `شبكة يونس وزكرياء للإنترنت — لائحة المشتركين غير المؤدين (قيد التحصيل): ${monthStr}`;
+      bannerCell.font = {
         name: 'Segoe UI',
-        size: 11,
+        size: 13,
         bold: true,
         color: { argb: 'FFFFFFFF' },
       };
-      cell.fill = {
+      bannerCell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF059669' },
+        fgColor: { argb: 'FF064E3B' },
       };
-      cell.alignment = { vertical: 'middle', horizontal: 'center' };
-      cell.border = {
+      bannerCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      bannerCell.border = {
         top: { style: 'thin', color: { argb: 'FF047857' } },
         bottom: { style: 'medium', color: { argb: 'FF047857' } },
         left: { style: 'thin', color: { argb: 'FF047857' } },
         right: { style: 'thin', color: { argb: 'FF047857' } },
       };
-    });
 
-    if (sheetConf.enableAutoFilter) {
-      sheet.autoFilter = 'A2:N2';
-    }
-
-    // 3. Data Rows
-    let currentRowNum = 3;
-    for (const r of sheetConf.data) {
-      const c = r.client;
-      const p = r.payment;
-      const isPaid = r.isPaid;
-      const fee = c.monthlyFee || 100;
-      const statusText = isPaid ? 'مؤدى' : 'غير مؤدى';
-      const phoneText = formatMoroccanPhoneForExcel(c.phone);
-      const planText = localizePlanNameArabic(c.subscriptionPlan) || c.subscriptionPlan || 'اشتراك قياسي';
-      const methodText = p?.method ? localizePaymentMethodArabic(p.method) : '-';
-
-      const dataRow = sheet.getRow(currentRowNum);
-      dataRow.height = 24;
-
-      dataRow.values = [
-        c.id,
-        c.name,
-        phoneText,
-        c.neighborhood || 'تطوان',
-        planText,
-        fee,
-        statusText,
-        c.nextDueDate || '-',
-        p?.paymentDate || '-',
-        methodText,
-        p?.receiptNumber || '-',
-        p?.extraAmount ? p.extraAmount : 0,
-        p?.recordedBy || '-',
-        p?.notes || c.notes || '-',
+      // 2. Emerald Header Row (Row 2) - 6 Concise Columns
+      const compactHeaders = [
+        '#',
+        'اسم المشترك',
+        'الهاتف',
+        'الحي',
+        'الواجب الشهري',
+        'تأشير الأداء / ملاحظات',
       ];
-
-      // Format Phone (Column C) strictly as Text string
-      const phoneCell = dataRow.getCell(3);
-      phoneCell.value = phoneText;
-      phoneCell.numFmt = '@';
-      phoneCell.alignment = { vertical: 'middle', horizontal: 'center' };
-
-      // Number formatting for fee and extra amount
-      const feeCell = dataRow.getCell(6);
-      feeCell.numFmt = '#,##0 "درهم"';
-
-      const extraCell = dataRow.getCell(12);
-      extraCell.numFmt = '#,##0 "درهم"';
-
-      // Status cell (Column G) Color Coding:
-      // مؤدى: Light green (#D1FAE5) with dark green bold text (#065F46)
-      // غير مؤدى: Light red (#FEE2E2) with dark red bold text (#991B1B)
-      const statusCell = dataRow.getCell(7);
-      if (isPaid) {
-        statusCell.fill = {
+      const headerRow = sheet.getRow(2);
+      headerRow.height = 26;
+      headerRow.values = [...compactHeaders];
+      headerRow.eachCell((cell) => {
+        cell.font = {
+          name: 'Segoe UI',
+          size: 10.5,
+          bold: true,
+          color: { argb: 'FFFFFFFF' },
+        };
+        cell.fill = {
           type: 'pattern',
           pattern: 'solid',
-          fgColor: { argb: 'FFD1FAE5' },
+          fgColor: { argb: 'FF059669' },
         };
-        statusCell.font = {
-          name: 'Segoe UI',
-          size: 11,
-          bold: true,
-          color: { argb: 'FF065F46' },
-        };
-      } else {
-        statusCell.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFFEE2E2' },
-        };
-        statusCell.font = {
-          name: 'Segoe UI',
-          size: 11,
-          bold: true,
-          color: { argb: 'FF991B1B' },
-        };
-      }
-      statusCell.alignment = { vertical: 'middle', horizontal: 'center' };
-
-      // Borders and alternating zebra styling for all 14 cells
-      const isOddRow = currentRowNum % 2 === 1;
-      for (let col = 1; col <= 14; col++) {
-        const cell = dataRow.getCell(col);
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
         cell.border = {
-          top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-          bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-          left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-          right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          top: { style: 'thin', color: { argb: 'FF047857' } },
+          bottom: { style: 'medium', color: { argb: 'FF047857' } },
+          left: { style: 'thin', color: { argb: 'FF047857' } },
+          right: { style: 'thin', color: { argb: 'FF047857' } },
         };
+      });
 
-        if (col !== 7) {
+      sheet.autoFilter = 'A2:F2';
+
+      // 3. Compact Data Rows (18 pt row height, 10 pt font)
+      let currentRowNum = 3;
+      unpaidRows.forEach((r, idx) => {
+        const c = r.client;
+        const fee = c.monthlyFee || 100;
+        const phoneText = formatMoroccanPhoneForExcel(c.phone);
+        const notesMarking = c.notes ? `[  ] ${c.notes}` : '[  ]';
+
+        const dataRow = sheet.getRow(currentRowNum);
+        dataRow.height = 18;
+
+        dataRow.values = [
+          idx + 1,
+          c.name,
+          phoneText,
+          c.neighborhood || 'تطوان',
+          fee,
+          notesMarking,
+        ];
+
+        // Format Phone (Col C) strictly as text
+        const phoneCell = dataRow.getCell(3);
+        phoneCell.value = phoneText;
+        phoneCell.numFmt = '@';
+        phoneCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+        // Number format for fee
+        const feeCell = dataRow.getCell(5);
+        feeCell.numFmt = '#,##0 "درهم"';
+        feeCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+        const isOddRow = currentRowNum % 2 === 1;
+        for (let col = 1; col <= 6; col++) {
+          const cell = dataRow.getCell(col);
           cell.font = {
             name: 'Segoe UI',
-            size: 10.5,
+            size: 10,
             color: { argb: 'FF1F2937' },
           };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          };
+
           if (isOddRow) {
             cell.fill = {
               type: 'pattern',
@@ -686,110 +645,403 @@ export async function generateBilanExcelWorkbook(
             };
           }
 
-          if (col === 2 || col === 14) {
+          if (col === 2 || col === 6) {
             cell.alignment = { vertical: 'middle', horizontal: 'right' };
           } else {
             cell.alignment = { vertical: 'middle', horizontal: 'center' };
           }
         }
-      }
 
-      currentRowNum++;
-    }
-
-    // 4. Total Summary Row at the Bottom of Each Sheet
-    const totalSubscribers = sheetConf.data.length;
-    const totalPaidDH = sheetConf.data
-      .filter((x) => x.isPaid)
-      .reduce((sum, x) => sum + (x.payment?.amount ?? (x.client.monthlyFee || 100)), 0);
-    const totalUnpaidDH = sheetConf.data
-      .filter((x) => !x.isPaid)
-      .reduce((sum, x) => sum + (x.client.monthlyFee || 100), 0);
-    const totalDueDH = totalPaidDH + totalUnpaidDH;
-
-    const summaryRow = sheet.getRow(currentRowNum);
-    summaryRow.height = 32;
-
-    summaryRow.values = [
-      'المجموع العام',
-      `إجمالي المشتركين: ${totalSubscribers}`,
-      '',
-      '',
-      '',
-      `مجموع الواجب: ${totalDueDH.toLocaleString()} درهم`,
-      `المؤدى: ${totalPaidDH.toLocaleString()} درهم`,
-      `غير المؤدى: ${totalUnpaidDH.toLocaleString()} درهم`,
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-    ];
-
-    for (let col = 1; col <= 14; col++) {
-      const cell = summaryRow.getCell(col);
-      cell.border = {
-        top: { style: 'medium', color: { argb: 'FF059669' } },
-        bottom: { style: 'double', color: { argb: 'FF059669' } },
-        left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-        right: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-      };
-      cell.alignment = { vertical: 'middle', horizontal: 'center' };
-
-      if (col === 7) {
-        cell.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFD1FAE5' },
-        };
-        cell.font = {
-          name: 'Segoe UI',
-          size: 11,
-          bold: true,
-          color: { argb: 'FF065F46' },
-        };
-      } else if (col === 8) {
-        cell.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFFEE2E2' },
-        };
-        cell.font = {
-          name: 'Segoe UI',
-          size: 11,
-          bold: true,
-          color: { argb: 'FF991B1B' },
-        };
-      } else {
-        cell.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFF3F4F6' },
-        };
-        cell.font = {
-          name: 'Segoe UI',
-          size: 11,
-          bold: true,
-          color: { argb: 'FF111827' },
-        };
-      }
-    }
-
-    // 5. Auto-fitted Column Widths so no text is cut off
-    sheet.columns.forEach((column, colIdx) => {
-      const colNumber = colIdx + 1;
-      let maxLen = 0;
-      column.eachCell?.({ includeEmpty: false }, (cell, rowNum) => {
-        if (rowNum === 1) return; // skip merged banner
-        const val = cell.value != null ? String(cell.value) : '';
-        if (val.length > maxLen) {
-          maxLen = val.length;
-        }
+        currentRowNum++;
       });
-      const defaultMin = minColWidths[colNumber] || 16;
-      column.width = Math.min(Math.max(maxLen + 4, defaultMin), 45);
-    });
+
+      // 4. Compact Summary Row
+      const totalUnpaidDH = unpaidRows.reduce(
+        (sum, x) => sum + (x.client.monthlyFee || 100),
+        0
+      );
+      const summaryRow = sheet.getRow(currentRowNum);
+      summaryRow.height = 26;
+      summaryRow.values = [
+        'المجموع',
+        `إجمالي غير المؤدين: ${unpaidRows.length}`,
+        '',
+        '',
+        `مجموع الواجب: ${totalUnpaidDH.toLocaleString()} درهم`,
+        `غير مؤدى: ${totalUnpaidDH.toLocaleString()} درهم`,
+      ];
+
+      for (let col = 1; col <= 6; col++) {
+        const cell = summaryRow.getCell(col);
+        cell.border = {
+          top: { style: 'medium', color: { argb: 'FF059669' } },
+          bottom: { style: 'double', color: { argb: 'FF059669' } },
+          left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          right: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+        if (col === 5 || col === 6) {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFFEE2E2' },
+          };
+          cell.font = {
+            name: 'Segoe UI',
+            size: 10.5,
+            bold: true,
+            color: { argb: 'FF991B1B' },
+          };
+        } else {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF3F4F6' },
+          };
+          cell.font = {
+            name: 'Segoe UI',
+            size: 10.5,
+            bold: true,
+            color: { argb: 'FF111827' },
+          };
+        }
+      }
+
+      // 5. Widths for compact 6 columns
+      const compactColWidths: Record<number, number> = {
+        1: 6, // #
+        2: 28, // اسم المشترك
+        3: 15, // الهاتف
+        4: 16, // الحي
+        5: 16, // الواجب الشهري
+        6: 24, // تأشير الأداء / ملاحظات
+      };
+
+      sheet.columns.forEach((column, colIdx) => {
+        const colNumber = colIdx + 1;
+        let maxLen = 0;
+        column.eachCell?.({ includeEmpty: false }, (cell, rowNum) => {
+          if (rowNum === 1) return;
+          const val = cell.value != null ? String(cell.value) : '';
+          if (val.length > maxLen) maxLen = val.length;
+        });
+        const defaultWidth = compactColWidths[colNumber] || 15;
+        column.width = Math.max(maxLen + 2, defaultWidth);
+      });
+    } else {
+      // -------------------------------------------------------------
+      // Full 14-Column Layout for "جميع المشتركين" and "مؤدى"
+      // -------------------------------------------------------------
+      const isAll = sheetType === 'all';
+      const sheetName = isAll ? 'جميع المشتركين' : 'مؤدى';
+      const sheetTitle = isAll
+        ? `شبكة يونس وزكرياء للإنترنت — كشف الحسابات الشهري: ${monthStr} (جميع المشتركين)`
+        : `شبكة يونس وزكرياء للإنترنت — لائحة المشتركين المؤدين (الاستخلاصات): ${monthStr} (مؤدى)`;
+      const sheetData = isAll ? rows : rows.filter((r) => r.isPaid);
+
+      const sheet = workbook.addWorksheet(sheetName, { views });
+      sheet.pageSetup = a4PageSetup;
+
+      // 1. Top Title Banner (Row 1)
+      sheet.mergeCells('A1:N1');
+      const bannerRow = sheet.getRow(1);
+      bannerRow.height = 42;
+      const bannerCell = sheet.getCell('A1');
+      bannerCell.value = sheetTitle;
+      bannerCell.font = {
+        name: 'Segoe UI',
+        size: 14,
+        bold: true,
+        color: { argb: 'FFFFFFFF' },
+      };
+      bannerCell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF064E3B' },
+      };
+      bannerCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      bannerCell.border = {
+        top: { style: 'thin', color: { argb: 'FF047857' } },
+        bottom: { style: 'medium', color: { argb: 'FF047857' } },
+        left: { style: 'thin', color: { argb: 'FF047857' } },
+        right: { style: 'thin', color: { argb: 'FF047857' } },
+      };
+
+      // 2. Emerald Header Row (Row 2) - 14 Columns
+      const headers = [
+        'معرف المشترك',
+        'اسم المشترك',
+        'الهاتف',
+        'الحي',
+        'الباقة',
+        'الواجب الشهري (درهم)',
+        'حالة الأداء',
+        'تاريخ الاستحقاق',
+        'تاريخ الأداء',
+        'طريقة الدفع',
+        'رقم التوصيل',
+        'مصاريف إضافية (درهم)',
+        'المستخلص',
+        'ملاحظات',
+      ];
+      const headerRow = sheet.getRow(2);
+      headerRow.height = 30;
+      headerRow.values = [...headers];
+      headerRow.eachCell((cell) => {
+        cell.font = {
+          name: 'Segoe UI',
+          size: 11,
+          bold: true,
+          color: { argb: 'FFFFFFFF' },
+        };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF059669' },
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF047857' } },
+          bottom: { style: 'medium', color: { argb: 'FF047857' } },
+          left: { style: 'thin', color: { argb: 'FF047857' } },
+          right: { style: 'thin', color: { argb: 'FF047857' } },
+        };
+      });
+
+      sheet.autoFilter = 'A2:N2';
+
+      // 3. Data Rows
+      let currentRowNum = 3;
+      for (const r of sheetData) {
+        const c = r.client;
+        const p = r.payment;
+        const isPaid = r.isPaid;
+        const fee = c.monthlyFee || 100;
+        const statusText = isPaid ? 'مؤدى' : 'غير مؤدى';
+        const phoneText = formatMoroccanPhoneForExcel(c.phone);
+        const planText =
+          localizePlanNameArabic(c.subscriptionPlan) ||
+          c.subscriptionPlan ||
+          'اشتراك قياسي';
+        const methodText = p?.method
+          ? localizePaymentMethodArabic(p.method)
+          : '-';
+
+        const dataRow = sheet.getRow(currentRowNum);
+        dataRow.height = 24;
+
+        dataRow.values = [
+          c.id,
+          c.name,
+          phoneText,
+          c.neighborhood || 'تطوان',
+          planText,
+          fee,
+          statusText,
+          c.nextDueDate || '-',
+          p?.paymentDate || '-',
+          methodText,
+          p?.receiptNumber || '-',
+          p?.extraAmount ? p.extraAmount : 0,
+          p?.recordedBy || '-',
+          p?.notes || c.notes || '-',
+        ];
+
+        // Format Phone (Column C) strictly as Text string
+        const phoneCell = dataRow.getCell(3);
+        phoneCell.value = phoneText;
+        phoneCell.numFmt = '@';
+        phoneCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+        const feeCell = dataRow.getCell(6);
+        feeCell.numFmt = '#,##0 "درهم"';
+
+        const extraCell = dataRow.getCell(12);
+        extraCell.numFmt = '#,##0 "درهم"';
+
+        const statusCell = dataRow.getCell(7);
+        if (isPaid) {
+          statusCell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFD1FAE5' },
+          };
+          statusCell.font = {
+            name: 'Segoe UI',
+            size: 11,
+            bold: true,
+            color: { argb: 'FF065F46' },
+          };
+        } else {
+          statusCell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFFEE2E2' },
+          };
+          statusCell.font = {
+            name: 'Segoe UI',
+            size: 11,
+            bold: true,
+            color: { argb: 'FF991B1B' },
+          };
+        }
+        statusCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+        const isOddRow = currentRowNum % 2 === 1;
+        for (let col = 1; col <= 14; col++) {
+          const cell = dataRow.getCell(col);
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          };
+
+          if (col !== 7) {
+            cell.font = {
+              name: 'Segoe UI',
+              size: 10.5,
+              color: { argb: 'FF1F2937' },
+            };
+            if (isOddRow) {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFF9FAFB' },
+              };
+            } else {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFFFFFFF' },
+              };
+            }
+
+            if (col === 2 || col === 14) {
+              cell.alignment = { vertical: 'middle', horizontal: 'right' };
+            } else {
+              cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            }
+          }
+        }
+
+        currentRowNum++;
+      }
+
+      // 4. Total Summary Row
+      const totalSubscribers = sheetData.length;
+      const totalPaidDH = sheetData
+        .filter((x) => x.isPaid)
+        .reduce(
+          (sum, x) => sum + (x.payment?.amount ?? (x.client.monthlyFee || 100)),
+          0
+        );
+      const totalUnpaidDH = sheetData
+        .filter((x) => !x.isPaid)
+        .reduce((sum, x) => sum + (x.client.monthlyFee || 100), 0);
+      const totalDueDH = totalPaidDH + totalUnpaidDH;
+
+      const summaryRow = sheet.getRow(currentRowNum);
+      summaryRow.height = 32;
+
+      summaryRow.values = [
+        'المجموع العام',
+        `إجمالي المشتركين: ${totalSubscribers}`,
+        '',
+        '',
+        '',
+        `مجموع الواجب: ${totalDueDH.toLocaleString()} درهم`,
+        `المؤدى: ${totalPaidDH.toLocaleString()} درهم`,
+        `غير المؤدى: ${totalUnpaidDH.toLocaleString()} درهم`,
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+      ];
+
+      for (let col = 1; col <= 14; col++) {
+        const cell = summaryRow.getCell(col);
+        cell.border = {
+          top: { style: 'medium', color: { argb: 'FF059669' } },
+          bottom: { style: 'double', color: { argb: 'FF059669' } },
+          left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          right: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+        if (col === 7) {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFD1FAE5' },
+          };
+          cell.font = {
+            name: 'Segoe UI',
+            size: 11,
+            bold: true,
+            color: { argb: 'FF065F46' },
+          };
+        } else if (col === 8) {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFFEE2E2' },
+          };
+          cell.font = {
+            name: 'Segoe UI',
+            size: 11,
+            bold: true,
+            color: { argb: 'FF991B1B' },
+          };
+        } else {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF3F4F6' },
+          };
+          cell.font = {
+            name: 'Segoe UI',
+            size: 11,
+            bold: true,
+            color: { argb: 'FF111827' },
+          };
+        }
+      }
+
+      const minColWidths: Record<number, number> = {
+        1: 16,
+        2: 26,
+        3: 18,
+        4: 18,
+        5: 24,
+        6: 22,
+        7: 20,
+        8: 20,
+        9: 18,
+        10: 18,
+        11: 20,
+        12: 22,
+        13: 20,
+        14: 28,
+      };
+
+      sheet.columns.forEach((column, colIdx) => {
+        const colNumber = colIdx + 1;
+        let maxLen = 0;
+        column.eachCell?.({ includeEmpty: false }, (cell, rowNum) => {
+          if (rowNum === 1) return;
+          const val = cell.value != null ? String(cell.value) : '';
+          if (val.length > maxLen) {
+            maxLen = val.length;
+          }
+        });
+        const defaultMin = minColWidths[colNumber] || 16;
+        column.width = Math.min(Math.max(maxLen + 4, defaultMin), 45);
+      });
+    }
   }
 
   return workbook;
@@ -804,10 +1056,11 @@ export async function downloadBilanExcel(
     client: Client;
     isPaid: boolean;
     payment?: PaymentLog;
-  }>
+  }>,
+  filterTab?: 'all' | 'paid' | 'unpaid' | 'pending'
 ): Promise<void> {
   if (typeof window === 'undefined') return;
-  const workbook = await generateBilanExcelWorkbook(monthStr, rows);
+  const workbook = await generateBilanExcelWorkbook(monthStr, rows, filterTab);
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -829,9 +1082,13 @@ export async function downloadBilanCSV(
     isPaid: boolean;
     payment?: PaymentLog;
   }>,
-  _language: 'ar' | 'fr' | 'en' = 'ar'
+  filterTabOrLang?: 'all' | 'paid' | 'unpaid' | 'pending' | 'ar' | 'fr' | 'en'
 ): Promise<void> {
-  return downloadBilanExcel(monthStr, rows);
+  const filterTab =
+    filterTabOrLang === 'paid' || filterTabOrLang === 'unpaid' || filterTabOrLang === 'pending'
+      ? filterTabOrLang
+      : 'all';
+  return downloadBilanExcel(monthStr, rows, filterTab);
 }
 
 /**

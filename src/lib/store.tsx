@@ -140,7 +140,8 @@ interface StoreContextType {
       client: Client;
       isPaid: boolean;
       payment?: PaymentLog;
-    }>
+    }>,
+    filterTab?: 'all' | 'paid' | 'unpaid' | 'pending'
   ) => Promise<void> | void;
   importDataFromJSON: (jsonData: string) => {
     success: boolean;
@@ -631,9 +632,13 @@ export async function downloadBilanCSV(
     isPaid: boolean;
     payment?: PaymentLog;
   }>,
-  _language: 'ar' | 'fr' | 'en' = 'ar'
+  filterTabOrLang?: 'all' | 'paid' | 'unpaid' | 'pending' | 'ar' | 'fr' | 'en'
 ): Promise<void> {
-  return downloadBilanExcel(monthStr, rows);
+  const filterTab =
+    filterTabOrLang === 'paid' || filterTabOrLang === 'unpaid' || filterTabOrLang === 'pending'
+      ? filterTabOrLang
+      : 'all';
+  return downloadBilanExcel(monthStr, rows, filterTab);
 }
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -1927,7 +1932,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         deleteClient,
         archiveClient,
         exportDataAsJSON,
-        exportBilanCSV: (monthStr, rows) => downloadBilanCSV(monthStr, rows, language),
+        exportBilanCSV: (monthStr, rows, filterTab) => downloadBilanExcel(monthStr, rows, filterTab),
         importDataFromJSON,
         recordPayment,
         undoLastPayment,
